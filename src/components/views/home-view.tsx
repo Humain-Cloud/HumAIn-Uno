@@ -28,6 +28,13 @@ import {
   Globe,
   Database,
   GitBranch,
+  Lightbulb,
+  Rocket,
+  Users,
+  Eye,
+  Heart,
+  Shield,
+  Wrench,
 } from 'lucide-react'
 
 function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: number }) {
@@ -56,50 +63,94 @@ function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: 
 
 const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   'Research': Search,
-  'Data Analysis': Database,
-  'Customer Support': MessageSquare,
-  'Content Creation': BookOpen,
+  'Data Analytics': Database,
+  'Customer Service': MessageSquare,
+  'Communication': MessageSquare,
+  'Marketing': Globe,
   'Code Generation': Code2,
   'Workflow Automation': Workflow,
-  'Sales & Marketing': Globe,
   'Finance': Building2,
+  'Healthcare': Heart,
+  'Cybersecurity': Shield,
+  'DevOps': Wrench,
 }
 
 const frameworks = [
   {
     name: 'LangGraph',
     description: 'Build stateful, multi-actor applications with LLMs. Cycle through graph-based agent workflows.',
-    color: 'bg-emerald-500',
+    color: 'from-emerald-500 to-emerald-600',
+    shadowColor: 'shadow-emerald-200 dark:shadow-emerald-900/30',
     icon: GitBranch,
     tag: 'Most Popular',
+    agents: 18,
   },
   {
     name: 'CrewAI',
     description: 'Orchestrate role-playing autonomous AI agents that work together to accomplish complex tasks.',
-    color: 'bg-amber-500',
+    color: 'from-amber-500 to-orange-500',
+    shadowColor: 'shadow-amber-200 dark:shadow-amber-900/30',
     icon: Brain,
     tag: 'Collaborative',
+    agents: 22,
   },
   {
     name: 'AutoGen',
     description: 'Enable next-gen LLM applications with multi-agent conversations and flexible conversation patterns.',
-    color: 'bg-rose-500',
+    color: 'from-rose-500 to-pink-500',
+    shadowColor: 'shadow-rose-200 dark:shadow-rose-900/30',
     icon: MessageSquare,
     tag: 'Microsoft',
+    agents: 28,
   },
   {
     name: 'Agno',
     description: 'Build AI agents with lightning-fast performance and minimal abstractions. Lightweight and efficient.',
-    color: 'bg-violet-500',
+    color: 'from-violet-500 to-purple-500',
+    shadowColor: 'shadow-violet-200 dark:shadow-violet-900/30',
     icon: Zap,
     tag: 'Fast',
+    agents: 17,
   },
   {
     name: 'LlamaIndex',
     description: 'Connect custom data sources to large language models. Build context-augmented agent applications.',
-    color: 'bg-teal-500',
+    color: 'from-teal-500 to-cyan-500',
+    shadowColor: 'shadow-teal-200 dark:shadow-teal-900/30',
     icon: Database,
     tag: 'RAG Expert',
+    agents: 1,
+  },
+]
+
+const howItWorks = [
+  {
+    step: 1,
+    icon: Lightbulb,
+    title: 'Describe Your Problem',
+    description: 'Tell our AI assistant what challenge your agent should solve in plain language.',
+    color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+  },
+  {
+    step: 2,
+    icon: Sparkles,
+    title: 'Get Smart Suggestions',
+    description: 'Our AI scans 500+ proven agents to recommend the best starting point and framework.',
+    color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
+  },
+  {
+    step: 3,
+    icon: Code2,
+    title: 'Remix & Customize',
+    description: 'Fork an existing agent or build from scratch with AI-generated code scaffolding.',
+    color: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
+  },
+  {
+    step: 4,
+    icon: Rocket,
+    title: 'Publish & Share',
+    description: 'Deploy your agent publicly or keep it private. Get stars and feedback from the community.',
+    color: 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',
   },
 ]
 
@@ -119,8 +170,16 @@ export function HomeView() {
           api.categories.list(),
         ])
         setStats(statsData as Stats)
-        setFeaturedAgents((agentsData as any)?.data || agentsData || [])
-        setCategories((catsData as any) || [])
+        // Parse the agents data
+        const rawAgents = (agentsData as any)?.data || agentsData || []
+        const parsed = rawAgents.map((a: any) => ({
+          ...a,
+          tools: typeof a.tools === 'string' ? JSON.parse(a.tools || '[]') : a.tools || [],
+          models: typeof a.models === 'string' ? JSON.parse(a.models || '[]') : a.models || [],
+          tags: typeof a.tags === 'string' ? JSON.parse(a.tags || '[]') : a.tags || [],
+        }))
+        setFeaturedAgents(parsed)
+        setCategories(Array.isArray(catsData) ? catsData : [])
       } catch (err) {
         console.error('Failed to load home data:', err)
       } finally {
@@ -137,37 +196,48 @@ export function HomeView() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div>
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDJ2LTJoMzR6bTAtMzBWMkgydjJoMzR6TTIgMjJoMzR2LTJIMnYyek0yIDEydjJoMzR2LTJIMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30"></div>
-        <div className="absolute top-20 right-10 w-72 h-72 bg-emerald-400/20 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-10 left-10 w-96 h-96 bg-teal-400/20 rounded-full blur-3xl"></div>
+        {/* Animated background decorations */}
+        <div className="absolute inset-0">
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-400/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-teal-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-300/5 rounded-full blur-3xl" />
+        </div>
         
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24 lg:py-32">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28 lg:py-36">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
             className="text-center"
           >
-            <div className="flex justify-center mb-6">
-              <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center">
-                <Bot className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
-              </div>
-            </div>
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6 leading-tight">
+            {/* Badge */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-emerald-100 text-sm mb-8"
+            >
+              <Sparkles className="h-4 w-4" />
+              Powered by 500+ curated AI agent projects
+            </motion.div>
+
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-[1.1] tracking-tight">
               Discover & Build<br />
-              <span className="text-emerald-200">AI Agents</span>
+              <span className="bg-gradient-to-r from-emerald-200 via-teal-200 to-cyan-200 bg-clip-text text-transparent">
+                AI Agents
+              </span>
             </h1>
-            <p className="text-lg sm:text-xl text-emerald-100 max-w-2xl mx-auto mb-8 sm:mb-10">
+            <p className="text-lg sm:text-xl text-emerald-100/90 max-w-2xl mx-auto mb-10 leading-relaxed">
               Explore 500+ curated AI agents across 5 frameworks. Find the perfect starting point, 
-              remix with your own twist, or build from scratch.
+              remix with your own twist, or build from scratch with AI assistance.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button
                 size="lg"
-                className="bg-white text-emerald-700 hover:bg-emerald-50 font-semibold px-8 h-12 text-base w-full sm:w-auto"
+                className="bg-white text-emerald-700 hover:bg-emerald-50 font-semibold px-8 h-13 text-base w-full sm:w-auto shadow-lg shadow-emerald-900/20 rounded-xl"
                 onClick={() => handleNav('browse')}
               >
                 <Search className="h-5 w-5 mr-2" />
@@ -176,24 +246,44 @@ export function HomeView() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 font-semibold px-8 h-12 text-base w-full sm:w-auto"
+                className="border-white/30 text-white hover:bg-white/10 font-semibold px-8 h-13 text-base w-full sm:w-auto backdrop-blur-sm rounded-xl"
                 onClick={() => handleNav('wizard')}
               >
                 <PlusCircle className="h-5 w-5 mr-2" />
                 Create Agent
               </Button>
             </div>
+
+            {/* Quick stats under hero */}
+            {!loading && stats && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="mt-12 flex items-center justify-center gap-6 sm:gap-10 text-emerald-100/80 text-sm"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Bot className="h-4 w-4" /> {stats.totalAgents}+ Agents
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Cpu className="h-4 w-4" /> {stats.frameworks} Frameworks
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Users className="h-4 w-4" /> Open Source
+                </span>
+              </motion.div>
+            )}
           </motion.div>
         </div>
       </section>
 
       {/* Live Stats */}
-      <section className="py-12 sm:py-16 bg-white dark:bg-gray-950 border-b">
+      <section className="py-14 sm:py-18 bg-white dark:bg-gray-950 border-b relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i}>
+                <Card key={i} className="border-0 shadow-sm">
                   <CardContent className="p-6 text-center">
                     <Skeleton className="h-8 w-16 mx-auto mb-2" />
                     <Skeleton className="h-4 w-24 mx-auto" />
@@ -202,10 +292,10 @@ export function HomeView() {
               ))
             ) : stats ? (
               [
-                { label: 'Total Agents', value: stats.totalAgents, icon: Bot, color: 'text-emerald-600' },
-                { label: 'Frameworks', value: stats.frameworks, icon: Cpu, color: 'text-amber-600' },
-                { label: 'Industries', value: stats.topIndustries?.length || 0, icon: Building2, color: 'text-rose-600' },
-                { label: 'Categories', value: stats.categories, icon: Layers, color: 'text-violet-600' },
+                { label: 'Total Agents', value: stats.totalAgents, icon: Bot, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+                { label: 'Frameworks', value: stats.frameworks, icon: Cpu, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+                { label: 'Industries', value: stats.industries || stats.topIndustries?.length || 0, icon: Building2, color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-900/20' },
+                { label: 'Categories', value: stats.categories, icon: Layers, color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-900/20' },
               ].map((stat, i) => (
                 <motion.div
                   key={stat.label}
@@ -214,13 +304,15 @@ export function HomeView() {
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
                 >
-                  <Card className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4 sm:p-6 text-center">
-                      <stat.icon className={`h-6 w-6 mx-auto mb-2 ${stat.color}`} />
-                      <div className="text-2xl sm:text-3xl font-bold">
+                  <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-5 sm:p-6 text-center">
+                      <div className={`inline-flex items-center justify-center h-12 w-12 rounded-xl ${stat.bg} mb-3`}>
+                        <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                      </div>
+                      <div className="text-3xl sm:text-4xl font-bold tracking-tight">
                         <AnimatedCounter target={stat.value} />
                       </div>
-                      <div className="text-xs sm:text-sm text-muted-foreground mt-1">{stat.label}</div>
+                      <div className="text-sm text-muted-foreground mt-1 font-medium">{stat.label}</div>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -230,47 +322,96 @@ export function HomeView() {
         </div>
       </section>
 
-      {/* Featured Agents */}
-      <section className="py-12 sm:py-16 bg-gray-50 dark:bg-gray-900">
+      {/* How It Works */}
+      <section className="py-16 sm:py-20 bg-gray-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="flex items-center justify-between mb-8"
+            className="text-center mb-12"
+          >
+            <h2 className="text-2xl sm:text-4xl font-bold mb-3">
+              How It Works
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              From idea to deployed AI agent in four simple steps
+            </p>
+          </motion.div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {howItWorks.map((item, i) => (
+              <motion.div
+                key={item.step}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.15 }}
+              >
+                <Card className="h-full border-0 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
+                  <div className="absolute top-3 right-3 text-6xl font-black text-gray-100 dark:text-gray-800 select-none">
+                    {item.step}
+                  </div>
+                  <CardContent className="p-6 pt-8 relative">
+                    <div className={`inline-flex items-center justify-center h-12 w-12 rounded-xl mb-4 ${item.color}`}>
+                      <item.icon className="h-6 w-6" />
+                    </div>
+                    <h3 className="font-bold text-lg mb-2">{item.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Agents */}
+      <section className="py-16 sm:py-20 bg-white dark:bg-gray-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex items-center justify-between mb-10"
           >
             <div>
-              <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-                <Sparkles className="h-6 w-6 text-amber-500" />
+              <h2 className="text-2xl sm:text-4xl font-bold flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <Sparkles className="h-5 w-5 text-amber-600" />
+                </div>
                 Featured Agents
               </h2>
-              <p className="text-muted-foreground mt-1">Hand-picked from our knowledge base</p>
+              <p className="text-muted-foreground mt-2 ml-[52px]">Hand-picked from our knowledge base</p>
             </div>
-            <Button variant="outline" className="hidden sm:flex" onClick={() => handleNav('browse')}>
+            <Button variant="outline" className="hidden sm:flex rounded-lg" onClick={() => handleNav('browse')}>
               View All <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </motion.div>
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {Array.from({ length: 6 }).map((_, i) => (
-                <Card key={i}>
-                  <CardContent className="p-4">
-                    <Skeleton className="h-4 w-3/4 mb-2" />
-                    <Skeleton className="h-3 w-full mb-1" />
-                    <Skeleton className="h-3 w-2/3" />
+                <Card key={i} className="border-0 shadow-sm">
+                  <CardContent className="p-5">
+                    <Skeleton className="h-4 w-3/4 mb-3" />
+                    <Skeleton className="h-3 w-full mb-2" />
+                    <Skeleton className="h-3 w-2/3 mb-4" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-5 w-16" />
+                      <Skeleton className="h-5 w-20" />
+                    </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {featuredAgents.map((agent, i) => (
                 <AgentCard key={agent.id} agent={agent} index={i} />
               ))}
             </div>
           )}
-          <div className="mt-6 text-center sm:hidden">
-            <Button variant="outline" onClick={() => handleNav('browse')}>
+          <div className="mt-8 text-center sm:hidden">
+            <Button variant="outline" className="rounded-lg" onClick={() => handleNav('browse')}>
               View All Agents <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
@@ -278,28 +419,26 @@ export function HomeView() {
       </section>
 
       {/* Category Cloud */}
-      <section className="py-12 sm:py-16 bg-white dark:bg-gray-950">
+      <section className="py-16 sm:py-20 bg-gray-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            className="text-center mb-10"
           >
-            <h2 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-2">
-              <Layers className="h-6 w-6 text-emerald-600" />
-              Explore by Category
-            </h2>
-            <p className="text-muted-foreground mb-8">Find agents for your specific use case</p>
+            <h2 className="text-2xl sm:text-4xl font-bold mb-3">Explore by Category</h2>
+            <p className="text-muted-foreground max-w-lg mx-auto">Find agents for your specific use case and industry</p>
           </motion.div>
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-24 rounded-xl" />
+                <Skeleton key={i} className="h-28 rounded-xl" />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {categories.slice(0, 8).map((cat, i) => {
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {categories.filter(c => (c.agentCount || 0) > 0).slice(0, 10).map((cat, i) => {
                 const IconComp = categoryIcons[cat.name] || Bot
                 return (
                   <motion.div
@@ -308,10 +447,10 @@ export function HomeView() {
                     whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.05 }}
-                    whileHover={{ scale: 1.03 }}
+                    whileHover={{ scale: 1.04, y: -2 }}
                   >
                     <Card
-                      className="cursor-pointer hover:shadow-md transition-all"
+                      className="cursor-pointer hover:shadow-lg transition-all border-0 shadow-sm overflow-hidden group"
                       onClick={() => {
                         const store = useAppStore.getState()
                         store.setSelectedCategory(cat.id)
@@ -320,10 +459,12 @@ export function HomeView() {
                         window.scrollTo(0, 0)
                       }}
                     >
-                      <CardContent className="p-4 sm:p-5 text-center">
-                        <IconComp className="h-8 w-8 mx-auto mb-2 text-emerald-600" />
+                      <CardContent className="p-5 text-center">
+                        <div className="inline-flex items-center justify-center h-11 w-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 mb-3 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/30 transition-colors">
+                          <IconComp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
                         <h3 className="font-semibold text-sm mb-1">{cat.name}</h3>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground font-medium">
                           {cat.agentCount || 0} agents
                         </p>
                       </CardContent>
@@ -333,24 +474,27 @@ export function HomeView() {
               })}
             </div>
           )}
+          <div className="mt-8 text-center">
+            <Button variant="outline" className="rounded-lg" onClick={() => handleNav('browse')}>
+              <Layers className="h-4 w-4 mr-2" /> View All Categories
+            </Button>
+          </div>
         </div>
       </section>
 
       {/* Framework Showcase */}
-      <section className="py-12 sm:py-16 bg-gray-50 dark:bg-gray-900">
+      <section className="py-16 sm:py-20 bg-white dark:bg-gray-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            className="text-center mb-10"
           >
-            <h2 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-2">
-              <Cpu className="h-6 w-6 text-emerald-600" />
-              Supported Frameworks
-            </h2>
-            <p className="text-muted-foreground mb-8">Build agents with the tools you already know</p>
+            <h2 className="text-2xl sm:text-4xl font-bold mb-3">Supported Frameworks</h2>
+            <p className="text-muted-foreground max-w-lg mx-auto">Build agents with the tools you already know and love</p>
           </motion.div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {frameworks.map((fw, i) => (
               <motion.div
                 key={fw.name}
@@ -358,39 +502,40 @@ export function HomeView() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                whileHover={{ scale: 1.02, y: -4 }}
+                whileHover={{ y: -6 }}
               >
-                <Card className="h-full hover:shadow-lg transition-all overflow-hidden">
-                  <div className={`h-1 ${fw.color}`} />
-                  <CardContent className="p-5 sm:p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className={`h-10 w-10 rounded-lg ${fw.color} flex items-center justify-center`}>
-                          <fw.icon className="h-5 w-5 text-white" />
+                <Card className="h-full hover:shadow-xl transition-all overflow-hidden border-0 shadow-sm">
+                  <div className={`h-1.5 bg-gradient-to-r ${fw.color}`} />
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${fw.color} flex items-center justify-center shadow-md ${fw.shadowColor}`}>
+                          <fw.icon className="h-6 w-6 text-white" />
                         </div>
-                        <h3 className="font-bold text-lg">{fw.name}</h3>
+                        <div>
+                          <h3 className="font-bold text-lg">{fw.name}</h3>
+                          <span className="text-xs text-muted-foreground">{fw.agents} agents</span>
+                        </div>
                       </div>
-                      <Badge variant="secondary" className="text-[10px]">
+                      <Badge variant="secondary" className="text-[10px] font-medium">
                         {fw.tag}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">{fw.description}</p>
-                    <div className="mt-4">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-emerald-600 hover:text-emerald-700 p-0 h-auto"
-                        onClick={() => {
-                          const store = useAppStore.getState()
-                          store.setSelectedFramework(fw.name.toLowerCase())
-                          store.setCurrentView('browse')
-                          store.setSelectedAgentId(null)
-                          window.scrollTo(0, 0)
-                        }}
-                      >
-                        Browse {fw.name} agents <ArrowRight className="h-3 w-3 ml-1" />
-                      </Button>
-                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed mb-4">{fw.description}</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 p-0 h-auto font-medium"
+                      onClick={() => {
+                        const store = useAppStore.getState()
+                        store.setSelectedFramework(fw.name.toLowerCase())
+                        store.setCurrentView('browse')
+                        store.setSelectedAgentId(null)
+                        window.scrollTo(0, 0)
+                      }}
+                    >
+                      Browse {fw.name} agents <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                    </Button>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -400,27 +545,46 @@ export function HomeView() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 sm:py-20 bg-emerald-600">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <section className="relative py-20 sm:py-24 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800" />
+        <div className="absolute inset-0">
+          <div className="absolute -top-20 -right-20 w-[400px] h-[400px] bg-emerald-400/20 rounded-full blur-3xl" />
+          <div className="absolute -bottom-20 -left-20 w-[400px] h-[400px] bg-teal-400/20 rounded-full blur-3xl" />
+        </div>
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-2xl sm:text-4xl font-bold text-white mb-4">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
+              <Rocket className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-extrabold text-white mb-4 tracking-tight">
               Ready to build your AI agent?
             </h2>
-            <p className="text-emerald-100 text-lg mb-8">
-              Start from scratch or remix from 500+ curated templates. Deploy in minutes.
+            <p className="text-emerald-100 text-lg sm:text-xl mb-10 max-w-xl mx-auto leading-relaxed">
+              Start from scratch or remix from 500+ curated templates. Deploy in minutes with AI assistance.
             </p>
-            <Button
-              size="lg"
-              className="bg-white text-emerald-700 hover:bg-emerald-50 font-semibold px-8 h-12 text-base"
-              onClick={() => handleNav('wizard')}
-            >
-              <PlusCircle className="h-5 w-5 mr-2" />
-              Create Your Agent Now
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button
+                size="lg"
+                className="bg-white text-emerald-700 hover:bg-emerald-50 font-semibold px-8 h-13 text-base shadow-lg shadow-emerald-900/20 rounded-xl"
+                onClick={() => handleNav('wizard')}
+              >
+                <PlusCircle className="h-5 w-5 mr-2" />
+                Create Your Agent Now
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-white/30 text-white hover:bg-white/10 font-semibold px-8 h-13 text-base rounded-xl"
+                onClick={() => handleNav('browse')}
+              >
+                <Eye className="h-5 w-5 mr-2" />
+                Explore Gallery
+              </Button>
+            </div>
           </motion.div>
         </div>
       </section>

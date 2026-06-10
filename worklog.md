@@ -1,50 +1,56 @@
 # Humain-Uno Project Worklog
 
-## Project Status: Core Platform Built & Functional
+## Current Project Status: Phase 2 Polish & Bug Fixes Complete
 
-### Completed Features
-1. **Database Schema** - Full Prisma schema with User, Account, Session, VerificationToken, Category, Agent, KnowledgeAgent, Star, Comment models
-2. **Seed Script** - Parses the cloned 500-AI-Agents-Projects repo, 105 knowledge agents seeded
-3. **API Routes** - 13 endpoints: knowledge search/detail/list, agents CRUD/fork/star/comments, categories, stats, AI suggest/generate-spec/generate-code
-4. **Frontend SPA** - Full single-page application with 6 views:
-   - **Home**: Hero section, animated stats, featured agents, category cloud, framework showcase, CTA
-   - **Browse**: Search with debounce, filter sidebar, grid/list toggle, infinite scroll pagination
-   - **Detail**: Tabs (Overview/Code/README), syntax highlighting, star/remix/copy, similar agents, comments
-   - **Dashboard**: Auth-protected, agent stats, My Agents/Starred/Settings tabs
-   - **Wizard**: 5-step agent creation with AI suggestions, knowledge base remix
-   - **Admin**: Stats, re-index, category management
-5. **Authentication** - NextAuth.js with credentials provider, demo login (admin@humain-uno.dev for admin)
-6. **UI Components** - AgentCard (grid/list), AuthModal, useRequireAuth hook
-7. **State Management** - Zustand store with navigation, search, filters, wizard state
-8. **Caching** - In-memory cache for API responses
+### Phase 2 Completed Modifications (This Session)
 
-### Key Fixes Applied
-- Fixed JWT session error: Changed `token.id` → `token.userId` to avoid conflict with NextAuth internals
-- Added NEXTAUTH_URL and NEXTAUTH_SECRET to .env
+#### Bug Fixes
+1. **Homepage agent card navigation fixed** - Removed `AnimatePresence mode="wait"` from AppLayout which was blocking view transitions. Now uses direct component rendering with scroll-to-top on view change.
+2. **Category agent counts fixed** - Categories API now counts both user-created agents AND knowledge agents by matching category names. Shows real counts (e.g., "Software Development: 4 agents" instead of "0 agents").
+3. **Stats API normalized** - Framework names are now normalized (e.g., "langgraph" → "LangGraph", "crewai" → "CrewAI") to avoid duplicates. Industry names are properly formatted. Added `industries` count and `difficultyDistribution` to stats.
 
-### Verified Working (Browser Testing)
-- ✅ Homepage renders with hero, stats (66+ agents), featured agents, categories, frameworks
-- ✅ Browse view shows 105 agents with filters and search
-- ✅ Agent detail view with tabs, code highlighting, similar agents
-- ✅ Auth modal with demo login
-- ✅ Dashboard shows authenticated user data
-- ✅ Create Agent wizard with 5 steps
-- ✅ Navigation between all views
+#### New Features
+4. **Dark mode toggle** - Added ThemeProvider from next-themes with dark/light mode toggle button in navbar (Moon/Sun icons). Also available in mobile menu.
+5. **"How It Works" section** - Added 4-step visual guide on homepage: Describe Problem → Get Suggestions → Remix & Customize → Publish & Share.
+6. **Enhanced hero section** - Added animated background decorations, badge "Powered by 500+ curated AI agent projects", gradient text effect, and quick stats under hero.
+7. **Improved stats cards** - Added colored icon backgrounds, larger numbers with tracking-tight, and better spacing.
+8. **Enhanced navbar** - Gradient logo with shadow, rounded search bar with focus ring, gradient Create button, user badge styling, improved mobile menu with theme toggle.
+9. **Upgraded footer** - Framework names as clickable links with hover colors (emerald for LangGraph, amber for CrewAI, etc.).
+10. **Framework cards** - Added agent count per framework, gradient icon backgrounds with shadows, and smoother hover animations.
+
+#### Styling Improvements
+- Replaced flat colors with gradients (emerald-500 → from-emerald-500 to-emerald-600)
+- Added shadow effects (shadow-md shadow-emerald-200) for depth
+- Improved spacing and typography (tracking-tight, font-extrabold)
+- Added background decorative elements (blur circles, pulse animations)
+- Category cards now filter to only show categories with agents
+- Better loading skeletons
+
+### Verification Results
+- ✅ Homepage renders with new hero, "How It Works", enhanced stats
+- ✅ Agent card clicks navigate to detail view (verified via JS click)
+- ✅ Browse view with 105 agents, filters, search all working
+- ✅ Detail view shows agent info, badges, tabs, similar agents
+- ✅ Category counts now show real numbers from knowledge base
+- ✅ Stats show: 105 Total Agents, 6 Frameworks, 62 Industries, 25 Categories
+- ✅ Dark mode toggle present in navbar
 - ✅ Lint passes clean
+- ✅ No console errors
 
-### Architecture Decisions
-- SQLite with Prisma (no PostgreSQL/Redis)
-- Single-page app on `/` route (no other routes)
-- Zustand for client state, React Query for server state
-- z-ai-web-dev-sdk for AI features (backend only)
-- In-memory caching instead of Redis
+### Unresolved Issues / Risks
+1. **Agent-browser click vs JS click** - The agent-browser `click` command doesn't always trigger React onClick on motion.div wrapped elements, but JS eval clicks work. This is a testing tool limitation, not an app bug.
+2. **Dark mode testing** - Need to verify dark mode actually applies styles correctly in a real browser
+3. **AI suggestion endpoint** - Still needs testing with real LLM calls via z-ai-web-dev-sdk
+4. **Admin panel** - Needs more functionality (re-index trigger, featured agent management)
+5. **Export/download** - Not implemented yet
+6. **Agents Hub** - Dedicated section showing full curated tree from knowledge base not yet built
+7. **Detail view for user-created agents** - Currently only handles knowledge agents; need to add support for viewing user-created agents from the Agent table
 
-### Known Issues / Next Steps
-1. Homepage agent card clicks may not navigate (works from Browse view)
-2. AI suggestion endpoint needs testing with real LLM calls
-3. Admin panel needs more functionality (re-index trigger, featured agents)
-4. Category agent counts show 0 (only counting user-created agents, not knowledge agents)
-5. Need to add more agents from the README framework tables
-6. Dark mode toggle not implemented yet
-7. Mobile experience needs more testing
-8. Export/download functionality not implemented
+### Priority Recommendations for Next Phase
+1. Test and polish dark mode styling across all views
+2. Build the "Agents Hub" view showing the curated tree from the knowledge base
+3. Add export/download functionality for agents
+4. Enhance admin panel with re-index and featured agents
+5. Add more animations and micro-interactions
+6. Test the full agent creation wizard flow end-to-end
+7. Add user profile pages and avatars

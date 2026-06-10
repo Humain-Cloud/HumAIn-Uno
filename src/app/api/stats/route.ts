@@ -11,8 +11,8 @@ export async function GET() {
 
     // Run all count queries in parallel
     const [
-      totalAgents,
-      knowledgeAgents,
+      userAgentCount,
+      knowledgeAgentCount,
       categoriesCount,
     ] = await Promise.all([
       db.agent.count(),
@@ -20,7 +20,7 @@ export async function GET() {
       db.category.count(),
     ])
 
-    const userAgentCount = totalAgents
+    const totalAgents = userAgentCount + knowledgeAgentCount
 
     // Get framework distribution from knowledge agents
     const knowledgeFrameworks = await db.knowledgeAgent.findMany({
@@ -34,11 +34,12 @@ export async function GET() {
       select: { framework: true },
     })
 
-    // Count frameworks
+    // Count frameworks (normalize case)
     const frameworkMap = new Map<string, number>()
     for (const { framework } of [...knowledgeFrameworks, ...userFrameworks]) {
       if (framework) {
-        frameworkMap.set(framework, (frameworkMap.get(framework) || 0) + 1)
+        const normalized = framework.charAt(0).toUpperCase() + framework.slice(1).toLowerCase()
+        frameworkMap.set(normalized, (frameworkMap.get(normalized) || 0) + 1)
       }
     }
 
@@ -47,7 +48,7 @@ export async function GET() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10)
 
-    // Get industry distribution
+    // Get industry distribution from knowledge agents
     const knowledgeIndustries = await db.knowledgeAgent.findMany({
       where: { industry: { not: null } },
       select: { industry: true },
@@ -58,10 +59,12 @@ export async function GET() {
       select: { industry: true },
     })
 
+    // Normalize industry names
     const industryMap = new Map<string, number>()
     for (const { industry } of [...knowledgeIndustries, ...userIndustries]) {
       if (industry) {
-        industryMap.set(industry, (industryMap.get(industry) || 0) + 1)
+        const normalized = industry.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+        industryMap.set(normalized, (industryMap.get(normalized) || 0) + 1)
       }
     }
 
@@ -70,17 +73,36 @@ export async function GET() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10)
 
+    // Get difficulty distribution
+    const knowledgeDifficulties = await db.knowledgeAgent.findMany({
+      where: { difficulty: { not: null } },
+      select: { difficulty: true },
+    })
+
+    const difficultyMap = new Map<string, number>()
+    for (const { difficulty } of knowledgeDifficulties) {
+      if (difficulty) {
+        difficultyMap.set(difficulty, (difficultyMap.get(difficulty) || 0) + 1)
+      }
+    }
+
+    const difficultyDistribution = Array.from(difficultyMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+
     const result = {
-      totalAgents: totalAgents + knowledgeAgents,
-      knowledgeAgents,
+      totalAgents,
+      knowledgeAgents: knowledgeAgentCount,
       userAgentCount,
       categories: categoriesCount,
       frameworks: frameworkMap.size,
+      industries: industryMap.size,
       topFrameworks,
       topIndustries,
+      difficultyDistribution,
     }
 
-    setCache(cacheKey, result)
+    setCache(cacheKey, result, 60 * 1000)
     return NextResponse.json(result)
   } catch (error) {
     console.error('[stats] Error:', error)
