@@ -4,8 +4,9 @@ import { motion } from 'framer-motion'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Star, Code2, Eye, BookOpen } from 'lucide-react'
+import { Star, Code2, Eye, BookOpen, GitCompareArrows, Check } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 import type { KnowledgeAgent } from '@/lib/types'
 
 interface AgentCardProps {
@@ -22,6 +23,14 @@ const frameworkColors: Record<string, string> = {
   llamaindex: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
 }
 
+const frameworkGlow: Record<string, string> = {
+  langgraph: 'shadow-emerald-200/50 dark:shadow-emerald-900/30',
+  crewai: 'shadow-amber-200/50 dark:shadow-amber-900/30',
+  autogen: 'shadow-rose-200/50 dark:shadow-rose-900/30',
+  agno: 'shadow-violet-200/50 dark:shadow-violet-900/30',
+  llamaindex: 'shadow-teal-200/50 dark:shadow-teal-900/30',
+}
+
 const difficultyColors: Record<string, string> = {
   beginner: 'text-green-600 dark:text-green-400',
   intermediate: 'text-amber-600 dark:text-amber-400',
@@ -29,9 +38,22 @@ const difficultyColors: Record<string, string> = {
 }
 
 export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProps) {
-  const { navigateToAgent } = useAppStore()
+  const { navigateToAgent, compareAgentIds, addCompareAgent, removeCompareAgent } = useAppStore()
+  const isInCompare = compareAgentIds.includes(agent.id)
+  const isCompareFull = compareAgentIds.length >= 4
+  const canCompare = isInCompare || !isCompareFull
+
+  const toggleCompare = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isInCompare) {
+      removeCompareAgent(agent.id)
+    } else if (canCompare) {
+      addCompareAgent(agent.id)
+    }
+  }
 
   const fwColor = frameworkColors[(agent.framework || '').toLowerCase()] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+  const fwGlow = frameworkGlow[(agent.framework || '').toLowerCase()] || ''
   const diffColor = difficultyColors[(agent.difficulty || '').toLowerCase()] || 'text-gray-500'
 
   if (viewMode === 'list') {
@@ -47,6 +69,28 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
           onClick={() => navigateToAgent(agent.id)}
         >
           <CardContent className="p-4 flex items-center gap-4">
+            {/* Compare checkbox */}
+            {canCompare && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={toggleCompare}
+                      className={`shrink-0 h-7 w-7 rounded-full flex items-center justify-center transition-all duration-200 ${
+                        isInCompare
+                          ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200 dark:shadow-emerald-900/30'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400'
+                      }`}
+                    >
+                      {isInCompare ? <Check className="h-3.5 w-3.5" /> : <GitCompareArrows className="h-3.5 w-3.5" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    {isInCompare ? 'Remove from comparison' : 'Add to comparison'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-semibold text-sm truncate">{agent.name}</h3>
@@ -90,22 +134,45 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
       whileHover={{ scale: 1.02, y: -2 }}
     >
       <Card
-        className="cursor-pointer hover:shadow-lg transition-all duration-200 h-full flex flex-col"
+        className="cursor-pointer hover:shadow-lg transition-all duration-300 h-full flex flex-col hover:-translate-y-0.5 will-change-transform"
         onClick={() => navigateToAgent(agent.id)}
       >
         <CardContent className="p-4 flex-1">
           <div className="flex items-start justify-between mb-2">
             <h3 className="font-semibold text-sm line-clamp-1 flex-1 mr-2">{agent.name}</h3>
-            {agent.isCurated && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 shrink-0 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                <BookOpen className="h-3 w-3 mr-0.5" />KB
-              </Badge>
-            )}
+            <div className="flex items-center gap-1 shrink-0">
+              {canCompare && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={toggleCompare}
+                        className={`h-6 w-6 rounded-full flex items-center justify-center transition-all duration-300 will-change-transform ${
+                          isInCompare
+                            ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200 dark:shadow-emerald-900/30'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400'
+                        }`}
+                      >
+                        {isInCompare ? <Check className="h-3 w-3" /> : <GitCompareArrows className="h-3 w-3" />}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      {isInCompare ? 'Remove from comparison' : 'Add to comparison'}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {agent.isCurated && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 dark:from-emerald-900/30 dark:to-teal-900/30 dark:text-emerald-300">
+                  <BookOpen className="h-3 w-3 mr-0.5" />KB
+                </Badge>
+              )}
+            </div>
           </div>
           <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{agent.description}</p>
           <div className="flex flex-wrap gap-1.5">
             {agent.framework && (
-              <Badge variant="secondary" className={`text-[10px] ${fwColor}`}>
+              <Badge variant="secondary" className={`text-[10px] ${fwColor} shadow-sm ${fwGlow}`}>
                 {agent.framework}
               </Badge>
             )}
@@ -139,7 +206,7 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
               </span>
             )}
           </div>
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); navigateToAgent(agent.id) }}>
+          <Button size="sm" variant="ghost" className="h-7 text-xs hover:scale-105 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-teal-50 dark:hover:from-emerald-900/20 dark:hover:to-teal-900/20 transition-all duration-200" onClick={(e) => { e.stopPropagation(); navigateToAgent(agent.id) }}>
             <Eye className="h-3 w-3 mr-1" /> View
           </Button>
         </CardFooter>

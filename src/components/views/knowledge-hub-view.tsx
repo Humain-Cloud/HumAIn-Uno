@@ -177,7 +177,7 @@ function FrameworkDistributionChart({ topFrameworks }: { topFrameworks: { name: 
                   whileInView={{ width: `${percentage}%` }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.3 + i * 0.1, duration: 0.8, ease: 'easeOut' }}
-                  className={`h-full rounded-full ${config.barColor}`}
+                  className={`h-full rounded-full bg-gradient-to-r ${config.gradient} will-change-transform`}
                 />
               </div>
             </div>
@@ -352,7 +352,7 @@ export function KnowledgeHubView() {
 
             <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
               <div>
-                <h1 className="text-3xl sm:text-5xl font-extrabold text-white mb-4 leading-[1.1] tracking-tight">
+                <h1 className="text-3xl sm:text-5xl font-extrabold text-white mb-4 leading-[1.1] tracking-tight gradient-text" style={{ WebkitTextFillColor: 'unset' }}>
                   Knowledge Hub
                 </h1>
                 <p className="text-lg sm:text-xl text-emerald-100/90 max-w-2xl leading-relaxed">
@@ -362,14 +362,16 @@ export function KnowledgeHubView() {
 
               {/* Search in Knowledge Hub */}
               <div className="w-full lg:w-80 shrink-0">
-                <div className="relative">
+                <div className="relative group">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-300" />
                   <Input
                     placeholder="Search knowledge base..."
-                    className="pl-9 h-11 bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-emerald-200/60 rounded-xl focus:ring-2 focus:ring-white/30 focus:border-white/40"
+                    className="pl-9 h-11 bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-emerald-200/60 rounded-xl focus:ring-2 focus:ring-white/30 focus:border-white/40 transition-all duration-300"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
+                  {/* Animated border gradient on focus */}
+                  <div className="absolute inset-0 rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 p-[1.5px] bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400 pointer-events-none" style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }} />
                   {searchQuery && (
                     <button
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-200/60 hover:text-white transition-colors"
@@ -443,7 +445,7 @@ export function KnowledgeHubView() {
                   className={`
                     relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all shrink-0
                     ${isActive
-                      ? `bg-gradient-to-r ${tab.gradient} text-white shadow-md ${tab.shadowColor}`
+                      ? `bg-gradient-to-r ${tab.gradient} text-white shadow-md ${tab.shadowColor} glow-emerald`
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                     }
                   `}
@@ -568,7 +570,13 @@ export function KnowledgeHubView() {
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {agents.map((agent, i) => (
-                    <AgentCard key={agent.id} agent={agent} index={i} />
+                    <motion.div
+                      key={agent.id}
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    >
+                      <AgentCard agent={agent} index={i} />
+                    </motion.div>
                   ))}
                 </div>
 

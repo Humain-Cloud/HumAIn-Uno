@@ -369,7 +369,7 @@ export function DetailView() {
         initial={{ scaleX: 0 }}
         animate={{ scaleX: 1 }}
         transition={{ duration: 0.6, ease: 'easeOut' }}
-        className={`h-2 rounded-full bg-gradient-to-r ${fwGradient.from} ${fwGradient.to} mb-6 origin-left`}
+        className={`h-2 rounded-full bg-gradient-to-r ${fwGradient.from} ${fwGradient.to} mb-6 origin-left shimmer will-change-transform`}
       />
 
       {/* Back Button */}
@@ -418,22 +418,22 @@ export function DetailView() {
               variant="outline"
               size="sm"
               onClick={handleStar}
-              className={starred ? 'bg-amber-50 border-amber-300 text-amber-700' : ''}
+              className={`transition-all duration-200 hover:scale-105 ${starred ? 'bg-amber-50 border-amber-300 text-amber-700' : 'hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 hover:border-amber-300 dark:hover:from-amber-900/20 dark:hover:to-orange-900/20'}`}
             >
               <Star className={`h-4 w-4 mr-1 ${starred ? 'fill-amber-500 text-amber-500' : ''}`} />
               {starred ? 'Starred' : 'Star'}
             </Button>
-            <Button variant="outline" size="sm" onClick={handleFork}>
+            <Button variant="outline" size="sm" onClick={handleFork} className="hover:scale-105 transition-transform duration-200 hover:bg-gradient-to-r hover:from-violet-50 hover:to-purple-50 dark:hover:from-violet-900/20 dark:hover:to-purple-900/20 hover:border-violet-300 dark:hover:border-violet-700">
               <GitFork className="h-4 w-4 mr-1" /> Remix
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={handleShareLink}
-              className={linkCopied ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : ''}
+              className={`transition-all duration-200 hover:scale-105 ${linkCopied ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'hover:bg-gradient-to-r hover:from-emerald-50 hover:to-teal-50 dark:hover:from-emerald-900/20 dark:hover:to-teal-900/20 hover:border-emerald-300 dark:hover:border-emerald-700'}`}
             >
               {linkCopied ? (
-                <><Check className="h-4 w-4 mr-1" /> Copied!</>
+                <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 15 }}><Check className="h-4 w-4 mr-1" /> Copied!</motion.span>
               ) : (
                 <><Share2 className="h-4 w-4 mr-1" /> Share</>
               )}
@@ -460,7 +460,7 @@ export function DetailView() {
       >
         <Button
           onClick={handleUseAsTemplate}
-          className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-200 dark:shadow-emerald-900/30"
+          className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-200 dark:shadow-emerald-900/30 hover:scale-[1.02] transition-transform duration-200"
         >
           <GitFork className="h-4 w-4 mr-2" /> Use as Template
         </Button>
@@ -583,7 +583,7 @@ export function DetailView() {
 
             {/* Sidebar - Enhanced Metadata */}
             <div className="space-y-6">
-              <Card>
+              <Card className="border-l-2 border-l-emerald-500 dark:border-l-emerald-400">
                 <CardHeader>
                   <CardTitle className="text-base">Agent Metadata</CardTitle>
                 </CardHeader>
@@ -811,19 +811,30 @@ export function DetailView() {
                   </div>
                 </div>
 
-                <SyntaxHighlighter
-                  language={codeLanguage}
-                  style={oneDark}
-                  customStyle={{
-                    margin: 0,
-                    borderRadius: '0 0 0.5rem 0.5rem',
-                    fontSize: '0.8rem',
-                    maxHeight: '600px',
-                  }}
-                  showLineNumbers={showLineNumbers}
-                >
+                <div className="relative">
+                  <SyntaxHighlighter
+                    language={codeLanguage}
+                    style={oneDark}
+                    customStyle={{
+                      margin: 0,
+                      borderRadius: '0 0 0.5rem 0.5rem',
+                      fontSize: '0.8rem',
+                      maxHeight: '600px',
+                    }}
+                    showLineNumbers={showLineNumbers}
+                    lineNumberStyle={{
+                      minWidth: '3em',
+                      paddingRight: '1em',
+                      color: '#4b5563',
+                      background: '#1e1e2e',
+                      borderRight: '1px solid #374151',
+                    }}
+                  >
                   {agent.codeSnippet}
                 </SyntaxHighlighter>
+                  {/* Gradient overlay at bottom for "scroll for more" hint */}
+                  <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#282c34] to-transparent pointer-events-none rounded-b-lg" />
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -939,8 +950,8 @@ export function DetailView() {
           </div>
           <div
             ref={carouselRef}
-            className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-700 dark:scrollbar-track-gray-900"
-            style={{ scrollSnapType: 'x mandatory' }}
+            className="flex gap-4 overflow-x-auto pb-4 scroll-smooth"
+            style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
           >
             {similarAgents.map((a, i) => (
               <div

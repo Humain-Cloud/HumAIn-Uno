@@ -13,6 +13,10 @@ import { WizardView } from '@/components/views/wizard-view'
 import { AdminView } from '@/components/views/admin-view'
 import { KnowledgeHubView } from '@/components/views/knowledge-hub-view'
 import { AuthModal } from '@/components/auth/auth-modal'
+import { CompareBar } from '@/components/agents/compare-bar'
+import { CompareModal } from '@/components/agents/compare-modal'
+import { AiChatButton } from '@/components/ai/ai-chat-button'
+import { AiChatPanel } from '@/components/ai/ai-chat-panel'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -455,6 +459,14 @@ export function AppLayout() {
       </main>
       <Footer />
       <AuthModal />
+      <CompareBar />
+      <CompareModal />
+      {currentView !== 'wizard' && (
+        <>
+          <AiChatButton />
+          <AiChatPanel />
+        </>
+      )}
     </div>
   )
 }

@@ -210,11 +210,20 @@ export function WizardView() {
       </div>
 
       {/* Step Indicators */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 relative">
+        {/* Gradient connecting line */}
+        <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200 dark:bg-gray-800 mx-10 sm:mx-12 z-0">
+          <motion.div
+            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full"
+            initial={{ width: '0%' }}
+            animate={{ width: `${(wizardStep / (STEPS.length - 1)) * 100}%` }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+          />
+        </div>
         {STEPS.map((step, i) => (
-          <div key={i} className="flex flex-col items-center">
+          <div key={i} className="flex flex-col items-center relative z-10">
             <div
-              className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
+              className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center text-sm font-medium transition-all will-change-transform ${
                 i < wizardStep
                   ? 'bg-emerald-600 text-white'
                   : i === wizardStep
@@ -240,7 +249,7 @@ export function WizardView() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.25, type: 'spring', stiffness: 200, damping: 20 }}
         >
           {/* Step 0: Problem */}
           {wizardStep === 0 && (
@@ -278,7 +287,7 @@ export function WizardView() {
                   <div className="space-y-3 mt-4">
                     <h4 className="text-sm font-semibold">AI Suggestions</h4>
                     {aiSuggestions.map((suggestion, i) => (
-                      <Card key={i} className="border-emerald-200 bg-emerald-50/50">
+                      <Card key={i} className="border-emerald-200 bg-emerald-50/50 gradient-border shimmer">
                         <CardContent className="p-4">
                           <h5 className="font-medium text-sm">{suggestion.name}</h5>
                           <p className="text-xs text-muted-foreground mt-1">{suggestion.description}</p>
@@ -556,10 +565,12 @@ export function WizardView() {
                 <CardContent>
                   <Textarea
                     placeholder="# Write your agent code here...&#10;&#10;from langchain.chat_models import ChatOpenAI&#10;from langgraph.graph import StateGraph&#10;&#10;# Define your agent logic..."
-                    className="font-mono text-sm min-h-[300px] bg-gray-950 text-gray-100 border-gray-800"
+                    className="font-mono text-sm min-h-[300px] bg-gray-950 text-gray-100 border-gray-800 relative"
                     value={wizardData.code || ''}
                     onChange={(e) => setWizardData({ code: e.target.value })}
                   />
+                  {/* Gradient overlay for "scroll for more" hint */}
+                  <div className="h-8 bg-gradient-to-t from-gray-950 to-transparent -mt-8 relative pointer-events-none" />
                 </CardContent>
               </Card>
               <Card>
@@ -655,11 +666,12 @@ export function WizardView() {
                     ].map((option) => (
                       <Card
                         key={option.value}
-                        className={`cursor-pointer transition-all ${
+                        className={`cursor-pointer transition-all will-change-transform ${
                           wizardData.privacy === option.value
-                            ? 'ring-2 ring-emerald-600 bg-emerald-50/50'
+                            ? 'ring-2 ring-emerald-600 bg-emerald-50/50 gradient-border'
                             : 'hover:shadow-md'
-                        }`}
+                        }`
+                        }
                         onClick={() => setWizardData({ privacy: option.value })}
                       >
                         <CardContent className="p-4 text-center">

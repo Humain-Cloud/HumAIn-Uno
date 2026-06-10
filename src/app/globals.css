@@ -120,3 +120,175 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ===== Custom Utility Classes ===== */
+
+/* Glassmorphism card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+}
+.dark .glass-card {
+  background: rgba(30, 30, 30, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Animated gradient border */
+.gradient-border {
+  position: relative;
+  border: none !important;
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(135deg, #10b981, #06b6d4, #8b5cf6, #10b981);
+  background-size: 300% 300%;
+  animation: gradient-rotate 4s ease infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Shimmer animation */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  animation: shimmer-slide 2s ease-in-out infinite;
+}
+.dark .shimmer::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+}
+
+/* Emerald glow on hover */
+.glow-emerald {
+  transition: box-shadow 0.3s ease;
+}
+.glow-emerald:hover {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3), 0 0 40px rgba(16, 185, 129, 0.1);
+}
+.dark .glow-emerald:hover {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2), 0 0 40px rgba(16, 185, 129, 0.05);
+}
+
+/* Amber glow on hover */
+.glow-amber {
+  transition: box-shadow 0.3s ease;
+}
+.glow-amber:hover {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.3), 0 0 40px rgba(245, 158, 11, 0.1);
+}
+.dark .glow-amber:hover {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2), 0 0 40px rgba(245, 158, 11, 0.05);
+}
+
+/* Rose glow on hover */
+.glow-rose {
+  transition: box-shadow 0.3s ease;
+}
+.glow-rose:hover {
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.3), 0 0 40px rgba(244, 63, 94, 0.1);
+}
+.dark .glow-rose:hover {
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.2), 0 0 40px rgba(244, 63, 94, 0.05);
+}
+
+/* Animated gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #10b981, #06b6d4, #8b5cf6, #10b981);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-rotate 4s ease infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #10b981;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #374151;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #10b981;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+.dark * {
+  scrollbar-color: #374151 transparent;
+}
+
+/* ===== Keyframes ===== */
+@keyframes gradient-rotate {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes shimmer-slide {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes border-spin {
+  0% { --border-angle: 0deg; }
+  100% { --border-angle: 360deg; }
+}
+
+/* ===== Reduced Motion ===== */
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::after,
+  .gradient-border::before,
+  .gradient-text {
+    animation: none !important;
+  }
+  .glass-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

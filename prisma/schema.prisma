@@ -131,6 +131,7 @@ model KnowledgeAgent {
   tags        String   // JSON array stored as string
   author      String?
   isCurated   Boolean  @default(true)
+  featured    Boolean  @default(false)
   sourceUrl   String?  // external GitHub link if from README tables
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

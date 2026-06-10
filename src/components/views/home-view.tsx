@@ -315,6 +315,21 @@ export function HomeView() {
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-400/10 rounded-full blur-3xl animate-pulse" />
           <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-teal-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-300/5 rounded-full blur-3xl" />
+          {/* Floating particles */}
+          {[...Array(12)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute rounded-full bg-white/20 will-change-transform"
+              style={{
+                width: `${4 + (i % 3) * 3}px`,
+                height: `${4 + (i % 3) * 3}px`,
+                left: `${8 + (i * 7.5) % 85}%`,
+                top: `${10 + (i * 11) % 75}%`,
+                animation: `float ${3 + (i % 4)}s ease-in-out infinite`,
+                animationDelay: `${i * 0.4}s`,
+              }}
+            />
+          ))}
         </div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28 lg:py-36">
@@ -448,7 +463,7 @@ export function HomeView() {
                     transition={{ delay: i * 0.08 }}
                     className="min-w-[280px] max-w-[280px] snap-start shrink-0"
                   >
-                    <Card className="h-full hover:shadow-lg transition-all border-0 shadow-sm overflow-hidden relative">
+                    <Card className="h-full hover:shadow-lg transition-all border-0 shadow-sm overflow-hidden relative glow-amber shimmer">
                       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-red-500" />
                       <CardContent className="p-5 pt-6">
                         <div className="flex items-start justify-between mb-2">
@@ -552,7 +567,9 @@ export function HomeView() {
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
                 >
-                  <Card className="border-0 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                  <Card className="border-0 shadow-sm hover:shadow-md transition-all relative overflow-hidden group will-change-transform">
+                    {/* Animated border gradient on hover */}
+                    <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 p-[1.5px] bg-gradient-to-br from-emerald-400 via-cyan-400 to-violet-400 will-change-transform" style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }} />
                     <CardContent className="p-5 sm:p-6 text-center relative">
                       <div className={`inline-flex items-center justify-center h-12 w-12 rounded-xl ${stat.bg} mb-3`}>
                         <stat.icon className={`h-6 w-6 ${stat.color}`} />
@@ -776,7 +793,7 @@ export function HomeView() {
                     whileHover={{ scale: 1.04, y: -2 }}
                   >
                     <Card
-                      className="cursor-pointer hover:shadow-lg transition-all border-0 shadow-sm overflow-hidden group"
+                      className="cursor-pointer hover:shadow-lg transition-all border-0 shadow-sm overflow-hidden group will-change-transform"
                       onClick={() => {
                         const store = useAppStore.getState()
                         store.setSelectedCategory(cat.id)
@@ -786,7 +803,7 @@ export function HomeView() {
                       }}
                     >
                       <CardContent className="p-5 text-center">
-                        <div className="inline-flex items-center justify-center h-11 w-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 mb-3 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/30 transition-colors">
+                        <div className="inline-flex items-center justify-center h-11 w-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 mb-3 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/30 transition-colors group-hover:scale-110 transition-transform duration-200">
                           <IconComp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                         </div>
                         <h3 className="font-semibold text-sm mb-1">{cat.name}</h3>
@@ -830,13 +847,13 @@ export function HomeView() {
                 transition={{ delay: i * 0.1 }}
                 whileHover={{ y: -6 }}
               >
-                <Card className="h-full hover:shadow-xl transition-all overflow-hidden border-0 shadow-sm">
+                <Card className="h-full hover:shadow-xl transition-all overflow-hidden border-0 shadow-sm will-change-transform">
                   <div className={`h-1.5 bg-gradient-to-r ${fw.color}`} />
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${fw.color} flex items-center justify-center shadow-md ${fw.shadowColor}`}>
-                          <fw.icon className="h-6 w-6 text-white" />
+                        <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${fw.color} flex items-center justify-center shadow-md ${fw.shadowColor} group-hover:scale-105 transition-transform duration-200`}>
+                          <fw.icon className="h-6 w-6 text-white group-hover:animate-pulse" />
                         </div>
                         <div>
                           <h3 className="font-bold text-lg">{fw.name}</h3>
@@ -1119,6 +1136,8 @@ export function HomeView() {
       {/* CTA Section */}
       <section className="relative py-20 sm:py-24 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800" />
+        {/* Animated gradient border at top */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400" style={{ backgroundSize: '200% 100%', animation: 'gradient-rotate 3s ease infinite' }} />
         <div className="absolute inset-0">
           <div className="absolute -top-20 -right-20 w-[400px] h-[400px] bg-emerald-400/20 rounded-full blur-3xl" />
           <div className="absolute -bottom-20 -left-20 w-[400px] h-[400px] bg-teal-400/20 rounded-full blur-3xl" />

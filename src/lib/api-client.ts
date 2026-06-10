@@ -41,6 +41,7 @@ export const api = {
       if (params?.category) sp.set('category', params.category)
       return fetchAPI(`/knowledge?${sp.toString()}`)
     },
+    compare: (ids: string[]) => fetchAPI('/knowledge/compare', { method: 'POST', body: JSON.stringify({ ids }) }),
   },
 
   // Agents (user-created)
@@ -70,6 +71,11 @@ export const api = {
     list: () => fetchAPI('/categories'),
   },
 
+  // Industries
+  industries: {
+    list: () => fetchAPI('/industries'),
+  },
+
   // Stats
   stats: {
     get: () => fetchAPI('/stats'),
@@ -80,6 +86,15 @@ export const api = {
     suggest: (description: string) => fetchAPI('/ai/suggest', { method: 'POST', body: JSON.stringify({ description }) }),
     generateSpec: (data: any) => fetchAPI('/ai/generate-spec', { method: 'POST', body: JSON.stringify(data) }),
     generateCode: (data: any) => fetchAPI('/ai/generate-code', { method: 'POST', body: JSON.stringify(data) }),
+    chat: (messages: Array<{role: string, content: string}>) => fetchAPI('/ai/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
+  },
+
+  // Admin
+  admin: {
+    reindex: () => fetchAPI('/admin/reindex', { method: 'POST' }),
+    getFeatured: () => fetchAPI('/admin/featured'),
+    toggleFeatured: (agentId: string, featured: boolean) => fetchAPI('/admin/featured', { method: 'POST', body: JSON.stringify({ agentId, featured }) }),
+    getActivity: () => fetchAPI('/admin/activity'),
   },
 
   // Auth
