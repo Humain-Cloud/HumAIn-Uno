@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── NextAuth Models ────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String  @id @default(cuid())
+  sessionToken String  @unique
+  userId       String
+  expires      DateTime
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Core Models ────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  role          String    @default("user") // "user" | "admin"
+  bio           String?
+  accounts      Account[]
+  sessions      Session[]
+  agents        Agent[]   @relation("UserAgents")
+  stars         Star[]
+  comments      Comment[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Category {
+  id       String   @id @default(cuid())
+  name     String   @unique
+  slug     String   @unique
+  icon     String?
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  agents   Agent[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Agent {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  creatorId   String
+  creator     User     @relation("UserAgents", fields: [creatorId], references: [id])
+  privacy     String   @default("PRIVATE") // "PRIVATE" | "PUBLIC" | "UNLISTED"
+  source      String?  // "knowledge_base" | "fork" | "scratch"
+  parentId    String?  // for forks
+  parent      Agent?   @relation("ForkedFrom", fields: [parentId], references: [id])
+  children    Agent[]  @relation("ForkedFrom")
+  readme      String   // markdown
+  code        String?  // full code bundle
+  stars       Int      @default(0)
+  tags        String   // JSON array stored as string
+  framework   String?  // langgraph, crewai, autogen, agno, llamaindex, etc.
+  llm         String?  // gpt-4o, claude, etc.
+  industry    String?  // healthcare, finance, etc.
+  difficulty  String?  // beginner, intermediate, advanced
+  language    String?  // python, typescript, etc.
+  starredBy   Star[]
+  comments    Comment[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([categoryId])
+  @@index([creatorId])
+  @@index([framework])
+  @@index([industry])
+  @@index([privacy])
+}
+
+model KnowledgeAgent {
+  id          String   @id @default(cuid())
+  name        String
+  category    String
+  description String
+  tools       String   // JSON array stored as string
+  models      String   // JSON array stored as string
+  repoPath    String   // relative path in cloned repo
+  readme      String
+  codeSnippet String?
+  framework   String?
+  llm         String?
+  industry    String?
+  difficulty  String?
+  language    String?
+  tags        String   // JSON array stored as string
+  author      String?
+  isCurated   Boolean  @default(true)
+  sourceUrl   String?  // external GitHub link if from README tables
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([framework])
+  @@index([industry])
+  @@index([category])
+}
+
+model Star {
+  id        String   @id @default(cuid())
+  userId    String
+  agentId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, agentId])
+  @@index([agentId])
+  @@index([userId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  userId    String
+  agentId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agentId])
+  @@index([userId])
+}
