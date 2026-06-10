@@ -31,6 +31,7 @@ export const api = {
       return fetchAPI(`/knowledge/search?${sp.toString()}`)
     },
     get: (id: string) => fetchAPI(`/knowledge/${id}`),
+    exportUrl: (id: string, format: 'code' | 'markdown' | 'zip' = 'code') => `/api/knowledge/${id}/export?format=${format}`,
     list: (params?: { page?: number; pageSize?: number; framework?: string; industry?: string; category?: string }) => {
       const sp = new URLSearchParams()
       if (params?.page) sp.set('page', String(params.page))

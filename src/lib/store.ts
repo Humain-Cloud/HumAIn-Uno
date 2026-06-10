@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type ViewType = 'home' | 'browse' | 'detail' | 'dashboard' | 'wizard' | 'admin'
+export type ViewType = 'home' | 'browse' | 'detail' | 'dashboard' | 'wizard' | 'admin' | 'hub'
 
 interface AppState {
   // Navigation

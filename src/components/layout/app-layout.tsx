@@ -11,6 +11,7 @@ import { DetailView } from '@/components/views/detail-view'
 import { DashboardView } from '@/components/views/dashboard-view'
 import { WizardView } from '@/components/views/wizard-view'
 import { AdminView } from '@/components/views/admin-view'
+import { KnowledgeHubView } from '@/components/views/knowledge-hub-view'
 import { AuthModal } from '@/components/auth/auth-modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,6 +30,19 @@ import {
   Sun,
   Moon,
   Sparkles,
+  Library,
+  Github,
+  Twitter,
+  MessageCircle,
+  Youtube,
+  Rss,
+  Mail,
+  BookOpen,
+  FileText,
+  Scale,
+  HeartHandshake,
+  GraduationCap,
+  BookMarked,
 } from 'lucide-react'
 import {
   Sheet,
@@ -52,6 +66,7 @@ function Navbar() {
 
   const navItems = [
     { key: 'home' as const, label: 'Home', icon: Home },
+    { key: 'hub' as const, label: 'Knowledge Hub', icon: Library },
     { key: 'browse' as const, label: 'Browse', icon: Compass },
     { key: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
   ]
@@ -271,9 +286,92 @@ function Navbar() {
 }
 
 function Footer() {
+  const footerLinks = {
+    product: {
+      title: 'Product',
+      links: [
+        { label: 'Browse Agents', icon: Compass, view: 'browse' as const },
+        { label: 'Create Agent', icon: PlusCircle, view: 'wizard' as const },
+        { label: 'Knowledge Hub', icon: Library, view: 'hub' as const },
+        { label: 'Dashboard', icon: LayoutDashboard, view: 'dashboard' as const },
+      ],
+    },
+    resources: {
+      title: 'Resources',
+      links: [
+        { label: 'Documentation', icon: BookOpen, href: '#' },
+        { label: 'API Reference', icon: FileText, href: '#' },
+        { label: 'Tutorials', icon: GraduationCap, href: '#' },
+        { label: 'Blog', icon: BookMarked, href: '#' },
+      ],
+    },
+    community: {
+      title: 'Community',
+      links: [
+        { label: 'GitHub', icon: Github, href: 'https://github.com' },
+        { label: 'Discord', icon: MessageCircle, href: 'https://discord.gg' },
+        { label: 'Twitter', icon: Twitter, href: 'https://twitter.com' },
+        { label: 'Contributing', icon: HeartHandshake, href: '#' },
+      ],
+    },
+    legal: {
+      title: 'Legal',
+      links: [
+        { label: 'Privacy Policy', icon: Shield, href: '#' },
+        { label: 'Terms of Service', icon: Scale, href: '#' },
+        { label: 'License', icon: FileText, href: '#' },
+        { label: 'Contact', icon: Mail, href: '#' },
+      ],
+    },
+  }
+
+  const handleFooterNav = (view: any) => {
+    const store = useAppStore.getState()
+    store.setCurrentView(view)
+    store.setSelectedAgentId(null)
+    window.scrollTo(0, 0)
+  }
+
   return (
     <footer className="mt-auto border-t bg-gray-50 dark:bg-gray-950">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-10">
+          {Object.entries(footerLinks).map(([, section]) => (
+            <div key={section.title}>
+              <h4 className="font-semibold text-sm mb-4">{section.title}</h4>
+              <ul className="space-y-3">
+                {section.links.map((link) => (
+                  <li key={link.label}>
+                    {'view' in link ? (
+                      <button
+                        onClick={() => handleFooterNav(link.view)}
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+                      >
+                        <link.icon className="h-3.5 w-3.5" />
+                        {link.label}
+                      </button>
+                    ) : (
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+                      >
+                        <link.icon className="h-3.5 w-3.5" />
+                        {link.label}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        
+        {/* Divider */}
+        <div className="border-t pt-8" />
+        
+        {/* Bottom section */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2.5">
             <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
@@ -283,6 +381,30 @@ function Footer() {
               Humain<span className="text-emerald-600">-Uno</span>
             </span>
           </div>
+          
+          {/* Social Icons */}
+          <div className="flex items-center gap-2">
+            {[
+              { icon: Github, href: 'https://github.com', label: 'GitHub' },
+              { icon: Twitter, href: 'https://twitter.com', label: 'Twitter' },
+              { icon: MessageCircle, href: 'https://discord.gg', label: 'Discord' },
+              { icon: Youtube, href: 'https://youtube.com', label: 'YouTube' },
+              { icon: Rss, href: '#', label: 'RSS' },
+            ].map(social => (
+              <a
+                key={social.label}
+                href={social.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-8 w-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                aria-label={social.label}
+              >
+                <social.icon className="h-4 w-4" />
+              </a>
+            ))}
+          </div>
+          
+          {/* Copyright and frameworks */}
           <div className="flex flex-col items-center sm:items-end gap-2">
             <p className="text-xs text-muted-foreground">
               © 2025 Humain-Uno. Powered by 500+ AI Agents Knowledge Base
@@ -307,6 +429,7 @@ function Footer() {
 
 const viewComponents: Record<string, React.ComponentType> = {
   home: HomeView,
+  hub: KnowledgeHubView,
   browse: BrowseView,
   detail: DetailView,
   dashboard: DashboardView,

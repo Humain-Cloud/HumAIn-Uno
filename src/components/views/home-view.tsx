@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { useAppStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
@@ -9,6 +9,7 @@ import { AgentCard } from '@/components/agents/agent-card'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Bot,
@@ -35,6 +36,26 @@ import {
   Heart,
   Shield,
   Wrench,
+  Flame,
+  Star,
+  Check,
+  X,
+  Github,
+  Mail,
+  Twitter,
+  MessageCircle,
+  ChevronLeft,
+  ChevronRight,
+  TrendingUp,
+  RefreshCw,
+  ArrowUpRight,
+  FileText,
+  Scale,
+  BookMarked,
+  GraduationCap,
+  HeartHandshake,
+  Rss,
+  Youtube,
 } from 'lucide-react'
 
 function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: number }) {
@@ -59,6 +80,21 @@ function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: 
   }, [isInView, target, duration])
 
   return <span ref={ref}>{count.toLocaleString()}</span>
+}
+
+function MiniSparkline({ color = '#10b981', data = [20, 45, 30, 60, 40, 70, 55, 80, 65, 90] }: { color?: string; data?: number[] }) {
+  const max = Math.max(...data)
+  const min = Math.min(...data)
+  const range = max - min || 1
+  const w = 80
+  const h = 28
+  const points = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * (h - 4) - 2}`).join(' ')
+
+  return (
+    <svg width={w} height={h} className="opacity-40">
+      <polyline fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={points} />
+    </svg>
+  )
 }
 
 const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -154,31 +190,90 @@ const howItWorks = [
   },
 ]
 
+const testimonials = [
+  {
+    name: 'Sarah Chen',
+    role: 'ML Engineer at DataFlow',
+    initials: 'SC',
+    color: 'bg-emerald-500',
+    quote: "Humain-Uno saved me weeks of work. I found a LangGraph agent that did exactly what I needed, forked it, and had it running in production the same day. The knowledge base is incredibly well-curated.",
+    stars: 5,
+  },
+  {
+    name: 'Marcus Rivera',
+    role: 'CTO at AgentLabs',
+    initials: 'MR',
+    color: 'bg-amber-500',
+    quote: "We evaluated 5 different agent frameworks before choosing CrewAI. The comparison tools and ready-made templates on Humain-Uno made our decision process 10x faster. It's become our go-to resource.",
+    stars: 5,
+  },
+  {
+    name: 'Priya Patel',
+    role: 'Senior Developer at TechNova',
+    initials: 'PP',
+    color: 'bg-violet-500',
+    quote: "The AI suggestion feature is magical. I described what I wanted in plain English and it recommended the perfect AutoGen template with code scaffolding. Remixed it and deployed within hours.",
+    stars: 5,
+  },
+]
+
+const frameworkComparison = {
+  features: [
+    { name: 'Multi-Agent', langgraph: true, crewai: true, autogen: true, agno: true, llamaindex: false },
+    { name: 'RAG Support', langgraph: true, crewai: false, autogen: true, agno: true, llamaindex: true },
+    { name: 'Tool Use', langgraph: true, crewai: true, autogen: true, agno: true, llamaindex: true },
+    { name: 'State Management', langgraph: true, crewai: false, autogen: true, agno: false, llamaindex: true },
+    { name: 'Open Source', langgraph: true, crewai: true, autogen: true, agno: true, llamaindex: true },
+    { name: 'Community Size', langgraph: 'Large', crewai: 'Large', autogen: 'Large', agno: 'Growing', llamaindex: 'Large' },
+  ],
+  frameworkColors: {
+    langgraph: 'text-emerald-600 dark:text-emerald-400',
+    crewai: 'text-amber-600 dark:text-amber-400',
+    autogen: 'text-rose-600 dark:text-rose-400',
+    agno: 'text-violet-600 dark:text-violet-400',
+    llamaindex: 'text-teal-600 dark:text-teal-400',
+  },
+  frameworkBg: {
+    langgraph: 'bg-emerald-50 dark:bg-emerald-900/20',
+    crewai: 'bg-amber-50 dark:bg-amber-900/20',
+    autogen: 'bg-rose-50 dark:bg-rose-900/20',
+    agno: 'bg-violet-50 dark:bg-violet-900/20',
+    llamaindex: 'bg-teal-50 dark:bg-teal-900/20',
+  },
+}
+
 export function HomeView() {
   const { setCurrentView, setSelectedAgentId } = useAppStore()
   const [stats, setStats] = useState<Stats | null>(null)
   const [featuredAgents, setFeaturedAgents] = useState<KnowledgeAgent[]>([])
+  const [trendingAgents, setTrendingAgents] = useState<KnowledgeAgent[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  const [trendingIndex, setTrendingIndex] = useState(0)
+  const trendingScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     async function load() {
       try {
-        const [statsData, agentsData, catsData] = await Promise.all([
+        const [statsData, agentsData, trendingData, catsData] = await Promise.all([
           api.stats.get(),
           api.knowledge.list({ page: 1, pageSize: 6 }),
+          api.knowledge.list({ page: 1, pageSize: 8 }),
           api.categories.list(),
         ])
         setStats(statsData as Stats)
         // Parse the agents data
-        const rawAgents = (agentsData as any)?.data || agentsData || []
-        const parsed = rawAgents.map((a: any) => ({
-          ...a,
-          tools: typeof a.tools === 'string' ? JSON.parse(a.tools || '[]') : a.tools || [],
-          models: typeof a.models === 'string' ? JSON.parse(a.models || '[]') : a.models || [],
-          tags: typeof a.tags === 'string' ? JSON.parse(a.tags || '[]') : a.tags || [],
-        }))
-        setFeaturedAgents(parsed)
+        const parseAgents = (raw: any) => {
+          const arr = (raw as any)?.data || raw || []
+          return arr.map((a: any) => ({
+            ...a,
+            tools: typeof a.tools === 'string' ? JSON.parse(a.tools || '[]') : a.tools || [],
+            models: typeof a.models === 'string' ? JSON.parse(a.models || '[]') : a.models || [],
+            tags: typeof a.tags === 'string' ? JSON.parse(a.tags || '[]') : a.tags || [],
+          }))
+        }
+        setFeaturedAgents(parseAgents(agentsData))
+        setTrendingAgents(parseAgents(trendingData))
         setCategories(Array.isArray(catsData) ? catsData : [])
       } catch (err) {
         console.error('Failed to load home data:', err)
@@ -187,6 +282,22 @@ export function HomeView() {
       }
     }
     load()
+  }, [])
+
+  // Auto-cycle trending agents
+  useEffect(() => {
+    if (trendingAgents.length === 0) return
+    const timer = setInterval(() => {
+      setTrendingIndex(prev => (prev + 1) % trendingAgents.length)
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [trendingAgents.length])
+
+  const scrollTrending = useCallback((direction: 'left' | 'right') => {
+    const el = trendingScrollRef.current
+    if (!el) return
+    const amount = 320
+    el.scrollBy({ left: direction === 'left' ? -amount : amount, behavior: 'smooth' })
   }, [])
 
   const handleNav = (view: any) => {
@@ -277,9 +388,146 @@ export function HomeView() {
         </div>
       </section>
 
-      {/* Live Stats */}
-      <section className="py-14 sm:py-18 bg-white dark:bg-gray-950 border-b relative">
+      {/* Trending Agents Section */}
+      <section className="py-12 sm:py-16 bg-gradient-to-b from-orange-50 to-amber-50/50 dark:from-gray-950 dark:to-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex items-center justify-between mb-8"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-900/30">
+                <Flame className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-bold">Trending Now</h2>
+                <p className="text-sm text-muted-foreground">Hot agents gaining momentum</p>
+              </div>
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={() => scrollTrending('left')}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={() => scrollTrending('right')}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </motion.div>
+          
+          {loading ? (
+            <div className="flex gap-4 overflow-hidden">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Card key={i} className="min-w-[280px] max-w-[280px] border-0 shadow-sm shrink-0">
+                  <CardContent className="p-5">
+                    <Skeleton className="h-4 w-3/4 mb-3" />
+                    <Skeleton className="h-3 w-full mb-2" />
+                    <Skeleton className="h-3 w-2/3 mb-4" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-5 w-16" />
+                      <Skeleton className="h-5 w-20" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="relative">
+              <div
+                ref={trendingScrollRef}
+                className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 scrollbar-track-transparent"
+                style={{ scrollbarWidth: 'thin' }}
+              >
+                {trendingAgents.map((agent, i) => (
+                  <motion.div
+                    key={agent.id}
+                    initial={{ opacity: 0, x: 30 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.08 }}
+                    className="min-w-[280px] max-w-[280px] snap-start shrink-0"
+                  >
+                    <Card className="h-full hover:shadow-lg transition-all border-0 shadow-sm overflow-hidden relative">
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-red-500" />
+                      <CardContent className="p-5 pt-6">
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="font-semibold text-sm line-clamp-1 flex-1 mr-2">{agent.name}</h3>
+                          <Badge className="text-[10px] px-1.5 py-0 h-5 bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 shrink-0">
+                            <TrendingUp className="h-3 w-3 mr-0.5" /> Hot
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{agent.description}</p>
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          {agent.framework && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              {agent.framework}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className="text-[10px]">
+                            {agent.category}
+                          </Badge>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="w-full text-xs h-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                          onClick={() => {
+                            setSelectedAgentId(agent.id)
+                            setCurrentView('detail')
+                            window.scrollTo(0, 0)
+                          }}
+                        >
+                          <Eye className="h-3 w-3 mr-1" /> View Agent
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+              {/* Fade edges */}
+              <div className="absolute top-0 left-0 bottom-4 w-8 bg-gradient-to-r from-orange-50 dark:from-gray-950 to-transparent pointer-events-none z-10" />
+              <div className="absolute top-0 right-0 bottom-4 w-8 bg-gradient-to-l from-amber-50/50 dark:from-gray-900 to-transparent pointer-events-none z-10" />
+            </div>
+          )}
+          
+          {/* Auto-cycle indicator */}
+          {!loading && trendingAgents.length > 0 && (
+            <div className="flex items-center justify-center gap-1.5 mt-4">
+              {trendingAgents.slice(0, 6).map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
+                    i === trendingIndex % 6 ? 'w-6 bg-gradient-to-r from-orange-500 to-red-500' : 'w-1.5 bg-gray-300 dark:bg-gray-700'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Enhanced Live Stats */}
+      <section className="py-14 sm:py-18 relative overflow-hidden">
+        {/* Gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-emerald-50/30 dark:from-gray-950 dark:via-gray-950 dark:to-emerald-950/20" />
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-emerald-100/30 dark:bg-emerald-900/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-teal-100/30 dark:bg-teal-900/10 rounded-full blur-3xl" />
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
+          {/* Updated daily badge */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex justify-center mb-8"
+          >
+            <Badge variant="outline" className="gap-1.5 px-3 py-1 text-xs bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+              <RefreshCw className="h-3 w-3 text-emerald-500" />
+              Updated daily
+            </Badge>
+          </motion.div>
+
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
@@ -292,10 +540,10 @@ export function HomeView() {
               ))
             ) : stats ? (
               [
-                { label: 'Total Agents', value: stats.totalAgents, icon: Bot, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
-                { label: 'Frameworks', value: stats.frameworks, icon: Cpu, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20' },
-                { label: 'Industries', value: stats.industries || stats.topIndustries?.length || 0, icon: Building2, color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-900/20' },
-                { label: 'Categories', value: stats.categories, icon: Layers, color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-900/20' },
+                { label: 'Total Agents', value: stats.totalAgents, icon: Bot, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', sparkColor: '#10b981', sparkData: [20, 45, 30, 60, 40, 70, 55, 80, 65, 90] },
+                { label: 'Frameworks', value: stats.frameworks, icon: Cpu, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20', sparkColor: '#f59e0b', sparkData: [30, 25, 40, 35, 50, 45, 55, 50, 60, 55] },
+                { label: 'Industries', value: stats.industries || stats.topIndustries?.length || 0, icon: Building2, color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-900/20', sparkColor: '#f43f5e', sparkData: [10, 20, 15, 30, 25, 40, 35, 50, 45, 55] },
+                { label: 'Categories', value: stats.categories, icon: Layers, color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-900/20', sparkColor: '#8b5cf6', sparkData: [15, 30, 25, 45, 40, 55, 50, 65, 60, 75] },
               ].map((stat, i) => (
                 <motion.div
                   key={stat.label}
@@ -304,8 +552,8 @@ export function HomeView() {
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
                 >
-                  <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
-                    <CardContent className="p-5 sm:p-6 text-center">
+                  <Card className="border-0 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                    <CardContent className="p-5 sm:p-6 text-center relative">
                       <div className={`inline-flex items-center justify-center h-12 w-12 rounded-xl ${stat.bg} mb-3`}>
                         <stat.icon className={`h-6 w-6 ${stat.color}`} />
                       </div>
@@ -313,6 +561,10 @@ export function HomeView() {
                         <AnimatedCounter target={stat.value} />
                       </div>
                       <div className="text-sm text-muted-foreground mt-1 font-medium">{stat.label}</div>
+                      {/* Sparkline decoration */}
+                      <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <MiniSparkline color={stat.sparkColor} data={stat.sparkData} />
+                      </div>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -365,8 +617,82 @@ export function HomeView() {
         </div>
       </section>
 
-      {/* Featured Agents */}
+      {/* Testimonials / Social Proof */}
       <section className="py-16 sm:py-20 bg-white dark:bg-gray-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-2xl sm:text-4xl font-bold mb-3">Trusted by Developers Worldwide</h2>
+            <p className="text-muted-foreground max-w-lg mx-auto">
+              Join thousands of developers building AI agents with Humain-Uno
+            </p>
+          </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {testimonials.map((t, i) => (
+              <motion.div
+                key={t.name}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.15 }}
+              >
+                <Card className="h-full border-0 shadow-sm hover:shadow-md transition-all">
+                  <CardContent className="p-6">
+                    {/* Stars */}
+                    <div className="flex items-center gap-0.5 mb-4">
+                      {Array.from({ length: t.stars }).map((_, si) => (
+                        <Star key={si} className="h-4 w-4 fill-amber-400 text-amber-400" />
+                      ))}
+                    </div>
+                    {/* Quote */}
+                    <p className="text-sm text-muted-foreground leading-relaxed mb-6 italic">
+                      &ldquo;{t.quote}&rdquo;
+                    </p>
+                    {/* Author */}
+                    <div className="flex items-center gap-3">
+                      <div className={`h-10 w-10 rounded-full ${t.color} flex items-center justify-center text-white font-semibold text-sm`}>
+                        {t.initials}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm">{t.name}</div>
+                        <div className="text-xs text-muted-foreground">{t.role}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+          {/* Trust badges */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="mt-10 flex flex-wrap items-center justify-center gap-6 text-muted-foreground text-sm"
+          >
+            <span className="flex items-center gap-1.5">
+              <Users className="h-4 w-4" /> 2,500+ Developers
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" /> 4.9/5 Rating
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Github className="h-4 w-4" /> Open Source
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Globe className="h-4 w-4" /> 40+ Countries
+            </span>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Featured Agents */}
+      <section className="py-16 sm:py-20 bg-gray-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -419,7 +745,7 @@ export function HomeView() {
       </section>
 
       {/* Category Cloud */}
-      <section className="py-16 sm:py-20 bg-gray-50 dark:bg-gray-900">
+      <section className="py-16 sm:py-20 bg-white dark:bg-gray-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -483,7 +809,7 @@ export function HomeView() {
       </section>
 
       {/* Framework Showcase */}
-      <section className="py-16 sm:py-20 bg-white dark:bg-gray-950">
+      <section className="py-16 sm:py-20 bg-gray-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -541,6 +867,252 @@ export function HomeView() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Framework Comparison Table */}
+      <section className="py-16 sm:py-20 bg-white dark:bg-gray-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-10"
+          >
+            <h2 className="text-2xl sm:text-4xl font-bold mb-3">Compare Frameworks</h2>
+            <p className="text-muted-foreground max-w-lg mx-auto">Find the right framework for your specific needs</p>
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0"
+          >
+            <div className="min-w-[600px]">
+              <Card className="border-0 shadow-sm overflow-hidden">
+                {/* Table Header */}
+                <div className="grid grid-cols-6 bg-gray-50 dark:bg-gray-900 border-b">
+                  <div className="p-4 font-semibold text-sm text-muted-foreground">Feature</div>
+                  {[
+                    { key: 'langgraph', name: 'LangGraph' },
+                    { key: 'crewai', name: 'CrewAI' },
+                    { key: 'autogen', name: 'AutoGen' },
+                    { key: 'agno', name: 'Agno' },
+                    { key: 'llamaindex', name: 'LlamaIndex' },
+                  ].map(fw => (
+                    <div key={fw.key} className={`p-4 font-semibold text-sm text-center ${frameworkComparison.frameworkColors[fw.key as keyof typeof frameworkComparison.frameworkColors]}`}>
+                      {fw.name}
+                    </div>
+                  ))}
+                </div>
+                {/* Table Rows */}
+                {frameworkComparison.features.map((feature, i) => (
+                  <div key={feature.name} className={`grid grid-cols-6 border-b last:border-b-0 ${i % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50/50 dark:bg-gray-900/50'}`}>
+                    <div className="p-4 text-sm font-medium">{feature.name}</div>
+                    {(['langgraph', 'crewai', 'autogen', 'agno', 'llamaindex'] as const).map(fw => {
+                      const val = feature[fw]
+                      return (
+                        <div key={fw} className="p-4 flex items-center justify-center">
+                          {typeof val === 'boolean' ? (
+                            val ? (
+                              <div className="h-7 w-7 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                                <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                              </div>
+                            ) : (
+                              <div className="h-7 w-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                <X className="h-4 w-4 text-gray-400" />
+                              </div>
+                            )
+                          ) : (
+                            <Badge
+                              variant="secondary"
+                              className={`text-[10px] ${frameworkComparison.frameworkBg[fw]}`}
+                            >
+                              {val}
+                            </Badge>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </Card>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Community / Newsletter Section */}
+      <section className="py-16 sm:py-20 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-2xl sm:text-4xl font-bold mb-3">Join the Community</h2>
+            <p className="text-muted-foreground max-w-lg mx-auto">
+              Connect with thousands of AI agent developers. Share, learn, and build together.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            {/* GitHub Stars */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card className="h-full border-0 shadow-sm hover:shadow-md transition-all text-center">
+                <CardContent className="p-6">
+                  <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-gray-100 dark:bg-gray-800 mb-4">
+                    <Github className="h-7 w-7" />
+                  </div>
+                  <div className="text-3xl font-bold mb-1">
+                    <AnimatedCounter target={2847} duration={1.5} />
+                  </div>
+                  <div className="text-sm text-muted-foreground mb-3">GitHub Stars</div>
+                  <Button variant="outline" size="sm" className="rounded-lg gap-1.5" asChild>
+                    <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+                      <Star className="h-3.5 w-3.5" /> Star on GitHub
+                    </a>
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Contributors */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card className="h-full border-0 shadow-sm hover:shadow-md transition-all text-center">
+                <CardContent className="p-6">
+                  <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 mb-4">
+                    <Users className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="text-3xl font-bold mb-1">
+                    <AnimatedCounter target={156} duration={1.5} />
+                  </div>
+                  <div className="text-sm text-muted-foreground mb-3">Contributors</div>
+                  {/* Contributor avatars */}
+                  <div className="flex items-center justify-center -space-x-2 mb-3">
+                    {['SC', 'MR', 'PP', 'AK', 'JW'].map((initials, i) => (
+                      <div
+                        key={initials}
+                        className="h-7 w-7 rounded-full border-2 border-white dark:border-gray-950 flex items-center justify-center text-[9px] font-bold text-white"
+                        style={{
+                          backgroundColor: ['#10b981', '#f59e0b', '#8b5cf6', '#f43f5e', '#06b6d4'][i],
+                          zIndex: 5 - i,
+                        }}
+                      >
+                        {initials}
+                      </div>
+                    ))}
+                    <div className="h-7 w-7 rounded-full border-2 border-white dark:border-gray-950 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[9px] font-medium text-muted-foreground" style={{ zIndex: 0 }}>
+                      +151
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" className="rounded-lg gap-1.5" asChild>
+                    <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+                      <GitBranch className="h-3.5 w-3.5" /> Contribute
+                    </a>
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Discord */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+            >
+              <Card className="h-full border-0 shadow-sm hover:shadow-md transition-all text-center">
+                <CardContent className="p-6">
+                  <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 mb-4">
+                    <MessageCircle className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div className="text-3xl font-bold mb-1">
+                    <AnimatedCounter target={890} duration={1.5} />
+                  </div>
+                  <div className="text-sm text-muted-foreground mb-3">Discord Members</div>
+                  <Button variant="outline" size="sm" className="rounded-lg gap-1.5" asChild>
+                    <a href="https://discord.gg" target="_blank" rel="noopener noreferrer">
+                      <MessageCircle className="h-3.5 w-3.5" /> Join Discord
+                    </a>
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
+
+          {/* Newsletter signup */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card className="border-0 shadow-sm overflow-hidden max-w-2xl mx-auto">
+              <div className="h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
+              <CardContent className="p-6 sm:p-8 text-center">
+                <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 mb-4">
+                  <Mail className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <h3 className="font-bold text-lg mb-2">Stay in the Loop</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Get weekly updates on new agents, framework releases, and community highlights.
+                </p>
+                <div className="flex gap-3 max-w-md mx-auto">
+                  <Input
+                    type="email"
+                    placeholder="you@example.com"
+                    className="h-10 flex-1 rounded-lg"
+                  />
+                  <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-lg px-6 h-10 shrink-0">
+                    Subscribe
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-3">No spam, unsubscribe anytime. Join 1,200+ subscribers.</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Social Links */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+            className="mt-8 flex items-center justify-center gap-3"
+          >
+            {[
+              { icon: Github, label: 'GitHub', href: 'https://github.com' },
+              { icon: Twitter, label: 'Twitter', href: 'https://twitter.com' },
+              { icon: MessageCircle, label: 'Discord', href: 'https://discord.gg' },
+              { icon: Youtube, label: 'YouTube', href: 'https://youtube.com' },
+              { icon: Rss, label: 'Blog RSS', href: '#' },
+            ].map(social => (
+              <Button
+                key={social.label}
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 rounded-full"
+                asChild
+              >
+                <a href={social.href} target="_blank" rel="noopener noreferrer" aria-label={social.label}>
+                  <social.icon className="h-4 w-4" />
+                </a>
+              </Button>
+            ))}
+          </motion.div>
         </div>
       </section>
 
