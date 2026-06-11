@@ -4,6 +4,36 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAppStore, type ViewType } from '@/lib/store'
 import { api } from '@/lib/api-client'
 import type { KnowledgeAgent, Category, Stats } from '@/lib/types'
+import {
+  Search,
+  Database,
+  MessageSquare,
+  Globe,
+  Code2,
+  Workflow,
+  Building2,
+  Heart,
+  Shield,
+  Wrench,
+  GitBranch,
+  Brain,
+  Zap,
+  Bot,
+  BarChart3,
+  ShoppingBag,
+  Sprout,
+  Mail,
+  GraduationCap,
+  Briefcase,
+  Plane,
+  Music,
+  Gamepad2,
+  Palette,
+  Scale,
+  Cpu,
+  Layers,
+  ArrowRight,
+} from 'lucide-react'
 
 // ─── Icons (inline SVGs to avoid importing all of lucide-react) ───
 
@@ -48,6 +78,391 @@ function parseAgent(a: any): KnowledgeAgent {
     models: typeof a.models === 'string' ? JSON.parse(a.models || '[]') : a.models || [],
     tags: typeof a.tags === 'string' ? JSON.parse(a.tags || '[]') : a.tags || [],
   }
+}
+
+// ─── Category Visual Config ───
+
+type CategoryStyle = {
+  icon: React.ComponentType<{ className?: string }>
+  gradient: string
+  hoverGradient: string
+  iconBg: string
+  iconHoverBg: string
+  iconColor: string
+  accent: string
+  border: string
+  hoverBorder: string
+}
+
+const categoryStyleMap: Record<string, CategoryStyle> = {
+  'Research': {
+    icon: Search,
+    gradient: 'bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-950/40 dark:to-sky-950/30',
+    hoverGradient: 'hover:from-blue-100 hover:to-sky-100 dark:hover:from-blue-950/60 dark:hover:to-sky-950/50',
+    iconBg: 'bg-blue-100 dark:bg-blue-900/50',
+    iconHoverBg: 'group-hover:bg-blue-200 dark:group-hover:bg-blue-800/60',
+    iconColor: 'text-blue-600 dark:text-blue-400',
+    accent: 'text-blue-700 dark:text-blue-300',
+    border: 'border-blue-100 dark:border-blue-900/30',
+    hoverBorder: 'hover:border-blue-300 dark:hover:border-blue-700/50',
+  },
+  'Data Analytics': {
+    icon: BarChart3,
+    gradient: 'bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/30',
+    hoverGradient: 'hover:from-emerald-100 hover:to-teal-100 dark:hover:from-emerald-950/60 dark:hover:to-teal-950/50',
+    iconBg: 'bg-emerald-100 dark:bg-emerald-900/50',
+    iconHoverBg: 'group-hover:bg-emerald-200 dark:group-hover:bg-emerald-800/60',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+    accent: 'text-emerald-700 dark:text-emerald-300',
+    border: 'border-emerald-100 dark:border-emerald-900/30',
+    hoverBorder: 'hover:border-emerald-300 dark:hover:border-emerald-700/50',
+  },
+  'Customer Service': {
+    icon: MessageSquare,
+    gradient: 'bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/40 dark:to-purple-950/30',
+    hoverGradient: 'hover:from-violet-100 hover:to-purple-100 dark:hover:from-violet-950/60 dark:hover:to-purple-950/50',
+    iconBg: 'bg-violet-100 dark:bg-violet-900/50',
+    iconHoverBg: 'group-hover:bg-violet-200 dark:group-hover:bg-violet-800/60',
+    iconColor: 'text-violet-600 dark:text-violet-400',
+    accent: 'text-violet-700 dark:text-violet-300',
+    border: 'border-violet-100 dark:border-violet-900/30',
+    hoverBorder: 'hover:border-violet-300 dark:hover:border-violet-700/50',
+  },
+  'Communication': {
+    icon: Mail,
+    gradient: 'bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950/40 dark:to-rose-950/30',
+    hoverGradient: 'hover:from-pink-100 hover:to-rose-100 dark:hover:from-pink-950/60 dark:hover:to-rose-950/50',
+    iconBg: 'bg-pink-100 dark:bg-pink-900/50',
+    iconHoverBg: 'group-hover:bg-pink-200 dark:group-hover:bg-pink-800/60',
+    iconColor: 'text-pink-600 dark:text-pink-400',
+    accent: 'text-pink-700 dark:text-pink-300',
+    border: 'border-pink-100 dark:border-pink-900/30',
+    hoverBorder: 'hover:border-pink-300 dark:hover:border-pink-700/50',
+  },
+  'Marketing': {
+    icon: Globe,
+    gradient: 'bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/40 dark:to-yellow-950/30',
+    hoverGradient: 'hover:from-amber-100 hover:to-yellow-100 dark:hover:from-amber-950/60 dark:hover:to-yellow-950/50',
+    iconBg: 'bg-amber-100 dark:bg-amber-900/50',
+    iconHoverBg: 'group-hover:bg-amber-200 dark:group-hover:bg-amber-800/60',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+    accent: 'text-amber-700 dark:text-amber-300',
+    border: 'border-amber-100 dark:border-amber-900/30',
+    hoverBorder: 'hover:border-amber-300 dark:hover:border-amber-700/50',
+  },
+  'Code Generation': {
+    icon: Code2,
+    gradient: 'bg-gradient-to-br from-gray-50 to-slate-100 dark:from-gray-900/60 dark:to-slate-900/40',
+    hoverGradient: 'hover:from-gray-100 hover:to-slate-200 dark:hover:from-gray-800/60 dark:hover:to-slate-800/50',
+    iconBg: 'bg-gray-200 dark:bg-gray-700/60',
+    iconHoverBg: 'group-hover:bg-gray-300 dark:group-hover:bg-gray-600/70',
+    iconColor: 'text-gray-700 dark:text-gray-300',
+    accent: 'text-gray-800 dark:text-gray-200',
+    border: 'border-gray-200 dark:border-gray-800/50',
+    hoverBorder: 'hover:border-gray-400 dark:hover:border-gray-600/60',
+  },
+  'Workflow Automation': {
+    icon: Workflow,
+    gradient: 'bg-gradient-to-br from-cyan-50 to-sky-50 dark:from-cyan-950/40 dark:to-sky-950/30',
+    hoverGradient: 'hover:from-cyan-100 hover:to-sky-100 dark:hover:from-cyan-950/60 dark:hover:to-sky-950/50',
+    iconBg: 'bg-cyan-100 dark:bg-cyan-900/50',
+    iconHoverBg: 'group-hover:bg-cyan-200 dark:group-hover:bg-cyan-800/60',
+    iconColor: 'text-cyan-600 dark:text-cyan-400',
+    accent: 'text-cyan-700 dark:text-cyan-300',
+    border: 'border-cyan-100 dark:border-cyan-900/30',
+    hoverBorder: 'hover:border-cyan-300 dark:hover:border-cyan-700/50',
+  },
+  'Finance': {
+    icon: Building2,
+    gradient: 'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/30',
+    hoverGradient: 'hover:from-green-100 hover:to-emerald-100 dark:hover:from-green-950/60 dark:hover:to-emerald-950/50',
+    iconBg: 'bg-green-100 dark:bg-green-900/50',
+    iconHoverBg: 'group-hover:bg-green-200 dark:group-hover:bg-green-800/60',
+    iconColor: 'text-green-600 dark:text-green-400',
+    accent: 'text-green-700 dark:text-green-300',
+    border: 'border-green-100 dark:border-green-900/30',
+    hoverBorder: 'hover:border-green-300 dark:hover:border-green-700/50',
+  },
+  'Healthcare': {
+    icon: Heart,
+    gradient: 'bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-950/40 dark:to-red-950/30',
+    hoverGradient: 'hover:from-rose-100 hover:to-red-100 dark:hover:from-rose-950/60 dark:hover:to-red-950/50',
+    iconBg: 'bg-rose-100 dark:bg-rose-900/50',
+    iconHoverBg: 'group-hover:bg-rose-200 dark:group-hover:bg-rose-800/60',
+    iconColor: 'text-rose-600 dark:text-rose-400',
+    accent: 'text-rose-700 dark:text-rose-300',
+    border: 'border-rose-100 dark:border-rose-900/30',
+    hoverBorder: 'hover:border-rose-300 dark:hover:border-rose-700/50',
+  },
+  'Cybersecurity': {
+    icon: Shield,
+    gradient: 'bg-gradient-to-br from-slate-50 to-zinc-100 dark:from-slate-950/40 dark:to-zinc-900/30',
+    hoverGradient: 'hover:from-slate-100 hover:to-zinc-200 dark:hover:from-slate-950/60 dark:hover:to-zinc-900/50',
+    iconBg: 'bg-slate-200 dark:bg-slate-800/60',
+    iconHoverBg: 'group-hover:bg-slate-300 dark:group-hover:bg-slate-700/70',
+    iconColor: 'text-slate-700 dark:text-slate-300',
+    accent: 'text-slate-800 dark:text-slate-200',
+    border: 'border-slate-200 dark:border-slate-800/50',
+    hoverBorder: 'hover:border-slate-400 dark:hover:border-slate-600/60',
+  },
+  'DevOps': {
+    icon: Wrench,
+    gradient: 'bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/40 dark:to-amber-950/30',
+    hoverGradient: 'hover:from-orange-100 hover:to-amber-100 dark:hover:from-orange-950/60 dark:hover:to-amber-950/50',
+    iconBg: 'bg-orange-100 dark:bg-orange-900/50',
+    iconHoverBg: 'group-hover:bg-orange-200 dark:group-hover:bg-orange-800/60',
+    iconColor: 'text-orange-600 dark:text-orange-400',
+    accent: 'text-orange-700 dark:text-orange-300',
+    border: 'border-orange-100 dark:border-orange-900/30',
+    hoverBorder: 'hover:border-orange-300 dark:hover:border-orange-700/50',
+  },
+  'Agriculture': {
+    icon: Sprout,
+    gradient: 'bg-gradient-to-br from-lime-50 to-green-50 dark:from-lime-950/40 dark:to-green-950/30',
+    hoverGradient: 'hover:from-lime-100 hover:to-green-100 dark:hover:from-lime-950/60 dark:hover:to-green-950/50',
+    iconBg: 'bg-lime-100 dark:bg-lime-900/50',
+    iconHoverBg: 'group-hover:bg-lime-200 dark:group-hover:bg-lime-800/60',
+    iconColor: 'text-lime-600 dark:text-lime-400',
+    accent: 'text-lime-700 dark:text-lime-300',
+    border: 'border-lime-100 dark:border-lime-900/30',
+    hoverBorder: 'hover:border-lime-300 dark:hover:border-lime-700/50',
+  },
+  'Business': {
+    icon: Briefcase,
+    gradient: 'bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/30',
+    hoverGradient: 'hover:from-indigo-100 hover:to-blue-100 dark:hover:from-indigo-950/60 dark:hover:to-blue-950/50',
+    iconBg: 'bg-indigo-100 dark:bg-indigo-900/50',
+    iconHoverBg: 'group-hover:bg-indigo-200 dark:group-hover:bg-indigo-800/60',
+    iconColor: 'text-indigo-600 dark:text-indigo-400',
+    accent: 'text-indigo-700 dark:text-indigo-300',
+    border: 'border-indigo-100 dark:border-indigo-900/30',
+    hoverBorder: 'hover:border-indigo-300 dark:hover:border-indigo-700/50',
+  },
+  'E-commerce': {
+    icon: ShoppingBag,
+    gradient: 'bg-gradient-to-br from-fuchsia-50 to-pink-50 dark:from-fuchsia-950/40 dark:to-pink-950/30',
+    hoverGradient: 'hover:from-fuchsia-100 hover:to-pink-100 dark:hover:from-fuchsia-950/60 dark:hover:to-pink-950/50',
+    iconBg: 'bg-fuchsia-100 dark:bg-fuchsia-900/50',
+    iconHoverBg: 'group-hover:bg-fuchsia-200 dark:group-hover:bg-fuchsia-800/60',
+    iconColor: 'text-fuchsia-600 dark:text-fuchsia-400',
+    accent: 'text-fuchsia-700 dark:text-fuchsia-300',
+    border: 'border-fuchsia-100 dark:border-fuchsia-900/30',
+    hoverBorder: 'hover:border-fuchsia-300 dark:hover:border-fuchsia-700/50',
+  },
+  'Education': {
+    icon: GraduationCap,
+    gradient: 'bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/40 dark:to-cyan-950/30',
+    hoverGradient: 'hover:from-teal-100 hover:to-cyan-100 dark:hover:from-teal-950/60 dark:hover:to-cyan-950/50',
+    iconBg: 'bg-teal-100 dark:bg-teal-900/50',
+    iconHoverBg: 'group-hover:bg-teal-200 dark:group-hover:bg-teal-800/60',
+    iconColor: 'text-teal-600 dark:text-teal-400',
+    accent: 'text-teal-700 dark:text-teal-300',
+    border: 'border-teal-100 dark:border-teal-900/30',
+    hoverBorder: 'hover:border-teal-300 dark:hover:border-teal-700/50',
+  },
+  'Travel': {
+    icon: Plane,
+    gradient: 'bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/40 dark:to-blue-950/30',
+    hoverGradient: 'hover:from-sky-100 hover:to-blue-100 dark:hover:from-sky-950/60 dark:hover:to-blue-950/50',
+    iconBg: 'bg-sky-100 dark:bg-sky-900/50',
+    iconHoverBg: 'group-hover:bg-sky-200 dark:group-hover:bg-sky-800/60',
+    iconColor: 'text-sky-600 dark:text-sky-400',
+    accent: 'text-sky-700 dark:text-sky-300',
+    border: 'border-sky-100 dark:border-sky-900/30',
+    hoverBorder: 'hover:border-sky-300 dark:hover:border-sky-700/50',
+  },
+  'Entertainment': {
+    icon: Music,
+    gradient: 'bg-gradient-to-br from-purple-50 to-fuchsia-50 dark:from-purple-950/40 dark:to-fuchsia-950/30',
+    hoverGradient: 'hover:from-purple-100 hover:to-fuchsia-100 dark:hover:from-purple-950/60 dark:hover:to-fuchsia-950/50',
+    iconBg: 'bg-purple-100 dark:bg-purple-900/50',
+    iconHoverBg: 'group-hover:bg-purple-200 dark:group-hover:bg-purple-800/60',
+    iconColor: 'text-purple-600 dark:text-purple-400',
+    accent: 'text-purple-700 dark:text-purple-300',
+    border: 'border-purple-100 dark:border-purple-900/30',
+    hoverBorder: 'hover:border-purple-300 dark:hover:border-purple-700/50',
+  },
+  'Gaming': {
+    icon: Gamepad2,
+    gradient: 'bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/40 dark:to-orange-950/30',
+    hoverGradient: 'hover:from-red-100 hover:to-orange-100 dark:hover:from-red-950/60 dark:hover:to-orange-950/50',
+    iconBg: 'bg-red-100 dark:bg-red-900/50',
+    iconHoverBg: 'group-hover:bg-red-200 dark:group-hover:bg-red-800/60',
+    iconColor: 'text-red-600 dark:text-red-400',
+    accent: 'text-red-700 dark:text-red-300',
+    border: 'border-red-100 dark:border-red-900/30',
+    hoverBorder: 'hover:border-red-300 dark:hover:border-red-700/50',
+  },
+  'Creative': {
+    icon: Palette,
+    gradient: 'bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/40 dark:to-orange-950/30',
+    hoverGradient: 'hover:from-yellow-100 hover:to-orange-100 dark:hover:from-yellow-950/60 dark:hover:to-orange-950/50',
+    iconBg: 'bg-yellow-100 dark:bg-yellow-900/50',
+    iconHoverBg: 'group-hover:bg-yellow-200 dark:group-hover:bg-yellow-800/60',
+    iconColor: 'text-yellow-600 dark:text-yellow-400',
+    accent: 'text-yellow-700 dark:text-yellow-300',
+    border: 'border-yellow-100 dark:border-yellow-900/30',
+    hoverBorder: 'hover:border-yellow-300 dark:hover:border-yellow-700/50',
+  },
+  'Legal': {
+    icon: Scale,
+    gradient: 'bg-gradient-to-br from-stone-50 to-neutral-100 dark:from-stone-950/40 dark:to-neutral-900/30',
+    hoverGradient: 'hover:from-stone-100 hover:to-neutral-200 dark:hover:from-stone-950/60 dark:hover:to-neutral-900/50',
+    iconBg: 'bg-stone-200 dark:bg-stone-800/60',
+    iconHoverBg: 'group-hover:bg-stone-300 dark:group-hover:bg-stone-700/70',
+    iconColor: 'text-stone-700 dark:text-stone-300',
+    accent: 'text-stone-800 dark:text-stone-200',
+    border: 'border-stone-200 dark:border-stone-800/50',
+    hoverBorder: 'hover:border-stone-400 dark:hover:border-stone-600/60',
+  },
+  'AI/ML': {
+    icon: Brain,
+    gradient: 'bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/40 dark:to-indigo-950/30',
+    hoverGradient: 'hover:from-violet-100 hover:to-indigo-100 dark:hover:from-violet-950/60 dark:hover:to-indigo-950/50',
+    iconBg: 'bg-violet-100 dark:bg-violet-900/50',
+    iconHoverBg: 'group-hover:bg-violet-200 dark:group-hover:bg-violet-800/60',
+    iconColor: 'text-violet-600 dark:text-violet-400',
+    accent: 'text-violet-700 dark:text-violet-300',
+    border: 'border-violet-100 dark:border-violet-900/30',
+    hoverBorder: 'hover:border-violet-300 dark:hover:border-violet-700/50',
+  },
+  'IoT': {
+    icon: Cpu,
+    gradient: 'bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-950/40 dark:to-emerald-950/30',
+    hoverGradient: 'hover:from-teal-100 hover:to-emerald-100 dark:hover:from-teal-950/60 dark:hover:to-emerald-950/50',
+    iconBg: 'bg-teal-100 dark:bg-teal-900/50',
+    iconHoverBg: 'group-hover:bg-teal-200 dark:group-hover:bg-teal-800/60',
+    iconColor: 'text-teal-600 dark:text-teal-400',
+    accent: 'text-teal-700 dark:text-teal-300',
+    border: 'border-teal-100 dark:border-teal-900/30',
+    hoverBorder: 'hover:border-teal-300 dark:hover:border-teal-700/50',
+  },
+}
+
+// Fallback palette for categories not in the map — cycles through distinctive colors
+const fallbackPalette: CategoryStyle[] = [
+  categoryStyleMap['Research']!,
+  categoryStyleMap['Marketing']!,
+  categoryStyleMap['Communication']!,
+  categoryStyleMap['Education']!,
+  categoryStyleMap['E-commerce']!,
+  categoryStyleMap['Entertainment']!,
+  categoryStyleMap['Creative']!,
+  categoryStyleMap['Finance']!,
+  categoryStyleMap['Travel']!,
+  categoryStyleMap['DevOps']!,
+]
+
+function getCategoryStyle(name: string, index: number): CategoryStyle {
+  if (categoryStyleMap[name]) return categoryStyleMap[name]!
+  // Fallback: deterministic selection based on name hash + index
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0
+  return fallbackPalette[Math.abs(hash) % fallbackPalette.length]!
+}
+
+// ─── Categories Grid Component ───
+
+function CategoriesGrid({ categories, loading, onNavigate }: { categories: Category[]; loading: boolean; onNavigate: (view: ViewType) => void }) {
+  const visibleCategories = categories.slice(0, 10)
+
+  return (
+    <section className="py-16 sm:py-20 bg-white dark:bg-gray-950" role="region" aria-label="Explore by category">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        {/* Section Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold tracking-wide uppercase mb-4">
+            <Layers className="h-3.5 w-3.5" />
+            Categories
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-3">
+            Explore by Category
+          </h2>
+          <p className="text-muted-foreground max-w-lg mx-auto text-base">
+            Discover AI agents tailored to your industry and use case — from research to automation and beyond.
+          </p>
+          <div className="mt-4 h-1 w-16 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full mx-auto" />
+        </div>
+
+        {/* Grid */}
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="rounded-2xl h-36 animate-pulse bg-gray-100 dark:bg-gray-800/50" />
+            ))}
+          </div>
+        ) : visibleCategories.length === 0 ? null : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {visibleCategories.map((cat, i) => {
+              const style = getCategoryStyle(cat.name, i)
+              const IconComp = style.icon
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => {
+                    useAppStore.getState().setSelectedCategory(cat.slug)
+                    onNavigate('browse')
+                  }}
+                  className={`
+                    group relative rounded-2xl p-5 text-left
+                    border ${style.border} ${style.hoverBorder}
+                    ${style.gradient} ${style.hoverGradient}
+                    transition-all duration-300 ease-out
+                    hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-black/20
+                    hover:-translate-y-1
+                    focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-950
+                    will-change-transform
+                  `}
+                  role="button"
+                  aria-label={`${cat.name}: ${cat.agentCount || 0} agents`}
+                >
+                  {/* Icon Container */}
+                  <div className={`
+                    inline-flex items-center justify-center
+                    h-12 w-12 rounded-xl
+                    ${style.iconBg} ${style.iconHoverBg}
+                    transition-colors duration-300
+                    mb-4
+                  `}>
+                    <IconComp className={`h-6 w-6 ${style.iconColor} transition-transform duration-300 group-hover:scale-110`} aria-hidden="true" />
+                  </div>
+
+                  {/* Category Name */}
+                  <h3 className={`font-semibold text-sm leading-tight ${style.accent} mb-1`}>
+                    {cat.name}
+                  </h3>
+
+                  {/* Agent Count */}
+                  <p className="text-xs text-muted-foreground font-medium">
+                    {cat.agentCount || 0} {cat.agentCount === 1 ? 'agent' : 'agents'}
+                  </p>
+
+                  {/* Hover Arrow Indicator */}
+                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <ArrowRight className="h-4 w-4 text-muted-foreground/50" />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* View All Link */}
+        {visibleCategories.length > 0 && (
+          <div className="mt-10 text-center">
+            <button
+              onClick={() => onNavigate('browse')}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 shadow-sm hover:shadow"
+            >
+              <Layers className="h-4 w-4" />
+              View All Categories
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+    </section>
+  )
 }
 
 // ─── Home View ───
@@ -140,28 +555,7 @@ function HomeView() {
       </section>
 
       {/* Categories */}
-      {categories.length > 0 && (
-        <section className="py-14 bg-white dark:bg-gray-950">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <h2 className="text-2xl sm:text-3xl font-bold mb-8">Categories</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {categories.slice(0, 8).map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => {
-                    useAppStore.getState().setSelectedCategory(cat.slug)
-                    handleNav('browse')
-                  }}
-                  className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 text-left hover:border-emerald-500/50 hover:shadow-md transition-all"
-                >
-                  <span className="text-2xl">{cat.icon || '📁'}</span>
-                  <div className="font-medium mt-2">{cat.name}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      <CategoriesGrid categories={categories} loading={loading} onNavigate={handleNav} />
 
       {/* Featured Agents */}
       <section className="py-14 bg-gray-50 dark:bg-gray-900">
@@ -317,19 +711,24 @@ function BrowseView() {
       <div className="flex flex-wrap gap-2 mb-6">
         <button
           onClick={() => setSelectedCategory(null)}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${!selectedCategory ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:text-foreground'}`}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${!selectedCategory ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:text-foreground'}`}
         >
           All
         </button>
-        {categories.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => setSelectedCategory(cat.slug)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${selectedCategory === cat.slug ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:text-foreground'}`}
-          >
-            {cat.icon || '📁'} {cat.name}
-          </button>
-        ))}
+        {categories.map((cat, i) => {
+          const style = getCategoryStyle(cat.name, i)
+          const CatIcon = style.icon
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.slug)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${selectedCategory === cat.slug ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:text-foreground'}`}
+            >
+              <CatIcon className="h-3.5 w-3.5" />
+              {cat.name}
+            </button>
+          )
+        })}
       </div>
 
       {/* Agent Grid */}
