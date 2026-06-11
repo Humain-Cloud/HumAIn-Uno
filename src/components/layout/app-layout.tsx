@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useSyncExternalStore, useCallback } from 'react'
+import { useState, useEffect, useSyncExternalStore, useCallback, useRef, useMemo } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTheme } from 'next-themes'
@@ -52,6 +52,9 @@ import {
   Settings,
   Bookmark,
   X as XIcon,
+  Clock,
+  Trash2,
+  ArrowUp,
 } from 'lucide-react'
 import {
   Sheet,
@@ -67,14 +70,17 @@ import {
 import { api } from '@/lib/api-client'
 
 function Navbar() {
-  const { currentView, setCurrentView, searchQuery, setSearchQuery, setSelectedAgentId, bookmarkedAgentIds, toggleBookmark } = useAppStore()
+  const { currentView, setCurrentView, searchQuery, setSearchQuery, setSelectedAgentId, bookmarkedAgentIds, toggleBookmark, searchHistory, addSearchHistory, clearSearchHistory } = useAppStore()
   const { data: session, status } = useSession()
   const { setShowAuthModal } = useAppStore()
   const { theme, setTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchFocused, setSearchFocused] = useState(false)
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false)
   const [bookmarkAgents, setBookmarkAgents] = useState<any[]>([])
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const searchDropdownRef = useRef<HTMLDivElement>(null)
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -117,6 +123,17 @@ function Navbar() {
     setBookmarkAgents(agents)
     setBookmarkLoading(false)
   }, [bookmarkedAgentIds])
+
+  // Close search dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchDropdownRef.current && !searchDropdownRef.current.contains(e.target as Node)) {
+        setShowSearchDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 dark:bg-gray-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-950/60">
@@ -171,28 +188,96 @@ function Navbar() {
 
         {/* Search */}
         <div className="flex-1 max-w-md mx-2">
-          <div className={`relative transition-all duration-200 ${searchFocused ? 'scale-105' : ''}`}>
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div ref={searchDropdownRef} className={`relative transition-all duration-200 ${searchFocused ? 'scale-105' : ''}`}>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
             <Input
+              ref={searchInputRef}
               placeholder="Search 500+ agents..."
               className="pl-9 h-9 text-sm bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 rounded-full focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 dark:focus:border-emerald-600 input-focus"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value)
+                setShowSearchDropdown(false)
                 if (currentView !== 'browse') {
                   setCurrentView('browse')
                   setSelectedAgentId(null)
                 }
               }}
-              onFocus={() => setSearchFocused(true)}
+              onFocus={() => {
+                setSearchFocused(true)
+                if (!searchQuery && searchHistory.length > 0) {
+                  setShowSearchDropdown(true)
+                }
+              }}
               onBlur={() => setSearchFocused(false)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && currentView !== 'browse') {
-                  setCurrentView('browse')
-                  setSelectedAgentId(null)
+                if (e.key === 'Enter') {
+                  if (searchQuery.trim()) {
+                    addSearchHistory(searchQuery.trim())
+                  }
+                  setShowSearchDropdown(false)
+                  if (currentView !== 'browse') {
+                    setCurrentView('browse')
+                    setSelectedAgentId(null)
+                  }
+                }
+                if (e.key === 'Escape') {
+                  setShowSearchDropdown(false)
+                  searchInputRef.current?.blur()
                 }
               }}
             />
+            {/* Search History Dropdown */}
+            <AnimatePresence>
+              {showSearchDropdown && searchHistory.length > 0 && !searchQuery && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50 overflow-hidden"
+                >
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
+                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                      <Clock className="h-3 w-3" /> Recent Searches
+                    </span>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                    {searchHistory.map((query, i) => (
+                      <button
+                        key={i}
+                        className="w-full text-left px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors flex items-center gap-2.5"
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          setSearchQuery(query)
+                          addSearchHistory(query)
+                          setShowSearchDropdown(false)
+                          if (currentView !== 'browse') {
+                            setCurrentView('browse')
+                            setSelectedAgentId(null)
+                          }
+                        }}
+                      >
+                        <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="truncate">{query}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-t border-gray-100 dark:border-gray-800 px-3 py-2">
+                    <button
+                      className="text-xs text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 transition-colors flex items-center gap-1.5"
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        clearSearchHistory()
+                        setShowSearchDropdown(false)
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" /> Clear history
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
@@ -588,6 +673,9 @@ const viewComponents: Record<string, React.ComponentType> = {
 
 export function AppLayout() {
   const { currentView } = useAppStore()
+  const [scrollProgress, setScrollProgress] = useState(0)
+  const [showScrollTop, setShowScrollTop] = useState(false)
+  const [showProgressBar, setShowProgressBar] = useState(false)
 
   const ViewComponent = viewComponents[currentView] || HomeView
 
@@ -596,11 +684,40 @@ export function AppLayout() {
     window.scrollTo(0, 0)
   }, [currentView])
 
+  // Reading progress bar + scroll-to-top visibility
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight
+      if (scrollHeight > 0) {
+        setScrollProgress(Math.min(100, (window.scrollY / scrollHeight) * 100))
+      }
+      setShowScrollTop(window.scrollY > 400)
+      setShowProgressBar(window.scrollY > 100)
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       {/* Top gradient line */}
       <div className="h-[1px] w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 shrink-0" aria-hidden="true" />
       <Navbar />
+
+      {/* Reading Progress Bar - below navbar */}
+      <AnimatePresence>
+        {showProgressBar && scrollProgress > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="reading-progress"
+            style={{ top: '4rem', width: `${scrollProgress}%` }}
+          />
+        )}
+      </AnimatePresence>
+
       <main className="flex-1">
         <AnimatePresence mode="wait">
           <motion.div
@@ -624,6 +741,23 @@ export function AppLayout() {
           <AiChatPanel />
         </>
       )}
+
+      {/* Scroll to Top Button - positioned above AI chat button */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 10 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="fixed bottom-40 right-6 z-40 h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-200/50 dark:shadow-emerald-900/30 flex items-center justify-center hover:shadow-xl hover:scale-110 active:scale-95 transition-all duration-200"
+            aria-label="Scroll to top"
+          >
+            <ArrowUp className="h-4 w-4" />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

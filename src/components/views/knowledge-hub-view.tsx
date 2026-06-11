@@ -642,7 +642,7 @@ export function KnowledgeHubView() {
                     relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all shrink-0
                     ${isActive
                       ? `bg-gradient-to-r ${tab.gradient} text-white shadow-md ${tab.shadowColor}`
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:shadow-sm'
                     }
                   `}
                 >
@@ -899,7 +899,7 @@ export function KnowledgeHubView() {
             <div className="lg:sticky lg:top-24 space-y-6">
               {/* Tag Cloud Section */}
               {tagFrequency.length > 0 && (
-                <Card className="border-0 shadow-sm">
+                <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-gray-900/50">
                   <CardContent className="p-5">
                     <div className="flex items-center gap-2 mb-4">
                       <div className="h-8 w-8 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
@@ -1012,7 +1012,7 @@ export function KnowledgeHubView() {
 
               {/* Top Industries */}
               {stats?.topIndustries && stats.topIndustries.length > 0 && (
-                <Card className="border-0 shadow-sm">
+                <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-gray-900/50">
                   <CardContent className="p-5">
                     <div className="flex items-center gap-2 mb-4">
                       <div className="h-8 w-8 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
@@ -1054,7 +1054,7 @@ export function KnowledgeHubView() {
               )}
 
               {/* Quick Links Card */}
-              <Card className="border-0 shadow-sm bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20">
+              <Card className="border-0 shadow-sm rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20">
                 <CardContent className="p-5">
                   <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
                     <BookOpen className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />

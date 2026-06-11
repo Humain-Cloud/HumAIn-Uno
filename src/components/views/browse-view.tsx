@@ -487,11 +487,11 @@ export function BrowseView() {
   // Compact view row component
   const CompactRow = ({ agent, index }: { agent: KnowledgeAgent; index: number }) => {
     const fwColor = agent.framework
-      ? { langgraph: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300', crewai: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', autogen: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300', agno: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300', llamaindex: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300' }[agent.framework.toLowerCase()] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+      ? { langgraph: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', crewai: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300', autogen: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300', agno: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300', llamaindex: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300' }[agent.framework.toLowerCase()] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
       : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
 
     const diffColor = agent.difficulty
-      ? { beginner: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', intermediate: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', advanced: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' }[agent.difficulty.toLowerCase()] || ''
+      ? { beginner: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', intermediate: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300', advanced: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' }[agent.difficulty.toLowerCase()] || ''
       : ''
 
     return (
@@ -620,7 +620,7 @@ export function BrowseView() {
                   setShowSearchHistory(false)
                 }
               }}
-              className="pl-9 pr-8 h-9 w-48 sm:w-64 rounded-xl"
+              className="pl-9 pr-8 h-9 w-48 sm:w-64 rounded-xl input-focus"
             />
             {searchQuery && (
               <button
@@ -801,7 +801,7 @@ export function BrowseView() {
       <div className="flex gap-6">
         {/* Desktop Sidebar */}
         <aside className="hidden lg:block w-56 shrink-0">
-          <Card className="shadow-md rounded-xl border-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+          <Card className="shadow-md rounded-xl border-0 bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm">
             <CardContent className="p-4">
               <h3 className="font-semibold text-sm mb-4 flex items-center gap-1.5">
                 <SlidersHorizontal className="h-4 w-4 text-emerald-600" /> Filters

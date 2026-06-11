@@ -78,6 +78,8 @@ import {
   MoreVertical,
   Plus,
   FolderPlus,
+  Eye,
+  List,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
@@ -224,6 +226,7 @@ export function DetailView() {
   const [showNewCollectionInput, setShowNewCollectionInput] = useState(false)
   const [readingProgress, setReadingProgress] = useState(0)
   const [showStickyBar, setShowStickyBar] = useState(false)
+  const [activeSection, setActiveSection] = useState('overview')
   const carouselRef = useRef<HTMLDivElement>(null)
   const heroRef = useRef<HTMLDivElement>(null)
 
@@ -306,6 +309,31 @@ export function DetailView() {
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [loading])
+
+  // IntersectionObserver for TOC active section tracking
+  useEffect(() => {
+    const sections = ['section-overview', 'section-code', 'section-dependencies', 'section-comments']
+    const observers: IntersectionObserver[] = []
+
+    sections.forEach((id) => {
+      const el = document.getElementById(id)
+      if (!el) return
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              setActiveSection(id.replace('section-', ''))
+            }
+          })
+        },
+        { rootMargin: '-20% 0px -60% 0px', threshold: 0 }
+      )
+      observer.observe(el)
+      observers.push(observer)
+    })
+
+    return () => observers.forEach((o) => o.disconnect())
+  }, [loading, activeTab, agent])
 
   const handleCopy = async () => {
     if (!agent?.codeSnippet) return
@@ -592,6 +620,26 @@ export function DetailView() {
     }
   }
 
+  const scrollToSection = (sectionId: string) => {
+    const el = document.getElementById(sectionId)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  // TOC items for the detail view sidebar
+  const tocItems = useMemo(() => {
+    const items = [
+      { id: 'section-overview', label: 'Overview', icon: Eye },
+    ]
+    if (agent?.codeSnippet) {
+      items.push({ id: 'section-code', label: 'Code', icon: Code2 })
+    }
+    items.push({ id: 'section-dependencies', label: 'Dependencies', icon: Package })
+    items.push({ id: 'section-comments', label: 'Comments', icon: MessageCircle })
+    return items
+  }, [agent?.codeSnippet])
+
   // Render dependency graph SVG
   const renderDependencyGraph = () => {
     if (!agent) return null
@@ -828,7 +876,35 @@ export function DetailView() {
   const diffConfig = difficultyConfig[diffKey]
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <div className="flex gap-6 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      {/* TOC Sidebar - hidden on mobile, visible on xl */}
+      <aside className="hidden xl:block w-48 shrink-0">
+        <nav className="toc-sidebar sticky top-24">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 px-3">On this page</h4>
+          {tocItems.map((item) => {
+            const Icon = item.icon
+            const sectionKey = item.id.replace('section-', '')
+            const isActive = activeSection === sectionKey
+            return (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                onClick={(e) => {
+                  e.preventDefault()
+                  scrollToSection(item.id)
+                }}
+                className={`flex items-center gap-2 ${isActive ? 'active' : ''}`}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span>{item.label}</span>
+              </a>
+            )
+          })}
+        </nav>
+      </aside>
+
+      {/* Main content */}
+      <div className="flex-1 min-w-0 max-w-5xl">
       {/* Reading Progress Bar */}
       <div className="reading-progress" style={{ width: `${readingProgress}%` }} />
 
@@ -969,7 +1045,7 @@ export function DetailView() {
               {/* Collection Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="hover:scale-105 transition-transform duration-200">
+                  <Button variant="outline" size="sm" className="hover:scale-105 transition-all duration-200 hover:border-emerald-300 dark:hover:border-emerald-700">
                     <FolderPlus className="h-4 w-4 mr-1" /> Collect
                   </Button>
                 </DropdownMenuTrigger>
@@ -1144,7 +1220,7 @@ export function DetailView() {
         </TabsList>
 
         {/* Overview Tab */}
-        <TabsContent value="overview">
+        <TabsContent value="overview" id="section-overview">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               {/* Description */}
@@ -1396,7 +1472,7 @@ export function DetailView() {
 
         {/* Code Tab - Enhanced with Code Playground */}
         {agent.codeSnippet && (
-          <TabsContent value="code">
+          <TabsContent value="code" id="section-code">
             <CodePlayground
               code={agent.codeSnippet}
               language={codeLanguage}
@@ -1406,7 +1482,7 @@ export function DetailView() {
         )}
 
         {/* Dependencies Tab */}
-        <TabsContent value="dependencies">
+        <TabsContent value="dependencies" id="section-dependencies">
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -1418,7 +1494,7 @@ export function DetailView() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Visual representation of this agent&apos;s dependencies, tools, and models.
                 </p>
-                <div className="rounded-lg border bg-white dark:bg-gray-950 overflow-hidden">
+                <div className="rounded-xl border bg-white dark:bg-gray-900/50 overflow-hidden">
                   {renderDependencyGraph()}
                 </div>
               </CardContent>
@@ -1506,7 +1582,7 @@ export function DetailView() {
         </TabsContent>
 
         {/* Enhanced Comments Tab */}
-        <TabsContent value="comments">
+        <TabsContent value="comments" id="section-comments">
           <div className="space-y-4">
             {/* Comment Input */}
             <Card>
@@ -1790,6 +1866,7 @@ export function DetailView() {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>{/* end main content */}
     </div>
   )
 }
@@ -1810,12 +1887,12 @@ function CommentCard({
   const [replyText, setReplyText] = useState('')
 
   const avatarColors = [
-    'bg-emerald-100 text-emerald-700',
-    'bg-amber-100 text-amber-700',
-    'bg-violet-100 text-violet-700',
-    'bg-rose-100 text-rose-700',
-    'bg-cyan-100 text-cyan-700',
-    'bg-teal-100 text-teal-700',
+    'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+    'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+    'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
+    'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
+    'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
+    'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
   ]
 
   const colorIndex = comment.author.charCodeAt(0) % avatarColors.length

@@ -101,6 +101,11 @@ interface AppState {
   addSearchHistory: (query: string) => void
   clearSearchHistory: () => void
 
+  // Recently Viewed
+  recentlyViewedAgentIds: string[]
+  addRecentlyViewed: (agentId: string) => void
+  clearRecentlyViewed: () => void
+
   // Ratings
   ratings: Record<string, number>
   setRating: (agentId: string, rating: number) => void
@@ -453,5 +458,34 @@ export const useAppStore = create<AppState>((set) => ({
     sortBy: 'popular',
   }),
   
-  navigateToAgent: (id) => set({ selectedAgentId: id, currentView: 'detail' }),
+  // Recently Viewed
+  recentlyViewedAgentIds: (() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('humain-recently-viewed')
+        return saved ? JSON.parse(saved) : []
+      } catch { return [] }
+    }
+    return []
+  })(),
+  addRecentlyViewed: (agentId) => set((state) => {
+    const filtered = state.recentlyViewedAgentIds.filter((id) => id !== agentId)
+    const newList = [agentId, ...filtered].slice(0, 10)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('humain-recently-viewed', JSON.stringify(newList))
+    }
+    return { recentlyViewedAgentIds: newList }
+  }),
+  clearRecentlyViewed: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('humain-recently-viewed')
+    }
+    set({ recentlyViewedAgentIds: [] })
+  },
+
+  navigateToAgent: (id) => {
+    const state = useAppStore.getState()
+    state.addRecentlyViewed(id)
+    set({ selectedAgentId: id, currentView: 'detail' })
+  },
 }))

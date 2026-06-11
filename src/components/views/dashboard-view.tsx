@@ -105,6 +105,8 @@ export function DashboardView() {
     removeFromCollection,
     bookmarkedAgentIds,
     toggleBookmark,
+    recentlyViewedAgentIds,
+    clearRecentlyViewed,
   } = useAppStore()
   const [activeTab, setActiveTab] = useState('overview')
   const [myAgents, setMyAgents] = useState<any[]>([])
@@ -119,6 +121,8 @@ export function DashboardView() {
   const [showNewCollectionInput, setShowNewCollectionInput] = useState(false)
   const [collectionAgents, setCollectionAgents] = useState<Record<string, any[]>>({})
   const [bookmarkedAgents, setBookmarkedAgents] = useState<any[]>([])
+  const [recentlyViewedAgents, setRecentlyViewedAgents] = useState<any[]>([])
+  const [recentlyViewedLoading, setRecentlyViewedLoading] = useState(false)
 
   useEffect(() => {
     async function loadPublicData() {
@@ -209,6 +213,32 @@ export function DashboardView() {
     loadBookmarkedAgents()
   }, [bookmarkedAgentIds])
 
+  // Load recently viewed agents
+  useEffect(() => {
+    async function loadRecentlyViewedAgents() {
+      if (recentlyViewedAgentIds.length === 0) {
+        setRecentlyViewedAgents([])
+        return
+      }
+      setRecentlyViewedLoading(true)
+      const agents: any[] = []
+      for (const id of recentlyViewedAgentIds.slice(0, 6)) {
+        try {
+          const agent = await api.knowledge.get(id)
+          agents.push(agent)
+        } catch {
+          try {
+            const agent = await api.agents.get(id)
+            agents.push(agent)
+          } catch { /* ignore */ }
+        }
+      }
+      setRecentlyViewedAgents(agents)
+      setRecentlyViewedLoading(false)
+    }
+    loadRecentlyViewedAgents()
+  }, [recentlyViewedAgentIds])
+
   const handleDeleteAgent = async (id: string) => {
     if (!confirm('Are you sure you want to delete this agent?')) return
     try {
@@ -276,6 +306,78 @@ export function DashboardView() {
   if (!isAuthenticated) {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Recently Viewed Section */}
+        {recentlyViewedAgentIds.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Clock className="h-5 w-5 text-teal-600 dark:text-teal-400" /> Recently Viewed
+              </h2>
+              <Button variant="ghost" size="sm" className="text-rose-600 dark:text-rose-400" onClick={clearRecentlyViewed}>
+                <Trash2 className="h-4 w-4 mr-1" /> Clear History
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recentlyViewedLoading ? (
+                Array.from({ length: Math.min(6, recentlyViewedAgentIds.length) }).map((_, i) => (
+                  <Card key={i} className="rounded-xl">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <Skeleton className="h-4 w-3/4 mb-2" />
+                          <Skeleton className="h-3 w-1/2 mb-2" />
+                          <div className="flex gap-1.5">
+                            <Skeleton className="h-4 w-14" />
+                            <Skeleton className="h-4 w-20" />
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                recentlyViewedAgents.map((agent: any, i: number) => (
+                  <motion.div
+                    key={agent.id}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="cursor-pointer"
+                    onClick={() => { setSelectedAgentId(agent.id); setCurrentView('detail') }}
+                  >
+                    <Card className="hover:shadow-md transition-all duration-300 rounded-xl">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/30 flex items-center justify-center shrink-0">
+                            <Bot className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-medium text-sm truncate">{agent.name}</h4>
+                            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{agent.description}</p>
+                            <div className="flex gap-1.5 mt-2">
+                              {agent.framework && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{agent.framework}</Badge>
+                              )}
+                              {agent.category && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">{agent.category}</Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+
         {/* Welcome Banner */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -448,7 +550,7 @@ export function DashboardView() {
                   className="cursor-pointer"
                   onClick={() => { setSelectedAgentId(agent.id); setCurrentView('detail') }}
                 >
-                  <Card className="hover:shadow-md transition-shadow rounded-xl">
+                  <Card className="hover:shadow-md transition-all duration-300 rounded-xl">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center shrink-0">
@@ -507,6 +609,90 @@ export function DashboardView() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      {/* Recently Viewed Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Clock className="h-5 w-5 text-teal-600 dark:text-teal-400" /> Recently Viewed
+          </h2>
+          {recentlyViewedAgentIds.length > 0 && (
+            <Button variant="ghost" size="sm" className="text-rose-600 dark:text-rose-400" onClick={clearRecentlyViewed}>
+              <Trash2 className="h-4 w-4 mr-1" /> Clear History
+            </Button>
+          )}
+        </div>
+        {recentlyViewedAgentIds.length === 0 ? (
+          <Card className="rounded-xl">
+            <CardContent className="p-6 text-center">
+              <Clock className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">Start browsing agents to see your history here</p>
+              <Button variant="outline" size="sm" className="mt-3 rounded-xl" onClick={() => { setCurrentView('browse'); setSelectedAgentId(null) }}>
+                <Compass className="h-4 w-4 mr-1.5" /> Browse Agents
+              </Button>
+            </CardContent>
+          </Card>
+        ) : recentlyViewedLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: Math.min(6, recentlyViewedAgentIds.length) }).map((_, i) => (
+              <Card key={i} className="rounded-xl">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <Skeleton className="h-4 w-3/4 mb-2" />
+                      <Skeleton className="h-3 w-1/2 mb-2" />
+                      <div className="flex gap-1.5">
+                        <Skeleton className="h-4 w-14" />
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {recentlyViewedAgents.map((agent: any, i: number) => (
+              <motion.div
+                key={agent.id}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="cursor-pointer"
+                onClick={() => { setSelectedAgentId(agent.id); setCurrentView('detail') }}
+              >
+                <Card className="hover:shadow-md transition-all duration-300 rounded-xl">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/30 flex items-center justify-center shrink-0">
+                        <Bot className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-medium text-sm truncate">{agent.name}</h4>
+                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{agent.description}</p>
+                        <div className="flex gap-1.5 mt-2">
+                          {agent.framework && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{agent.framework}</Badge>
+                          )}
+                          {agent.category && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">{agent.category}</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+
       {/* Welcome Banner */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -617,10 +803,10 @@ export function DashboardView() {
                   >
                     <PlusCircle className="h-4 w-4 mr-2" /> Create Agent
                   </Button>
-                  <Button variant="outline" className="rounded-xl" onClick={() => { setCurrentView('browse'); setSelectedAgentId(null) }}>
+                  <Button variant="outline" className="rounded-xl hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-200" onClick={() => { setCurrentView('browse'); setSelectedAgentId(null) }}>
                     <Compass className="h-4 w-4 mr-2" /> Browse Templates
                   </Button>
-                  <Button variant="outline" className="rounded-xl" onClick={() => { setCurrentView('hub'); setSelectedAgentId(null) }}>
+                  <Button variant="outline" className="rounded-xl hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-200" onClick={() => { setCurrentView('hub'); setSelectedAgentId(null) }}>
                     <Library className="h-4 w-4 mr-2" /> Knowledge Hub
                   </Button>
                 </div>

@@ -396,7 +396,7 @@ export function AdminView() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.08 }}
             >
-              <Card className="relative overflow-hidden bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-0 shadow-md hover:shadow-lg transition-shadow">
+              <Card className="relative overflow-hidden bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-0 shadow-md hover:shadow-lg transition-all duration-300 rounded-xl">
                 <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${stat.gradient}`} />
                 <CardContent className="p-4 pt-5">
                   <div className="flex items-center gap-3">
@@ -426,7 +426,7 @@ export function AdminView() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-0 shadow-md overflow-hidden">
+            <Card className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-0 shadow-md overflow-hidden rounded-xl">
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600" />
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -497,7 +497,7 @@ export function AdminView() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-0 shadow-md overflow-hidden">
+            <Card className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-0 shadow-md overflow-hidden rounded-xl">
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-400 via-violet-500 to-purple-500" />
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -536,7 +536,7 @@ export function AdminView() {
                           initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ delay: i * 0.05 }}
-                          className="relative group p-3 rounded-lg border bg-white dark:bg-gray-800 hover:shadow-md transition-shadow"
+                          className="relative group p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 hover:shadow-md transition-all duration-300"
                         >
                           <button
                             onClick={() => handleToggleFeatured(agent.id, false)}
@@ -576,7 +576,7 @@ export function AdminView() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-0 shadow-md overflow-hidden">
+            <Card className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-0 shadow-md overflow-hidden rounded-xl">
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400 via-teal-500 to-emerald-500" />
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -631,7 +631,7 @@ export function AdminView() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
           >
-            <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-0 shadow-md overflow-hidden">
+            <Card className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-0 shadow-md overflow-hidden rounded-xl">
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-rose-400 via-pink-500 to-fuchsia-500" />
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -719,7 +719,7 @@ export function AdminView() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
           >
-            <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-0 shadow-md overflow-hidden">
+            <Card className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-0 shadow-md overflow-hidden rounded-xl">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Layers className="h-4 w-4 text-emerald-600" />
@@ -736,7 +736,7 @@ export function AdminView() {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto pr-1">
                     {categories.map((cat) => (
-                      <div key={cat.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div key={cat.id} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 rounded-lg hover:bg-muted/50 transition-colors">
                         <div className="min-w-0 flex-1">
                           <span className="text-sm font-medium truncate block">{cat.name}</span>
                           <span className="text-xs text-muted-foreground">
@@ -760,7 +760,7 @@ export function AdminView() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
           >
-            <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-0 shadow-md overflow-hidden">
+            <Card className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-0 shadow-md overflow-hidden rounded-xl">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-orange-600" />
@@ -782,7 +782,7 @@ export function AdminView() {
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: i * 0.03 }}
-                        className="flex items-center gap-2 p-2.5 border rounded-lg hover:bg-muted/50 transition-colors"
+                        className="flex items-center gap-2 p-2.5 border border-gray-200 dark:border-gray-800 rounded-lg hover:bg-muted/50 transition-colors"
                       >
                         <Building2 className="h-4 w-4 text-orange-500" />
                         <span className="text-sm">{ind.name}</span>
@@ -808,7 +808,7 @@ export function AdminView() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-0 shadow-md overflow-hidden">
+            <Card className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-0 shadow-md overflow-hidden rounded-xl">
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500" />
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -869,7 +869,7 @@ export function AdminView() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.5 }}
           >
-            <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-0 shadow-md overflow-hidden">
+            <Card className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-0 shadow-md overflow-hidden rounded-xl">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Zap className="h-4 w-4 text-amber-500" />
@@ -966,7 +966,7 @@ export function AdminView() {
                     return (
                       <div
                         key={agent.id}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                        className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 rounded-lg hover:bg-muted/50 transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
                           <div className={`h-8 w-8 rounded-md ${fwColor.bg} flex items-center justify-center flex-shrink-0`}>

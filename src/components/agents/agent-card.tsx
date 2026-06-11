@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Star, Code2, Eye, BookOpen, GitCompareArrows, Check, Bookmark, BookmarkCheck } from 'lucide-react'
+import { Star, Code2, Eye, BookOpen, GitCompareArrows, Check, Bookmark, BookmarkCheck, Database } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 import { AgentQuickActions } from '@/components/agents/agent-quick-actions'
@@ -53,6 +53,72 @@ const difficultyColors: Record<string, string> = {
   advanced: 'text-red-600 dark:text-red-400',
 }
 
+// Deterministic hash of agent name for fake average rating
+function getAverageRating(name: string): number {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash) + name.charCodeAt(i)
+    hash |= 0
+  }
+  // Generate a rating between 3.0 and 5.0
+  const normalized = Math.abs(hash % 1000) / 1000
+  return 3.0 + normalized * 2.0
+}
+
+// Interactive Star Rating Component
+function StarRating({ agentId, agentName, userRating, onRate }: {
+  agentId: string
+  agentName: string
+  userRating: number | undefined
+  onRate: (rating: number) => void
+}) {
+  const [hoverRating, setHoverRating] = useState(0)
+  const averageRating = getAverageRating(agentName)
+
+  const handleClick = useCallback((rating: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    onRate(rating)
+  }, [onRate])
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map((star) => {
+          const isFilled = userRating ? star <= userRating : star <= Math.round(averageRating)
+          const isHovered = hoverRating > 0 && star <= hoverRating
+          const showFilled = isHovered || (hoverRating === 0 && isFilled)
+
+          return (
+            <motion.button
+              key={star}
+              onClick={(e) => handleClick(star, e)}
+              onMouseEnter={() => setHoverRating(star)}
+              onMouseLeave={() => setHoverRating(0)}
+              whileHover={{ scale: 1.2 }}
+              whileTap={{ scale: 0.85 }}
+              className="relative p-0 bg-transparent border-none outline-none cursor-pointer"
+            >
+              <Star
+                className={`h-3.5 w-3.5 transition-colors duration-150 ${
+                  showFilled
+                    ? 'fill-amber-400 text-amber-400'
+                    : 'fill-gray-200 text-gray-300 dark:fill-gray-700 dark:text-gray-600'
+                }`}
+              />
+            </motion.button>
+          )
+        })}
+      </div>
+      <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
+        {userRating ? userRating.toFixed(1) : averageRating.toFixed(1)}
+      </span>
+      {userRating && (
+        <span className="text-[10px] text-amber-500 dark:text-amber-400 font-medium">your rating</span>
+      )}
+    </div>
+  )
+}
+
 export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProps) {
   const {
     navigateToAgent,
@@ -62,6 +128,7 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
     bookmarkedAgentIds,
     toggleBookmark,
     ratings,
+    setRating,
     addNotification,
   } = useAppStore()
 
@@ -70,6 +137,7 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
   const canCompare = isInCompare || !isCompareFull
   const isBookmarked = bookmarkedAgentIds.includes(agent.id)
   const [bookmarkAnim, setBookmarkAnim] = useState(false)
+  const userRating = ratings[agent.id]
 
   const toggleCompare = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -95,14 +163,20 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
     }
   }
 
+  const handleRate = useCallback((rating: number) => {
+    setRating(agent.id, rating)
+    addNotification({
+      type: 'agent_update',
+      title: 'Rating saved',
+      message: `You rated "${agent.name}" ${rating}/5 stars.`,
+    })
+  }, [agent.id, agent.name, setRating, addNotification])
+
   const fwColor = frameworkColors[(agent.framework || '').toLowerCase()] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
   const fwGlow = frameworkGlow[(agent.framework || '').toLowerCase()] || ''
   const fwBorder = frameworkGradientBorder[(agent.framework || '').toLowerCase()] || 'from-gray-400 to-gray-500'
   const diffColor = difficultyColors[(agent.difficulty || '').toLowerCase()] || 'text-gray-500'
   const diffDot = difficultyDotColors[(agent.difficulty || '').toLowerCase()] || 'bg-gray-400'
-  const userRating = ratings[agent.id]
-  // Mock community rating: deterministic based on agent id hash
-  const communityRating = ((agent.id.charCodeAt(0) % 3) + 3) + ((agent.id.charCodeAt(1) % 10) / 10)
   // NEW badge: show for agents created in the last 7 days (simulated based on id hash for KB agents)
   const isNew = agent.isCurated ? (agent.id.charCodeAt(0) % 7 === 0) : false
 
@@ -115,7 +189,7 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
         whileHover={{ scale: 1.005 }}
       >
         <Card
-          className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-emerald-500"
+          className="cursor-pointer hover:shadow-md transition-all duration-300 border-l-4 border-l-emerald-500 dark:border-l-emerald-400 group"
           onClick={() => navigateToAgent(agent.id)}
         >
           <CardContent className="p-4 flex items-center gap-4">
@@ -151,6 +225,10 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
                 )}
               </div>
               <p className="text-xs text-muted-foreground line-clamp-1">{agent.description}</p>
+              {/* Star rating in list view */}
+              <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+                <StarRating agentId={agent.id} agentName={agent.name} userRating={userRating} onRate={handleRate} />
+              </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {agent.framework && (
@@ -166,15 +244,9 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
               <Badge variant="outline" className="text-[10px]">
                 {agent.category}
               </Badge>
-              {userRating && (
-                <span className="flex items-center gap-0.5 text-xs">
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                  <span className="font-medium">{userRating}</span>
-                </span>
-              )}
             </div>
             {/* Bookmark + Quick Actions */}
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -197,7 +269,7 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <AgentQuickActions agent={agent} />
+              <AgentQuickActions agent={agent} mode="dropdown" />
             </div>
           </CardContent>
         </Card>
@@ -279,17 +351,28 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
                   </Tooltip>
                 </TooltipProvider>
               )}
-              {/* Quick Actions */}
-              <AgentQuickActions agent={agent} />
-              {agent.isCurated && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 dark:from-emerald-900/30 dark:to-teal-900/30 dark:text-emerald-300 shadow-sm shadow-emerald-100 dark:shadow-emerald-900/20">
-                  <BookOpen className="h-3 w-3 mr-0.5" />KB
-                </Badge>
-              )}
+              {/* Quick Actions - expanded mode shows Share + Fork buttons */}
+              <AgentQuickActions agent={agent} mode="expanded" />
             </div>
           </div>
-          <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{agent.description}</p>
+
+          {/* Description with 2-line clamp */}
+          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{agent.description}</p>
+
+          {/* Star Rating below description */}
+          <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+            <StarRating agentId={agent.id} agentName={agent.name} userRating={userRating} onRate={handleRate} />
+          </div>
+
+          {/* Source badge + tags */}
           <div className="flex flex-wrap gap-1.5">
+            {/* Source badge for curated agents */}
+            {agent.isCurated && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 dark:from-emerald-900/30 dark:to-teal-900/30 dark:text-emerald-300 shadow-sm shadow-emerald-100 dark:shadow-emerald-900/20">
+                <Database className="h-3 w-3 mr-0.5" />
+                Knowledge Base
+              </Badge>
+            )}
             {agent.framework && (
               <Badge variant="secondary" className={`text-[10px] ${fwColor} shadow-sm ${fwGlow} group-hover:shadow-md transition-shadow duration-200`}>
                 {agent.framework}
@@ -324,19 +407,12 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
                 <Code2 className="h-3 w-3" /> Code
               </span>
             )}
-            {userRating && (
-              <span className="flex items-center gap-0.5">
-                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                {userRating}/5
-              </span>
-            )}
-            {!userRating && (
-              <span className="flex items-center gap-0.5 text-muted-foreground/50">
-                <Star className="h-3 w-3" /> {communityRating.toFixed(1)}
-              </span>
-            )}
           </div>
-          <Button size="sm" variant="ghost" className="h-7 text-xs hover:scale-110 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-teal-50 dark:hover:from-emerald-900/20 dark:hover:to-teal-900/20 transition-all duration-200 rounded-lg" onClick={(e) => { e.stopPropagation(); navigateToAgent(agent.id) }}>
+          <Button
+            size="sm"
+            className="h-7 text-xs bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-sm shadow-emerald-200 dark:shadow-emerald-900/30 hover:shadow-md hover:shadow-emerald-200 dark:hover:shadow-emerald-900/40 transition-all duration-200 rounded-lg font-medium"
+            onClick={(e) => { e.stopPropagation(); navigateToAgent(agent.id) }}
+          >
             <Eye className="h-3 w-3 mr-1" /> View
           </Button>
         </CardFooter>

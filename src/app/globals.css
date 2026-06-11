@@ -457,7 +457,7 @@
   position: relative;
   overflow: hidden;
   background: #f0fdf4;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
 }
 .skeleton-emerald::after {
   content: '';

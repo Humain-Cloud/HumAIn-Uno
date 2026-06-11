@@ -1067,7 +1067,7 @@ export function WizardView() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Card
-                  className={`cursor-pointer transition-all card-hover min-h-[44px] ${startingPoint === 'scratch' ? 'ring-2 ring-emerald-600 dark:ring-emerald-500' : 'hover:shadow-md'}`}
+                  className={`cursor-pointer transition-all duration-300 card-hover min-h-[44px] rounded-xl ${startingPoint === 'scratch' ? 'ring-2 ring-emerald-600 dark:ring-emerald-500' : 'hover:shadow-md'}`}
                   onClick={() => {
                     setStartingPoint('scratch')
                     setWizardData({ source: 'scratch', parentId: undefined })
@@ -1082,7 +1082,7 @@ export function WizardView() {
                   </CardContent>
                 </Card>
                 <Card
-                  className={`cursor-pointer transition-all card-hover min-h-[44px] ${startingPoint === 'fork' ? 'ring-2 ring-emerald-600 dark:ring-emerald-500' : 'hover:shadow-md'}`}
+                  className={`cursor-pointer transition-all duration-300 card-hover min-h-[44px] rounded-xl ${startingPoint === 'fork' ? 'ring-2 ring-emerald-600 dark:ring-emerald-500' : 'hover:shadow-md'}`}
                   onClick={() => {
                     setStartingPoint('fork')
                     setWizardData({ source: 'fork' })
@@ -1097,7 +1097,7 @@ export function WizardView() {
                   </CardContent>
                 </Card>
                 <Card
-                  className={`cursor-pointer transition-all card-hover min-h-[44px] ${startingPoint === 'template' ? 'ring-2 ring-emerald-600 dark:ring-emerald-500' : 'hover:shadow-md'}`}
+                  className={`cursor-pointer transition-all duration-300 card-hover min-h-[44px] rounded-xl ${startingPoint === 'template' ? 'ring-2 ring-emerald-600 dark:ring-emerald-500' : 'hover:shadow-md'}`}
                   onClick={() => {
                     setStartingPoint('template')
                     setWizardData({ source: 'template' })
