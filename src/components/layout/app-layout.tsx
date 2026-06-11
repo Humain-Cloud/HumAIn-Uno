@@ -1,24 +1,28 @@
 'use client'
 
 import { useState, useEffect, useSyncExternalStore, useCallback, useRef, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import { useSession, signOut } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTheme } from 'next-themes'
 import { useAppStore } from '@/lib/store'
-import { HomeView } from '@/components/views/home-view'
-import { BrowseView } from '@/components/views/browse-view'
-import { DetailView } from '@/components/views/detail-view'
-import { DashboardView } from '@/components/views/dashboard-view'
-import { WizardView } from '@/components/views/wizard-view'
-import { AdminView } from '@/components/views/admin-view'
-import { KnowledgeHubView } from '@/components/views/knowledge-hub-view'
-import { SettingsView } from '@/components/views/settings-view'
+import { setInitialData } from '@/lib/data-cache'
 import { AuthModal } from '@/components/auth/auth-modal'
-import { CompareBar } from '@/components/agents/compare-bar'
-import { CompareModal } from '@/components/agents/compare-modal'
-import { AiChatButton } from '@/components/ai/ai-chat-button'
-import { AiChatPanel } from '@/components/ai/ai-chat-panel'
 import { NotificationCenter } from '@/components/notifications/notification-center'
+
+// Dynamic imports for all views to reduce initial bundle size and prevent OOM
+const HomeView = dynamic(() => import('@/components/views/home-view').then(m => ({ default: m.HomeView })))
+const BrowseView = dynamic(() => import('@/components/views/browse-view').then(m => ({ default: m.BrowseView })), { ssr: false })
+const DetailView = dynamic(() => import('@/components/views/detail-view').then(m => ({ default: m.DetailView })), { ssr: false })
+const DashboardView = dynamic(() => import('@/components/views/dashboard-view').then(m => ({ default: m.DashboardView })), { ssr: false })
+const WizardView = dynamic(() => import('@/components/views/wizard-view').then(m => ({ default: m.WizardView })), { ssr: false })
+const AdminView = dynamic(() => import('@/components/views/admin-view').then(m => ({ default: m.AdminView })), { ssr: false })
+const KnowledgeHubView = dynamic(() => import('@/components/views/knowledge-hub-view').then(m => ({ default: m.KnowledgeHubView })), { ssr: false })
+const SettingsView = dynamic(() => import('@/components/views/settings-view').then(m => ({ default: m.SettingsView })), { ssr: false })
+const CompareBar = dynamic(() => import('@/components/agents/compare-bar').then(m => ({ default: m.CompareBar })), { ssr: false })
+const CompareModal = dynamic(() => import('@/components/agents/compare-modal').then(m => ({ default: m.CompareModal })), { ssr: false })
+const AiChatButton = dynamic(() => import('@/components/ai/ai-chat-button').then(m => ({ default: m.AiChatButton })), { ssr: false })
+const AiChatPanel = dynamic(() => import('@/components/ai/ai-chat-panel').then(m => ({ default: m.AiChatPanel })), { ssr: false })
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -671,11 +675,18 @@ const viewComponents: Record<string, React.ComponentType> = {
   settings: SettingsView,
 }
 
-export function AppLayout() {
+export function AppLayout({ initialData }: { initialData?: any }) {
   const { currentView } = useAppStore()
   const [scrollProgress, setScrollProgress] = useState(0)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [showProgressBar, setShowProgressBar] = useState(false)
+
+  // Store initial data in cache via useEffect so it's available when child components mount
+  useEffect(() => {
+    if (initialData) {
+      setInitialData(initialData)
+    }
+  }, [initialData])
 
   const ViewComponent = viewComponents[currentView] || HomeView
 
