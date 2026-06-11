@@ -277,3 +277,38 @@ User requested: "Each Agent card should have a dedicated page and a specialized 
 - Content is dynamically generated based on agent properties (category, framework, tools, LLM)
 - The 4-column grid layout (3:1 ratio) on desktop stacks properly on mobile
 - Total new code: ~1,400 lines (data module ~600 lines, detail view ~800 lines)
+
+---
+
+## Session 6 — Fix BarChart3 Runtime Error
+
+### Task
+User reported: "Runtime ReferenceError: BarChart3 is not defined" in `detail-view.tsx` at the `getCapIcon` function.
+
+### Problem Analysis
+- The `getCapIcon()` function in `detail-view.tsx` referenced 15 lucide-react icons that were not imported
+- Missing imports: BarChart3, Workflow, Heart, Globe, Palette, Search, Mail, ShoppingBag, Sprout, Briefcase, Plane, Music, Gamepad2, Scale, Cpu
+- The `categoryCapabilities` data in `agent-detail-data.ts` uses these icon names as string keys, which get looked up in the `getCapIcon` map
+- When the capabilities tab rendered, it tried to resolve `BarChart3` from the map but it wasn't imported, causing the runtime ReferenceError
+
+### Fix Applied
+- Added 15 missing icon imports to `detail-view.tsx`:
+  - BarChart3, Workflow, Heart, Globe, Palette, Search, Mail, ShoppingBag, Sprout, Briefcase, Plane, Music, Gamepad2, Scale, Cpu
+
+### Verification Results
+- ✅ Lint passes clean (0 errors)
+- ✅ Home page loads correctly
+- ✅ Browse → click agent card → detail page loads without errors
+- ✅ Knowledge Hub → click agent card → detail page loads without errors
+- ✅ All 8 tabs work: Overview, Capabilities, Master Prompts, Architecture, Getting Started, Configuration, FAQ, Related
+- ✅ Capabilities tab renders with proper icons (no more BarChart3 error)
+- ✅ Master Prompts tab shows 3 prompts with expand/collapse
+- ✅ No console errors or runtime errors
+- ✅ Multiple agents tested: Adaptive RAG, Agent Chat with Whisper, Agentic RAG
+
+### Current Project Status
+- Platform fully functional with all features working
+- Agent detail pages with comprehensive curated content
+- Master Legendary Prompts for every agent
+- All navigation flows working (Home → Browse → Detail, Hub → Detail)
+- No outstanding errors or bugs

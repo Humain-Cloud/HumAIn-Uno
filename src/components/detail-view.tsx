@@ -43,6 +43,21 @@ import {
   HelpCircle,
   Target,
   ToggleLeft,
+  BarChart3,
+  Workflow,
+  Heart,
+  Globe,
+  Palette,
+  Search,
+  Mail,
+  ShoppingBag,
+  Sprout,
+  Briefcase,
+  Plane,
+  Music,
+  Gamepad2,
+  Scale,
+  Cpu,
 } from 'lucide-react'
 
 // ─── Framework Color Config ───
