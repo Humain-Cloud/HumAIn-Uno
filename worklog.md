@@ -113,3 +113,84 @@ User requested: "Fix the 'Categories' sub-section on the '/' page. It doesn't lo
 ### Unresolved Issues
 1. Agent-browser `click` command doesn't trigger React onClick on category cards — but JS eval `.click()` works (likely a test tooling quirk, not a real bug)
 2. Pre-existing lint errors in BrowseView and DetailView (`setLoading(true)` inside useEffect) — not related to Categories changes
+
+---
+
+## Session 4 — Premium Agent Detail Page
+
+### Task
+User requested: "Each Agent card should have a dedicated page and a specialized curate page for the respective card such that everything is covered for that particular card in either of 'Knowledge Hub' and/or 'Browse'"
+
+### Problem Analysis
+- The original DetailView was a basic single-card layout with:
+  - Simple title + framework badge
+  - Plain text description
+  - 4 metadata boxes (difficulty, industry, category, LLM)
+  - Tags list, Tools list, README (if available)
+  - No sidebar, no tabbed content, no related agents
+  - No breadcrumb navigation, no action buttons, no framework theming
+  - Felt like a "basic content attached to the card" rather than a dedicated page
+
+### Changes Made
+
+1. **Framework-colored hero header** — Each agent's detail page now features a gradient hero strip colored to match the agent's framework:
+   - LangGraph → emerald-to-teal gradient
+   - CrewAI → amber-to-orange gradient
+   - AutoGen → rose-to-pink gradient
+   - Agno → violet-to-purple gradient
+   - LlamaIndex → teal-to-cyan gradient
+   - Includes breadcrumb navigation (Home > Browse > Agent Name)
+   - Framework badge + "Curated" badge with backdrop blur
+   - Large bold title + description
+   - Action buttons: Bookmark, Copy ID, Share
+
+2. **Tabbed content area** (4 tabs with icons):
+   - **Overview** tab: Quick stats grid (Category, Industry, Difficulty, LLM), Tags section, Tools & Integrations, Supported Models, Agent Details card (Author, Source URL, Last Updated, Agent ID with copy)
+   - **README** tab: Styled README viewer with file header bar, scrollable content, or empty state with icon
+   - **Code** tab: Code viewer with dark syntax-highlighted background, copy button, or empty state with source link
+   - **Related** tab: Grid of related agents (same framework/category), each clickable to navigate to that agent's detail page
+
+3. **Right sidebar** with:
+   - **Quick Actions card**: Back to Browse button, Bookmark toggle, View Source link
+   - **Framework card**: Colored to match framework, with icon and label
+   - **Metadata card**: Category, Industry, Difficulty (color-coded), Language, LLM, Curated status
+   - **Tags cloud card**: All agent tags in a compact layout
+
+4. **Related Agents section** — Always visible below the main content, showing up to 4 related agents from the same framework/category, loaded via API search
+
+5. **Added lucide-react icons**: ArrowLeft, Star, Bookmark, Share2, Copy, ExternalLink, Clock, Tag, User, FileCode, BookOpen, CheckCircle2, FolderOpen, ChevronRight
+
+6. **Framework color config system** (`frameworkColors`) — Centralized color definitions for each framework used across badges, borders, backgrounds, and hero gradients
+
+7. **Enhanced empty/loading states**:
+   - Loading: Spinner with "Loading agent details…" text
+   - Not found: Icon + message + "Back to Browse" button
+   - README empty: FileCode icon + "No README available"
+   - Code empty: Code2 icon + optional source link
+   - Related empty: Layers icon + "Browse all agents" link
+
+8. **Interactive features**:
+   - Copy agent ID with visual feedback (CheckCircle2 replaces Copy icon for 2s)
+   - Bookmark toggle (fills icon, changes color)
+   - Tab switching with active state styling
+   - Related agent cards are clickable and navigate to their detail pages
+   - Breadcrumb navigation back to Home or Browse
+
+### Verification Results
+- ✅ Browse view → click agent card → detail page loads with hero + tabs + sidebar
+- ✅ Knowledge Hub → click agent card → detail page loads correctly
+- ✅ All 4 tabs (Overview, README, Code, Related) work and switch content
+- ✅ Related agents load from API and display correctly
+- ✅ Clicking a related agent navigates to that agent's detail page
+- ✅ Breadcrumb navigation works (Home, Browse)
+- ✅ Bookmark button toggles with visual feedback
+- ✅ Copy ID button works with feedback
+- ✅ Framework-colored hero strip changes color based on agent's framework
+- ✅ VLM confirms: "well-designed, professional agent detail page... meets industry standards"
+- ✅ Server compiles and runs without errors
+
+### Architecture Notes
+- The DetailView is now the most complex component in page.tsx (~540 lines)
+- Uses `api.knowledge.get()` for agent data and `api.knowledge.search()` for related agents
+- Framework colors are centralized in `frameworkColors` map for consistency
+- The page uses a 3-column grid layout (2:1 ratio) on desktop, stacking on mobile

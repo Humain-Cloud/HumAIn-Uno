@@ -33,6 +33,20 @@ import {
   Cpu,
   Layers,
   ArrowRight,
+  ArrowLeft,
+  Star,
+  Bookmark,
+  Share2,
+  Copy,
+  ExternalLink,
+  Clock,
+  Tag,
+  User,
+  FileCode,
+  BookOpen,
+  CheckCircle2,
+  FolderOpen,
+  ChevronRight,
 } from 'lucide-react'
 
 // ─── Icons (inline SVGs to avoid importing all of lucide-react) ───
@@ -857,86 +871,530 @@ function SettingsView() {
   )
 }
 
+// ─── Framework Color Config ───
+
+const frameworkColors: Record<string, { bg: string; text: string; badge: string; badgeText: string; border: string; hero: string; dot: string }> = {
+  'LangGraph': { bg: 'bg-emerald-50 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-300', badge: 'bg-emerald-100 dark:bg-emerald-900/40', badgeText: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-800/40', hero: 'from-emerald-600 to-teal-600', dot: 'bg-emerald-500' },
+  'CrewAI': { bg: 'bg-amber-50 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-300', badge: 'bg-amber-100 dark:bg-amber-900/40', badgeText: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800/40', hero: 'from-amber-500 to-orange-500', dot: 'bg-amber-500' },
+  'AutoGen': { bg: 'bg-rose-50 dark:bg-rose-950/30', text: 'text-rose-700 dark:text-rose-300', badge: 'bg-rose-100 dark:bg-rose-900/40', badgeText: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-800/40', hero: 'from-rose-500 to-pink-500', dot: 'bg-rose-500' },
+  'Agno': { bg: 'bg-violet-50 dark:bg-violet-950/30', text: 'text-violet-700 dark:text-violet-300', badge: 'bg-violet-100 dark:bg-violet-900/40', badgeText: 'text-violet-700 dark:text-violet-300', border: 'border-violet-200 dark:border-violet-800/40', hero: 'from-violet-500 to-purple-500', dot: 'bg-violet-500' },
+  'LlamaIndex': { bg: 'bg-teal-50 dark:bg-teal-950/30', text: 'text-teal-700 dark:text-teal-300', badge: 'bg-teal-100 dark:bg-teal-900/40', badgeText: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800/40', hero: 'from-teal-500 to-cyan-500', dot: 'bg-teal-500' },
+}
+const defaultFrameworkColor = frameworkColors['LangGraph']!
+
+function getFrameworkColor(framework: string | null) {
+  if (!framework) return defaultFrameworkColor
+  return frameworkColors[framework] || defaultFrameworkColor
+}
+
 // ─── Detail View ───
 
 function DetailView() {
   const { selectedAgentId, setCurrentView, setSelectedAgentId } = useAppStore()
   const [agent, setAgent] = useState<KnowledgeAgent | null>(null)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'overview' | 'readme' | 'code' | 'related'>('overview')
+  const [relatedAgents, setRelatedAgents] = useState<KnowledgeAgent[]>([])
+  const [copied, setCopied] = useState(false)
+  const [bookmarked, setBookmarked] = useState(false)
 
   useEffect(() => {
     if (!selectedAgentId) return
     setLoading(true)
     api.knowledge.get(selectedAgentId)
-      .then((data: any) => setAgent(parseAgent(data)))
+      .then((data: any) => {
+        const parsed = parseAgent(data)
+        setAgent(parsed)
+        // Load related agents by same framework or category
+        if (parsed.framework || parsed.category) {
+          api.knowledge.search({
+            framework: parsed.framework || undefined,
+            category: parsed.category || undefined,
+            page: 1,
+            pageSize: 6,
+          }).then((relData: any) => {
+            const relAgents = (relData?.data || relData || []).map(parseAgent).filter((a: KnowledgeAgent) => a.id !== parsed.id)
+            setRelatedAgents(relAgents.slice(0, 4))
+          }).catch(() => {})
+        }
+      })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [selectedAgentId])
 
+  const handleCopyId = () => {
+    if (!agent) return
+    navigator.clipboard.writeText(agent.id).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  const handleBookmark = () => {
+    if (!agent) return
+    const store = useAppStore.getState()
+    store.toggleBookmark(agent.id)
+    setBookmarked(!bookmarked)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="h-8 w-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading agent details…</p>
+        </div>
       </div>
     )
   }
 
   if (!agent) {
     return (
-      <div className="text-center py-16">
-        <p className="text-muted-foreground">Agent not found.</p>
-        <button onClick={() => { setCurrentView('browse'); setSelectedAgentId(null) }} className="text-emerald-600 hover:underline mt-2">
-          ← Back to Browse
-        </button>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+            <Bot className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h2 className="text-xl font-bold mb-2">Agent Not Found</h2>
+          <p className="text-muted-foreground mb-4">The agent you're looking for doesn't exist or has been removed.</p>
+          <button onClick={() => { setCurrentView('browse'); setSelectedAgentId(null) }} className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors">
+            <ArrowLeft className="h-4 w-4" /> Back to Browse
+          </button>
+        </div>
       </div>
     )
   }
 
+  const fw = getFrameworkColor(agent.framework)
+
+  const tabs = [
+    { id: 'overview' as const, label: 'Overview', icon: BookOpen },
+    { id: 'readme' as const, label: 'README', icon: FileCode },
+    { id: 'code' as const, label: 'Code', icon: Code2 },
+    { id: 'related' as const, label: 'Related', icon: Layers },
+  ]
+
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-      <button onClick={() => { setCurrentView('browse'); setSelectedAgentId(null) }} className="text-sm text-muted-foreground hover:text-foreground mb-6 flex items-center gap-1">
-        ← Back to Browse
-      </button>
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 sm:p-8">
-        <div className="flex items-start justify-between mb-4">
-          <h1 className="text-2xl sm:text-3xl font-bold">{agent.name}</h1>
-          {agent.framework && (
-            <span className="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-3 py-1 rounded-full">
-              {agent.framework}
-            </span>
-          )}
-        </div>
-        <p className="text-muted-foreground mb-6">{agent.description}</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          {agent.difficulty && <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3"><p className="text-xs text-muted-foreground">Difficulty</p><p className="font-medium capitalize">{agent.difficulty}</p></div>}
-          {agent.industry && <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3"><p className="text-xs text-muted-foreground">Industry</p><p className="font-medium">{agent.industry}</p></div>}
-          {agent.category && <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3"><p className="text-xs text-muted-foreground">Category</p><p className="font-medium">{agent.category}</p></div>}
-          {agent.llm && <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3"><p className="text-xs text-muted-foreground">LLM</p><p className="font-medium">{agent.llm}</p></div>}
-        </div>
-        {agent.tags.length > 0 && (
-          <div className="mb-6">
-            <h3 className="font-semibold mb-2">Tags</h3>
-            <div className="flex flex-wrap gap-2">
-              {agent.tags.map((tag) => (
-                <span key={tag} className="text-xs bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">{tag}</span>
-              ))}
+    <div className="min-h-screen">
+      {/* Framework-colored hero strip */}
+      <div className={`bg-gradient-to-r ${fw.hero} relative overflow-hidden`}>
+        <div className="absolute inset-0 bg-black/10" />
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-1.5 text-white/70 text-sm mb-6" aria-label="Breadcrumb">
+            <button onClick={() => { setCurrentView('home'); setSelectedAgentId(null) }} className="hover:text-white transition-colors">Home</button>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <button onClick={() => { setCurrentView('browse'); setSelectedAgentId(null) }} className="hover:text-white transition-colors">Browse</button>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="text-white font-medium truncate max-w-[200px]">{agent.name}</span>
+          </nav>
+
+          {/* Title Row */}
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-2">
+                {agent.framework && (
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${fw.badge} ${fw.badgeText} backdrop-blur-sm`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${fw.dot}`} />
+                    {agent.framework}
+                  </span>
+                )}
+                {agent.isCurated && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white/20 text-white backdrop-blur-sm">
+                    <CheckCircle2 className="h-3 w-3" /> Curated
+                  </span>
+                )}
+              </div>
+              <h1 className="text-2xl sm:text-4xl font-extrabold text-white mb-2 leading-tight">{agent.name}</h1>
+              <p className="text-white/80 text-base sm:text-lg max-w-2xl">{agent.description}</p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleBookmark}
+                className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${bookmarked ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400' : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'}`}
+                aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark this agent'}
+              >
+                <Bookmark className={`h-5 w-5 ${bookmarked ? 'fill-current' : ''}`} />
+              </button>
+              <button
+                onClick={handleCopyId}
+                className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${copied ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400' : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'}`}
+                aria-label="Copy agent ID"
+              >
+                {copied ? <CheckCircle2 className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+              </button>
+              <button
+                className="h-10 w-10 rounded-xl flex items-center justify-center bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm transition-all"
+                aria-label="Share agent"
+              >
+                <Share2 className="h-5 w-5" />
+              </button>
             </div>
           </div>
-        )}
-        {agent.tools.length > 0 && (
-          <div className="mb-6">
-            <h3 className="font-semibold mb-2">Tools</h3>
-            <div className="flex flex-wrap gap-2">
-              {agent.tools.map((tool) => (
-                <span key={tool} className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full">{tool}</span>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left: Tabbed Content */}
+          <div className="lg:col-span-2">
+            {/* Tab Bar */}
+            <div className="flex items-center gap-1 border-b border-gray-200 dark:border-gray-800 mb-6 overflow-x-auto">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? `border-emerald-500 ${fw.text}`
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300 dark:hover:border-gray-600'
+                  }`}
+                >
+                  <tab.icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
               ))}
             </div>
+
+            {/* Tab: Overview */}
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                {/* Quick Stats Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { icon: FolderOpen, label: 'Category', value: agent.category || '—' },
+                    { icon: Building2, label: 'Industry', value: agent.industry || '—' },
+                    { icon: GraduationCap, label: 'Difficulty', value: agent.difficulty ? agent.difficulty.charAt(0).toUpperCase() + agent.difficulty.slice(1) : '—' },
+                    { icon: Brain, label: 'LLM', value: agent.llm || '—' },
+                  ].map((item) => (
+                    <div key={item.label} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <item.icon className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground font-medium">{item.label}</span>
+                      </div>
+                      <p className="font-semibold text-sm truncate">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Tags */}
+                {agent.tags.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Tag className="h-4 w-4 text-muted-foreground" /> Tags</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {agent.tags.map((tag) => (
+                        <span key={tag} className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-default">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tools */}
+                {agent.tools.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Wrench className="h-4 w-4 text-muted-foreground" /> Tools & Integrations</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {agent.tools.map((tool) => (
+                        <span key={tool} className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800/30">
+                          {tool}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Models */}
+                {agent.models.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Brain className="h-4 w-4 text-muted-foreground" /> Supported Models</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {agent.models.map((model) => (
+                        <span key={model} className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 border border-violet-100 dark:border-violet-800/30">
+                          {model}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Source & Author Info */}
+                <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-5">
+                  <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><Star className="h-4 w-4 text-muted-foreground" /> Agent Details</h3>
+                  <div className="space-y-3">
+                    {agent.author && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground flex items-center gap-2"><User className="h-3.5 w-3.5" /> Author</span>
+                        <span className="text-sm font-medium">{agent.author}</span>
+                      </div>
+                    )}
+                    {agent.sourceUrl && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground flex items-center gap-2"><ExternalLink className="h-3.5 w-3.5" /> Source</span>
+                        <a href={agent.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1">
+                          View Source <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground flex items-center gap-2"><Clock className="h-3.5 w-3.5" /> Last Updated</span>
+                      <span className="text-sm font-medium">{agent.updatedAt ? new Date(agent.updatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground flex items-center gap-2"><Copy className="h-3.5 w-3.5" /> Agent ID</span>
+                      <button onClick={handleCopyId} className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
+                        {agent.id.slice(0, 24)}…
+                        {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab: README */}
+            {activeTab === 'readme' && (
+              <div>
+                {agent.readme ? (
+                  <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden">
+                    <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/80 flex items-center gap-2">
+                      <FileCode className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">README.md</span>
+                    </div>
+                    <div className="p-5 sm:p-6 text-sm leading-relaxed whitespace-pre-wrap max-h-[600px] overflow-y-auto">
+                      {agent.readme}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-16 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl">
+                    <FileCode className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-muted-foreground">No README available for this agent.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab: Code */}
+            {activeTab === 'code' && (
+              <div>
+                {agent.codeSnippet ? (
+                  <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden">
+                    <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/80 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Code2 className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">{agent.repoPath || 'main.py'}</span>
+                      </div>
+                      <button onClick={() => { navigator.clipboard.writeText(agent.codeSnippet || '') }} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
+                        <Copy className="h-3.5 w-3.5" /> Copy
+                      </button>
+                    </div>
+                    <pre className="p-5 sm:p-6 text-sm leading-relaxed overflow-x-auto max-h-[600px] overflow-y-auto bg-gray-950 text-gray-100 font-mono">
+                      <code>{agent.codeSnippet}</code>
+                    </pre>
+                  </div>
+                ) : (
+                  <div className="text-center py-16 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl">
+                    <Code2 className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-muted-foreground mb-2">No code snippet available for this agent.</p>
+                    {agent.sourceUrl && (
+                      <a href={agent.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1">
+                        View source on GitHub <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab: Related Agents */}
+            {activeTab === 'related' && (
+              <div>
+                {relatedAgents.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {relatedAgents.map((relAgent) => (
+                      <button
+                        key={relAgent.id}
+                        onClick={() => {
+                          setSelectedAgentId(relAgent.id)
+                          setCurrentView('detail')
+                          window.scrollTo(0, 0)
+                        }}
+                        className="group bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-5 text-left hover:border-emerald-300 dark:hover:border-emerald-700/50 hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="font-semibold text-sm group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{relAgent.name}</h4>
+                          {relAgent.framework && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${fw.badge} ${fw.badgeText}`}>
+                              {relAgent.framework}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{relAgent.description}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {relAgent.tags.slice(0, 2).map((tag) => (
+                            <span key={tag} className="text-[10px] bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{tag}</span>
+                          ))}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-16 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl">
+                    <Layers className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-muted-foreground mb-4">No related agents found.</p>
+                    <button onClick={() => { setCurrentView('browse'); setSelectedAgentId(null) }} className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1">
+                      Browse all agents <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        )}
-        {agent.readme && (
-          <div>
-            <h3 className="font-semibold mb-2">README</h3>
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">{agent.readme}</div>
+
+          {/* Right: Sidebar */}
+          <div className="lg:col-span-1 space-y-5">
+            {/* Quick Actions Card */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-5">
+              <h3 className="text-sm font-semibold mb-4">Quick Actions</h3>
+              <div className="space-y-2">
+                <button
+                  onClick={() => { setCurrentView('browse'); setSelectedAgentId(null) }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4" /> Back to Browse
+                </button>
+                <button
+                  onClick={handleBookmark}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors ${bookmarked ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-300' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750'}`}
+                >
+                  <Bookmark className={`h-4 w-4 ${bookmarked ? 'fill-current' : ''}`} /> {bookmarked ? 'Bookmarked' : 'Bookmark'}
+                </button>
+                {agent.sourceUrl && (
+                  <a
+                    href={agent.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750 text-sm font-medium transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4" /> View Source
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Framework Card */}
+            {agent.framework && (
+              <div className={`${fw.bg} border ${fw.border} rounded-xl p-5`}>
+                <h3 className="text-sm font-semibold mb-3">Framework</h3>
+                <div className="flex items-center gap-3">
+                  <div className={`h-10 w-10 rounded-xl ${fw.badge} flex items-center justify-center`}>
+                    <GitBranch className={`h-5 w-5 ${fw.text}`} />
+                  </div>
+                  <div>
+                    <p className={`font-semibold ${fw.text}`}>{agent.framework}</p>
+                    <p className="text-xs text-muted-foreground">AI Agent Framework</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Metadata Card */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-5">
+              <h3 className="text-sm font-semibold mb-4">Metadata</h3>
+              <div className="space-y-3 text-sm">
+                {agent.category && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Category</span>
+                    <span className="font-medium">{agent.category}</span>
+                  </div>
+                )}
+                {agent.industry && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Industry</span>
+                    <span className="font-medium">{agent.industry}</span>
+                  </div>
+                )}
+                {agent.difficulty && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Difficulty</span>
+                    <span className={`font-medium capitalize ${agent.difficulty === 'beginner' ? 'text-green-600 dark:text-green-400' : agent.difficulty === 'advanced' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>{agent.difficulty}</span>
+                  </div>
+                )}
+                {agent.language && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Language</span>
+                    <span className="font-medium">{agent.language}</span>
+                  </div>
+                )}
+                {agent.llm && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">LLM</span>
+                    <span className="font-medium">{agent.llm}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Curated</span>
+                  <span className="font-medium">{agent.isCurated ? 'Yes' : 'No'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Tags Cloud Card */}
+            {agent.tags.length > 0 && (
+              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-5">
+                <h3 className="text-sm font-semibold mb-3">Tags</h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {agent.tags.map((tag) => (
+                    <span key={tag} className="text-xs px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Related Agents Section (always visible below) */}
+        {relatedAgents.length > 0 && (
+          <div className="mt-12">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">Related Agents</h2>
+              <button onClick={() => { setCurrentView('browse'); setSelectedAgentId(null) }} className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-medium">
+                View All <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {relatedAgents.map((relAgent) => (
+                <button
+                  key={relAgent.id}
+                  onClick={() => {
+                    setSelectedAgentId(relAgent.id)
+                    setCurrentView('detail')
+                    window.scrollTo(0, 0)
+                  }}
+                  className="group bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-5 text-left hover:border-emerald-300 dark:hover:border-emerald-700/50 hover:shadow-md transition-all"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="font-semibold text-sm group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">{relAgent.name}</h4>
+                    {relAgent.framework && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${fw.badge} ${fw.badgeText}`}>
+                        {relAgent.framework}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{relAgent.description}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {relAgent.tags.slice(0, 2).map((tag) => (
+                      <span key={tag} className="text-[10px] bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{tag}</span>
+                    ))}
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
