@@ -10,19 +10,17 @@ import { setInitialData } from '@/lib/data-cache'
 import { AuthModal } from '@/components/auth/auth-modal'
 import { NotificationCenter } from '@/components/notifications/notification-center'
 
-// Dynamic imports for all views to reduce initial bundle size and prevent OOM
-const HomeView = dynamic(() => import('@/components/views/home-view').then(m => ({ default: m.HomeView })))
-const BrowseView = dynamic(() => import('@/components/views/browse-view').then(m => ({ default: m.BrowseView })), { ssr: false })
-const DetailView = dynamic(() => import('@/components/views/detail-view').then(m => ({ default: m.DetailView })), { ssr: false })
-const DashboardView = dynamic(() => import('@/components/views/dashboard-view').then(m => ({ default: m.DashboardView })), { ssr: false })
-const WizardView = dynamic(() => import('@/components/views/wizard-view').then(m => ({ default: m.WizardView })), { ssr: false })
-const AdminView = dynamic(() => import('@/components/views/admin-view').then(m => ({ default: m.AdminView })), { ssr: false })
-const KnowledgeHubView = dynamic(() => import('@/components/views/knowledge-hub-view').then(m => ({ default: m.KnowledgeHubView })), { ssr: false })
-const SettingsView = dynamic(() => import('@/components/views/settings-view').then(m => ({ default: m.SettingsView })), { ssr: false })
-const CompareBar = dynamic(() => import('@/components/agents/compare-bar').then(m => ({ default: m.CompareBar })), { ssr: false })
-const CompareModal = dynamic(() => import('@/components/agents/compare-modal').then(m => ({ default: m.CompareModal })), { ssr: false })
-const AiChatButton = dynamic(() => import('@/components/ai/ai-chat-button').then(m => ({ default: m.AiChatButton })), { ssr: false })
-const AiChatPanel = dynamic(() => import('@/components/ai/ai-chat-panel').then(m => ({ default: m.AiChatPanel })), { ssr: false })
+// Lazy view loader - only loads the active view to prevent OOM
+const viewLoaders: Record<string, () => Promise<{ default: React.ComponentType }>> = {
+  home: () => import('@/components/views/home-view').then(m => ({ default: m.HomeView })),
+  hub: () => import('@/components/views/knowledge-hub-view').then(m => ({ default: m.KnowledgeHubView })),
+  browse: () => import('@/components/views/browse-view').then(m => ({ default: m.BrowseView })),
+  detail: () => import('@/components/views/detail-view').then(m => ({ default: m.DetailView })),
+  dashboard: () => import('@/components/views/dashboard-view').then(m => ({ default: m.DashboardView })),
+  wizard: () => import('@/components/views/wizard-view').then(m => ({ default: m.WizardView })),
+  admin: () => import('@/components/views/admin-view').then(m => ({ default: m.AdminView })),
+  settings: () => import('@/components/views/settings-view').then(m => ({ default: m.SettingsView })),
+}
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -664,15 +662,62 @@ function Footer() {
   )
 }
 
-const viewComponents: Record<string, React.ComponentType> = {
-  home: HomeView,
-  hub: KnowledgeHubView,
-  browse: BrowseView,
-  detail: DetailView,
-  dashboard: DashboardView,
-  wizard: WizardView,
-  admin: AdminView,
-  settings: SettingsView,
+// Lazy-loaded shared components (only loaded when needed)
+const CompareBar = dynamic(() => import('@/components/agents/compare-bar').then(m => ({ default: m.CompareBar })), { ssr: false })
+const CompareModal = dynamic(() => import('@/components/agents/compare-modal').then(m => ({ default: m.CompareModal })), { ssr: false })
+const AiChatButton = dynamic(() => import('@/components/ai/ai-chat-button').then(m => ({ default: m.AiChatButton })), { ssr: false })
+const AiChatPanel = dynamic(() => import('@/components/ai/ai-chat-panel').then(m => ({ default: m.AiChatPanel })), { ssr: false })
+
+// Memoized lazy view component - only loads the active view
+function LazyView({ view }: { view: string }) {
+  const [viewState, setViewState] = useState<{ component: React.ComponentType | null; loading: boolean; error: string | null }>({
+    component: null, loading: true, error: null
+  })
+
+  useEffect(() => {
+    let cancelled = false
+    
+    const loader = viewLoaders[view] || viewLoaders.home
+    loader()
+      .then((mod) => {
+        if (!cancelled) {
+          setViewState({ component: mod.default, loading: false, error: null })
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Failed to load view:', view, err)
+          setViewState({ component: null, loading: false, error: 'Failed to load view' })
+        }
+      })
+    
+    return () => { cancelled = true }
+  }, [view])
+
+  if (viewState.loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (viewState.error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-sm text-destructive">{viewState.error}</p>
+          <button onClick={() => window.location.reload()} className="text-sm text-emerald-600 hover:underline">Retry</button>
+        </div>
+      </div>
+    )
+  }
+
+  const ViewComponent = viewState.component
+  return ViewComponent ? <ViewComponent /> : null
 }
 
 export function AppLayout({ initialData }: { initialData?: any }) {
@@ -687,8 +732,6 @@ export function AppLayout({ initialData }: { initialData?: any }) {
       setInitialData(initialData)
     }
   }, [initialData])
-
-  const ViewComponent = viewComponents[currentView] || HomeView
 
   // Scroll to top on view change
   useEffect(() => {
@@ -738,7 +781,7 @@ export function AppLayout({ initialData }: { initialData?: any }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
           >
-            <ViewComponent />
+            <LazyView view={currentView} />
           </motion.div>
         </AnimatePresence>
       </main>

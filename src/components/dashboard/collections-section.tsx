@@ -314,4 +314,3 @@ export function CollectionsSection({
   )
 }
 
-export { CollectionsSection }
