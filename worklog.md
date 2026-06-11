@@ -194,3 +194,86 @@ User requested: "Each Agent card should have a dedicated page and a specialized 
 - Uses `api.knowledge.get()` for agent data and `api.knowledge.search()` for related agents
 - Framework colors are centralized in `frameworkColors` map for consistency
 - The page uses a 3-column grid layout (2:1 ratio) on desktop, stacking on mobile
+
+---
+
+## Session 5 — Comprehensive Agent Detail Page with Master Legendary Prompts
+
+### Task
+User requested: "Each Agent card should have a dedicated page and a specialized curate page for the respective card such that everything is covered for that particular card in either of 'Knowledge Hub' and/or 'Browse' and such that it contains full-length industry-graded Fully in-depth curate Master Legendary prompt(s) for each one of the in their respective sub-pages at a dedicated location within that sub-page for each agent."
+
+### Problem Analysis
+- The previous DetailView (from Session 4) had only 4 tabs (Overview, README, Code, Related) with basic content
+- No comprehensive capabilities documentation
+- No use cases or industry-specific scenarios
+- No Master Legendary Prompts — the key user requirement
+- No architecture diagrams or technical specifications
+- No configuration reference or getting started guide
+- No FAQ, best practices, or limitations documentation
+- Felt like a "basic content card" rather than a dedicated curated page
+
+### Files Created/Modified
+
+1. **NEW: `/src/lib/agent-detail-data.ts`** — Agent Detail Data Enrichment Module
+   - `AgentDetailData` type with 10 comprehensive sections
+   - `getAgentDetailData(agent)` function generating rich content dynamically
+   - Category-specific capabilities for all 22+ categories (Research, Data Analytics, Customer Service, Communication, Marketing, Code Generation, Workflow Automation, Finance, Healthcare, Cybersecurity, DevOps, Agriculture, Business, E-commerce, Education, Travel, Entertainment, Gaming, Creative, Legal, AI/ML, IoT)
+   - Framework-specific architecture patterns for all 5 frameworks (LangGraph/ReAct, CrewAI/Multi-Agent, AutoGen/Conversational, Agno/Lightweight, LlamaIndex/RAG)
+   - Full-length Master Legendary Prompts (3 per agent, each 500+ words):
+     - Prompt 1: System Initialization & Role Definition
+     - Prompt 2: Advanced Task Execution & Reasoning
+     - Prompt 3: Category-specific specialized prompt (Research, Data Analytics, or Domain Expert)
+   - Each prompt includes: comprehensive instructions, constraints, quality criteria, boundary conditions, pro tips
+   - Dynamic configuration generation based on framework
+   - Getting Started guide with 5 steps and framework-specific code snippets
+   - FAQ with 7 questions, Best Practices with 5 items, Limitations with 5 items
+
+2. **NEW: `/src/components/detail-view.tsx`** — Enhanced Detail View Component
+   - 8 comprehensive tabs: Overview, Capabilities, Master Prompts, Architecture, Getting Started, Configuration, FAQ, Related
+   - Premium "Master Legendary Prompts" section with:
+     - Gradient header banner with sparkle icon
+     - Prompt count badge and "Ready to deploy" indicators
+     - Each prompt in its own card with title, category badge, copy button
+     - Expand/collapse for long prompts (preview → full text)
+     - Pro Tips section with amber-themed styling
+   - Sidebar with:
+     - Quick Actions card
+     - Framework card (color-coded)
+     - Master Prompts quick link button (gradient CTA)
+     - Metadata card
+     - Explore Sections quick-nav
+     - Tags cloud
+   - Collapsible FAQ sections
+   - Architecture diagram with ASCII art
+   - Configuration table with required/optional badges
+   - Getting Started steps with numbered badges and code blocks
+   - Changelog timeline with version history
+
+3. **MODIFIED: `/src/app/page.tsx`**
+   - Removed old inline DetailView (~540 lines) and framework color config
+   - Added `import DetailView from '@/components/detail-view'`
+   - Fixed pre-existing lint error: `setLoading(true)` inside useEffect in BrowseView (replaced with proper cleanup pattern)
+
+### Verification Results
+- ✅ Lint passes clean (0 errors)
+- ✅ Page loads without compilation errors
+- ✅ Browse view → click agent card → enhanced detail page loads
+- ✅ Knowledge Hub → click agent card → enhanced detail page loads
+- ✅ All 8 tabs render correctly: Overview, Capabilities, Master Prompts, Architecture, Getting Started, Configuration, FAQ, Related
+- ✅ Master Prompts tab shows 3 full-length prompts with expand/collapse and copy functionality
+- ✅ Pro Tips render under each prompt
+- ✅ Architecture shows framework-specific pattern, components, diagram, and changelog
+- ✅ Getting Started shows 5 steps with framework-specific code examples
+- ✅ Configuration shows table with all options + .env.example
+- ✅ FAQ with collapsible sections works
+- ✅ Sidebar "View Master Prompts" button navigates to Prompts tab
+- ✅ Sidebar "Explore Sections" navigation works
+- ✅ Related agents section loads and is clickable
+- ✅ All API calls return 200 status
+
+### Architecture Notes
+- DetailView moved from inline in page.tsx to separate component file (`/src/components/detail-view.tsx`)
+- Agent detail data generation is in a separate module (`/src/lib/agent-detail-data.ts`)
+- Content is dynamically generated based on agent properties (category, framework, tools, LLM)
+- The 4-column grid layout (3:1 ratio) on desktop stacks properly on mobile
+- Total new code: ~1,400 lines (data module ~600 lines, detail view ~800 lines)
