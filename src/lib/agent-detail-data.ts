@@ -271,6 +271,36 @@ const categoryCapabilities: Record<string, Capability[]> = {
     { title: 'Market Trend Forecasting', description: 'Predicts real estate market trends using macroeconomic indicators, demographic shifts, zoning changes, and development pipeline data to inform investment timing and location selection.', icon: 'BarChart3' },
     { title: 'Investment Portfolio Analysis', description: 'Evaluates real estate portfolio performance with metrics including NOI, cap rate, cash-on-cash return, and IRR, providing diversification recommendations and risk-adjusted return optimization.', icon: 'Briefcase' },
   ],
+  'Construction': [
+    { title: 'Blueprint Analysis & Compliance', description: 'Analyzes architectural blueprints and construction plans against building codes, zoning regulations, and safety standards to identify compliance gaps, design conflicts, and required permit modifications before construction begins.', icon: 'FileCheck' },
+    { title: 'Site Safety Monitoring', description: 'Continuously monitors construction site conditions using IoT sensors, drone imagery, and worker activity data to detect safety hazards, enforce PPE compliance, and prevent accidents through real-time alerting and predictive risk scoring.', icon: 'HardHat' },
+    { title: 'Cost Estimation & Budgeting', description: 'Generates detailed construction cost estimates by analyzing material prices, labor rates, equipment requirements, and project scope, with variance tracking, change order impact analysis, and cash flow forecasting throughout the project lifecycle.', icon: 'Calculator' },
+    { title: 'Schedule & Resource Planning', description: 'Optimizes construction schedules using critical path analysis, resource leveling, and weather forecasting to coordinate trades, materials delivery, and equipment usage while minimizing delays and maximizing productivity across concurrent work fronts.', icon: 'Clock' },
+  ],
+  'Sports & Fitness': [
+    { title: 'Performance Analytics', description: 'Tracks and analyzes athlete performance metrics including speed, power, endurance, and technique through wearable sensor data and video analysis, providing personalized insights and comparative benchmarks against historical and peer performance.', icon: 'Activity' },
+    { title: 'Injury Prevention & Recovery', description: 'Monitors biomechanical indicators, training load, and recovery metrics to predict injury risk, recommend preventive exercises, and design progressive rehabilitation protocols that safely return athletes to peak performance.', icon: 'Dumbbell' },
+    { title: 'Training Program Design', description: 'Creates periodized training programs tailored to individual athlete profiles, sport-specific demands, and competitive calendars, incorporating progressive overload, deload cycles, and sport-specific skill development drills.', icon: 'Target' },
+    { title: 'Nutrition & Wellness Planning', description: 'Develops personalized nutrition strategies based on metabolic profiling, training demands, body composition goals, and dietary preferences, with meal planning, supplement guidance, and hydration optimization for peak athletic performance.', icon: 'Heart' },
+  ],
+  'Sustainability': [
+    { title: 'Carbon Footprint Assessment', description: 'Calculates comprehensive carbon emissions across organizational operations and supply chains using lifecycle analysis methodology, identifying hotspots, benchmarking against industry standards, and generating actionable reduction roadmaps with projected ROI.', icon: 'Leaf' },
+    { title: 'ESG Reporting & Compliance', description: 'Automates Environmental, Social, and Governance data collection, analysis, and reporting aligned with GRI, SASB, TCFD, and CSRD frameworks, ensuring regulatory compliance while identifying improvement opportunities and stakeholder communication strategies.', icon: 'FileCheck' },
+    { title: 'Waste Reduction Optimization', description: 'Analyzes waste streams across operations to identify reduction opportunities, implement circular economy strategies, optimize recycling and composting programs, and track progress toward zero-waste goals with cost-benefit analysis for each initiative.', icon: 'Recycle' },
+    { title: 'Green Certification Advisory', description: 'Guides organizations through green building certification processes including LEED, BREEAM, and WELL, assessing eligibility, recommending strategies for credit attainment, managing documentation, and tracking progress toward certification milestones.', icon: 'Award' },
+  ],
+  'Insurance': [
+    { title: 'Claims Processing & Adjudication', description: 'Automates insurance claims intake, validation, and adjudication using document analysis, policy matching, and fraud scoring to accelerate claim resolution, reduce manual effort, and ensure consistent, fair outcomes across all claim types and severity levels.', icon: 'FileText' },
+    { title: 'Underwriting & Risk Assessment', description: 'Evaluates insurance applications through multi-factor risk analysis incorporating applicant history, actuarial data, geographic risk models, and real-time data sources to generate accurate risk scores, pricing recommendations, and coverage terms.', icon: 'ShieldCheck' },
+    { title: 'Fraud Detection & Prevention', description: 'Identifies suspicious claims and policy applications through pattern recognition, network analysis, behavioral anomalies, and cross-referencing with fraud databases to prevent financial losses while minimizing false positives that delay legitimate claims.', icon: 'Search' },
+    { title: 'Policy Management & Renewal', description: 'Manages the full policy lifecycle including issuance, endorsements, renewals, and cancellations with automated renewal recommendations based on risk changes, premium optimization, cross-sell opportunities, and customer retention analytics.', icon: 'Scale' },
+  ],
+  'Transportation': [
+    { title: 'Fleet Management & Optimization', description: 'Manages vehicle fleets with real-time GPS tracking, utilization analytics, maintenance scheduling, and total cost of ownership optimization to maximize fleet efficiency, reduce downtime, and ensure regulatory compliance across all vehicle classes.', icon: 'Ship' },
+    { title: 'Route Planning & Traffic Analysis', description: 'Calculates optimal routes using real-time traffic data, historical patterns, weather conditions, and road restrictions to minimize transit time and fuel consumption while meeting delivery windows and regulatory requirements for hours of service.', icon: 'Route' },
+    { title: 'Cargo & Load Optimization', description: 'Optimizes cargo loading and distribution using dimensional weight analysis, vehicle capacity constraints, delivery priority sequencing, and load balancing algorithms to maximize vehicle utilization while preventing damage and ensuring weight compliance.', icon: 'Package' },
+    { title: 'Vehicle Health Monitoring', description: 'Monitors vehicle systems through telematics and OBD-II data to predict maintenance needs, detect emerging mechanical issues, and schedule preventive service before failures occur, reducing unplanned downtime and extending vehicle lifespan.', icon: 'Fuel' },
+  ],
 }
 
 // ─── Framework-specific architecture patterns ───

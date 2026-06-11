@@ -743,3 +743,214 @@ The category filter was completely broken because `cat.slug` (e.g., "code-genera
 1. Dev server stability issues persist from previous sessions (requires warmup)
 2. Some categories still relatively small (Cybersecurity: 6, Customer Service: 6, DevOps: 7, Marketing: 7, Travel: 7) — could be further boosted
 3. The "200+" text in the hero badge and footer should be updated to "300+" to reflect the new agent count
+
+---
+Task ID: 4
+Agent: Code Agent
+Task: Add 5 new category style map entries, category capabilities, and icon mappings for Construction, Sports & Fitness, Sustainability, Insurance, Transportation
+Work Log:
+- Read worklog.md for project context and understood the platform architecture
+- Read page.tsx to find categoryStyleMap section (lines 119-461) and existing lucide-react imports (lines 9-58)
+- Added 5 new icon imports to page.tsx: HardHat, Trophy, Leaf, ShieldCheck, Ship
+- Added 5 new categoryStyleMap entries to page.tsx with distinct color schemes:
+  - Construction: HardHat icon, amber/orange theme
+  - Sports & Fitness: Trophy icon, red/rose theme
+  - Sustainability: Leaf icon, green/lime theme
+  - Insurance: ShieldCheck icon, blue/sky theme
+  - Transportation: Ship icon, teal/cyan theme
+- Read agent-detail-data.ts to find categoryCapabilities section (lines 87-274)
+- Added 5 new categoryCapabilities entries to agent-detail-data.ts with 4 capabilities each:
+  - Construction: Blueprint Analysis & Compliance, Site Safety Monitoring, Cost Estimation & Budgeting, Schedule & Resource Planning
+  - Sports & Fitness: Performance Analytics, Injury Prevention & Recovery, Training Program Design, Nutrition & Wellness Planning
+  - Sustainability: Carbon Footprint Assessment, ESG Reporting & Compliance, Waste Reduction Optimization, Green Certification Advisory
+  - Insurance: Claims Processing & Adjudication, Underwriting & Risk Assessment, Fraud Detection & Prevention, Policy Management & Renewal
+  - Transportation: Fleet Management & Optimization, Route Planning & Traffic Analysis, Cargo & Load Optimization, Vehicle Health Monitoring
+- Read detail-view.tsx to find getCapIcon function (line 98-102) and existing imports (lines 8-67)
+- Added 14 new icon imports to detail-view.tsx: HardHat, Trophy, Leaf, ShieldCheck, Ship, Activity, Dumbbell, Calculator, FileCheck, Recycle, Award, Route, Package, Fuel
+- Added 16 new icon mappings to getCapIcon in detail-view.tsx: FileText, Target, HardHat, Trophy, Leaf, ShieldCheck, Ship, Activity, Dumbbell, Calculator, FileCheck, Recycle, Award, Route, Package, Fuel
+- Ran lint: 0 errors, 0 warnings
+Stage Summary:
+- All 5 new categories have dedicated categoryStyleMap entries with proper icons and color schemes
+- All 5 new categories have dedicated categoryCapabilities entries with 4 capabilities each
+- All new capability icon strings are mapped in getCapIcon (no runtime ReferenceError risk)
+- Lint passes clean with 0 errors
+- Total categories with dedicated styling and capabilities: 30 (25 original + 5 new)
+
+---
+
+## Session 12 — Seed Phase 3: 90 New Agents & 5 New Categories (310→400)
+
+### Task
+Create `/home/z/my-project/scripts/seed-agents-phase3.ts` that adds 90 new curated KnowledgeAgent records and 5 new categories to the database, bringing the total from 310 to 400+.
+
+### Problem Analysis
+- Database had 310 KnowledgeAgent records across 31 categories
+- 5 categories were below 10 agents: Cybersecurity (6), Customer Service (6), DevOps (7), Marketing (7), Travel (7)
+- No agents in Construction, Sports & Fitness, Sustainability, Insurance, Transportation categories
+- Several established categories could benefit from more agents
+- Target: 400+ agents with broader category coverage
+
+### Changes Made
+
+1. **NEW: `/home/z/my-project/scripts/seed-agents-phase3.ts`** — Comprehensive Phase 3 seed script with 90 inline agent definitions
+
+   **5 New Categories Seeded (via upsert):**
+   - Construction (slug: construction, icon: hard-hat)
+   - Sports & Fitness (slug: sports-fitness, icon: trophy)
+   - Sustainability (slug: sustainability, icon: leaf)
+   - Insurance (slug: insurance, icon: shield-check)
+   - Transportation (slug: transportation, icon: truck)
+
+   **90 New Agents Distribution:**
+
+   *A) Boost 5 categories below 10 → 10 each (17 agents):*
+   - Cybersecurity: +4 (6→10) — ZeroTrust Architect, CloudSecurity Posture Agent, SecOps Playbook Generator, DataLoss Prevention Agent
+   - Customer Service: +4 (6→10) — LiveChat Escalation Predictor, Multilingual Support Router, CustomerEffort Score Analyzer, SelfService Portal Optimizer
+   - DevOps: +3 (7→10) — CanaryRelease Manager, ContainerImage Optimizer, GitOps Sync Validator
+   - Marketing: +3 (7→10) — ContentRepurposer AI, AdSpend Optimizer, InfluencerMatch Agent
+   - Travel: +3 (7→10) — TripBudget Planner, LoyaltyPoint Maximizer, TravelDocument Checker
+
+   *B) Add 5 NEW categories (30 agents, 6 each):*
+   - Construction: 6 — BlueprintAnalyzer AI, SiteSafety Monitor, CostEstimator Pro, ScheduleTracker Agent, MaterialOptimizer, BuildingCode Checker
+   - Sports & Fitness: 6 — WorkoutPlan Generator, InjuryRisk Predictor, PerformanceTracker AI, NutritionPlanner Agent, GameStrategy Analyst, AthleteScout AI
+   - Sustainability: 6 — CarbonAudit Agent, ESGReporter AI, WasteReducer Agent, GreenCert Advisor, CircularEconomy Planner, WaterFootprint Analyzer
+   - Insurance: 6 — ClaimsAdjudicator AI, UnderwritingBot Agent, FraudClaim Detector, PolicyRenewal Predictor, RiskPool Optimizer, ActuarialModel Agent
+   - Transportation: 6 — FleetManager AI, TrafficOptimizer Agent, CargoLoader Planner, DeliveryRouter AI, VehicleHealth Monitor, TransitSchedule Optimizer
+
+   *C) Boost 8 established categories further (40 agents, +5 each):*
+   - Software Development: +5 (21→26) — APIContract Tester, DependencyAudit Agent, FeatureFlag Manager, CodeReview Automator, DBMigration Planner
+   - Productivity: +5 (16→21) — FocusMode Guardian, DocSummarizer Pro, HabitTracker Coach, InboxZero Agent, MeetingCost Calculator
+   - Research: +5 (16→21) — SystematicReview Automator, CitationNetwork Mapper, LabNotebook Digitizer, ExperimentDesign Advisor, PatentPrior Art Searcher
+   - Media: +5 (15→20) — ContentCalendar Planner, VideoSEO Optimizer, PodcastShow Notes Generator, NewsDigest Curator, SocialListening Tracker
+   - Human Resources: +5 (12→17) — RemoteWork Policy Advisor, DEIMetrics Tracker, CompensationBenchmark Agent, Onboarding Journey Designer, WorkplaceWellness Monitor
+   - Finance: +5 (11→16) — CashFlow Forecaster, CreditRisk Scorer, ExpenseAnomaly Detector, PortfolioRebalancer Agent, FinancialReg Compliance Agent
+   - Communication: +5 (11→16) — AsyncCommunication Planner, TechnicalWriter Agent, CrisisComm Manager, InternalNewsletter Generator, FeedbackDelivery Coach
+   - Data Analytics: +5 (11→16) — DataCatalog AutoTagger, AnomalyExplorer Agent, DataPrivacy Classifier, MetricDefinition Standardizer, SelfServiceBI Enabler
+
+   *Bonus (3 additional agents to reach 400+):*
+   - Construction: +1 — BIMCoordination Agent
+   - Insurance: +1 — CatastropheModel Agent
+   - Sports & Fitness: +1 — RecoveryOptimizer Agent
+
+2. **Format**: Followed exact same pattern as `seed-agents-phase2.ts` with:
+   - `PrismaClient` directly imported (avoids Next.js module resolution issues)
+   - Round-robin framework and LLM assignment via `nextFw()` and `nextLlm()`
+   - `rp()` helper for repoPath generation
+   - `snippet()` helper for codeSnippet generation
+   - All IDs prefixed with `p3-` to avoid collisions
+   - `upsert` pattern for idempotent seeding
+   - First agent in each new category marked as `featured: true`
+
+### Final Distribution (400 agents, 36 categories)
+| Category | Count | | Category | Count |
+|---|---|---|---|---|
+| Software Development | 26 | | Customer Service | 10 |
+| Productivity | 21 | | DevOps | 10 |
+| Research | 21 | | E-commerce | 10 |
+| Human Resources | 17 | | Education | 10 |
+| Media | 20 | | Energy | 10 |
+| Communication | 16 | | Food | 10 |
+| Data Analytics | 16 | | Gaming | 10 |
+| Finance | 16 | | General | 10 |
+| AI/ML | 10 | | Healthcare | 10 |
+| Agriculture | 10 | | Marketing | 10 |
+| Code Generation | 10 | | Travel | 10 |
+| Cybersecurity | 10 | | Construction | 7 |
+| | | | Insurance | 7 |
+| | | | Sports & Fitness | 7 |
+| Business | 8 | | Sustainability | 6 |
+| Creative | 8 | | Transportation | 6 |
+| Entertainment | 8 | | | |
+| IoT | 8 | | | |
+| Legal | 8 | | | |
+| Real Estate | 8 | | | |
+| Supply Chain | 8 | | | |
+| Workflow Automation | 8 | | | |
+
+### Verification Results
+- ✅ Script ran successfully: `bun run scripts/seed-agents-phase3.ts`
+- ✅ All 5 new categories upserted
+- ✅ All 90 agents seeded (0 failures)
+- ✅ Total KnowledgeAgent count: **400** (was 310, added 90)
+- ✅ Total categories: **36** (was 31, added 5)
+- ✅ All 5 previously below-10 categories now have 10 agents
+- ✅ All 5 new categories have 6-7 agents each
+- ✅ All 8 boosted established categories increased by +5
+
+---
+
+## Session 13 — Scale to 400+ Agents & Add 5 New Categories
+
+### Task
+User requested: Verify we have 400+ agents, and if not, add new agents across empty/underrepresented categories until we reach 400+.
+
+### Starting State
+- 310 agents across 31 categories
+- 5 categories below 10 agents (Cybersecurity: 6, Customer Service: 6, DevOps: 7, Marketing: 7, Travel: 7)
+- No Construction, Sports & Fitness, Sustainability, Insurance, or Transportation categories
+
+### Changes Made
+
+1. **NEW: `/scripts/seed-agents-phase3.ts`** — 90 new curated agents
+   - 5 categories boosted to 10: Cybersecurity +4, Customer Service +4, DevOps +3, Marketing +3, Travel +3
+   - 5 NEW categories with 33 agents: Construction (7), Sports & Fitness (7), Sustainability (6), Insurance (7), Transportation (6)
+   - 8 established categories boosted by +5 each: Software Dev, Productivity, Research, Media, HR, Finance, Communication, Data Analytics
+   - All IDs prefixed with `p3-`, uses upsert pattern for idempotent seeding
+
+2. **MODIFIED: `/src/app/page.tsx`** — Added 5 new category style map entries + updated text
+   - Construction: HardHat icon, amber/orange theme
+   - Sports & Fitness: Trophy icon, red/rose theme
+   - Sustainability: Leaf icon, green/lime theme
+   - Insurance: ShieldCheck icon, blue/sky theme
+   - Transportation: Ship icon, teal/cyan theme
+   - Updated all "200+" references to "400+" (hero badge, description, CTA, footer)
+
+3. **MODIFIED: `/src/lib/agent-detail-data.ts`** — Added 5 new categoryCapabilities entries
+   - Construction, Sports & Fitness, Sustainability, Insurance, Transportation
+   - Each with 4 domain-specific capabilities
+
+4. **MODIFIED: `/src/components/detail-view.tsx`** — Added 14 new icon imports and 16 getCapIcon mappings
+   - HardHat, Trophy, Leaf, ShieldCheck, Ship, Activity, Dumbbell, Calculator, FileCheck, Recycle, Award, Route, Package, Fuel
+
+5. **MODIFIED: `/src/app/layout.tsx`** — Updated meta descriptions from "200+" to "400+"
+
+### Final Distribution (400 agents, 36 categories)
+| Category | Count | | Category | Count |
+|---|---|---|---|---|
+| Software Development | 26 | | Education | 10 |
+| Productivity | 21 | | Energy | 10 |
+| Research | 21 | | Food | 10 |
+| Media | 20 | | Gaming | 10 |
+| Human Resources | 17 | | General | 10 |
+| Finance | 16 | | Healthcare | 10 |
+| Communication | 16 | | Marketing | 10 |
+| Data Analytics | 16 | | Travel | 10 |
+| AI/ML | 10 | | Business | 8 |
+| Agriculture | 10 | | Creative | 8 |
+| Code Generation | 10 | | Entertainment | 8 |
+| Customer Service | 10 | | IoT | 8 |
+| Cybersecurity | 10 | | Legal | 8 |
+| DevOps | 10 | | Real Estate | 8 |
+| E-commerce | 10 | | Supply Chain | 8 |
+| | | | Workflow Automation | 8 |
+| Construction | 7 | | Insurance | 7 |
+| Sports & Fitness | 7 | | Sustainability | 6 |
+| Transportation | 6 | | | |
+
+### Verification Results
+- ✅ Total agents: **400** (was 310, exceeds 400 target)
+- ✅ Total categories: **36** (was 31, added 5 new)
+- ✅ Lint passes clean (0 errors)
+- ✅ Home page shows "400 Knowledge Agents" and "36 Categories"
+- ✅ All "200+" text updated to "400+" throughout the platform
+- ✅ Browse view: All 36 categories appear as filter buttons
+- ✅ Browse view: Category filters work correctly (tested Construction: 7 agents)
+- ✅ Agent detail pages: New agents load with all 8 tabs
+- ✅ Master Prompts: Category-specific prompts render for new categories
+- ✅ No runtime errors in dev server log
+- ✅ All API endpoints returning 200 status
+
+### Unresolved Issues
+1. 8 categories still at 8 agents (Business, Creative, Entertainment, IoT, Legal, Real Estate, Supply Chain, Workflow Automation) — could be boosted to 10 in a future phase
+2. 5 new categories have 6-7 agents — could use a few more each
+3. Dev server stability issues persist from previous sessions
