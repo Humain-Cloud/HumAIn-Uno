@@ -5,6 +5,7 @@ import { useAppStore, type ViewType } from '@/lib/store'
 import { api } from '@/lib/api-client'
 import type { KnowledgeAgent, Category, Stats } from '@/lib/types'
 import DetailView from '@/components/detail-view'
+import { AgentPagination } from '@/components/agent-pagination'
 import {
   Search,
   Database,
@@ -677,6 +678,9 @@ function BrowseView() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [localSearch, setLocalSearch] = useState(searchQuery)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(24)
+  const [totalResults, setTotalResults] = useState(0)
 
   useEffect(() => {
     api.categories.list().then((data: any) => {
@@ -684,27 +688,67 @@ function BrowseView() {
     }).catch(console.error)
   }, [])
 
+  // Fetch agents with pagination
   useEffect(() => {
     let cancelled = false
-    const params: any = { page: 1, pageSize: 24 }
+    const params: any = { page: currentPage, pageSize }
     if (localSearch) params.q = localSearch
     if (selectedCategory) params.category = selectedCategory
 
     api.knowledge.search(params)
       .then((data: any) => {
-        if (!cancelled) setAgents(data?.data || data || [])
+        if (!cancelled) {
+          setAgents((data?.data || data || []).map(parseAgent))
+          setTotalResults(data?.total || 0)
+          setLoading(false)
+        }
       })
-      .catch(console.error)
-      .finally(() => { if (!cancelled) setLoading(false) })
+      .catch((err) => {
+        console.error(err)
+        if (!cancelled) setLoading(false)
+      })
     return () => { cancelled = true }
-  }, [localSearch, selectedCategory])
+  }, [localSearch, selectedCategory, currentPage, pageSize])
+
+  const totalPages = Math.ceil(totalResults / pageSize)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    setLoading(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize)
+    setCurrentPage(1)
+    setLoading(true)
+  }
+
+  const handleSearchChange = (value: string) => {
+    setLocalSearch(value)
+    setSearchQuery(value)
+    setCurrentPage(1)
+    setLoading(true)
+  }
+
+  const handleCategoryChange = (slug: string | null) => {
+    setSelectedCategory(slug)
+    setCurrentPage(1)
+    setLoading(true)
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <h1 className="text-3xl font-bold mb-6">
-        Browse Agents
-        <span className="absolute -bottom-1 left-0 h-1 w-24 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full" />
-      </h1>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold relative inline-block">
+          Browse Agents
+          <span className="absolute -bottom-1 left-0 h-1 w-24 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full" />
+        </h1>
+        <p className="text-muted-foreground mt-3">
+          Discover and explore our complete collection of AI agents across all categories and frameworks.
+        </p>
+      </div>
 
       {/* Search & Filters */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -712,12 +756,9 @@ function BrowseView() {
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.34-4.34" /></svg>
           <input
             type="text"
-            placeholder="Search agents..."
+            placeholder="Search agents by name, description, or tags..."
             value={localSearch}
-            onChange={(e) => {
-              setLocalSearch(e.target.value)
-              setSearchQuery(e.target.value)
-            }}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
           />
         </div>
@@ -726,7 +767,7 @@ function BrowseView() {
       {/* Category Tabs */}
       <div className="flex flex-wrap gap-2 mb-6">
         <button
-          onClick={() => setSelectedCategory(null)}
+          onClick={() => handleCategoryChange(null)}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${!selectedCategory ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:text-foreground'}`}
         >
           All
@@ -737,7 +778,7 @@ function BrowseView() {
           return (
             <button
               key={cat.id}
-              onClick={() => setSelectedCategory(cat.slug)}
+              onClick={() => handleCategoryChange(cat.slug)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${selectedCategory === cat.slug ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:text-foreground'}`}
             >
               <CatIcon className="h-3.5 w-3.5" />
@@ -750,7 +791,7 @@ function BrowseView() {
       {/* Agent Grid */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map(i => (
+          {Array.from({ length: Math.min(pageSize, 6) }).map((_, i) => (
             <div key={i} className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 animate-pulse">
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3" />
               <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2" />
@@ -760,14 +801,16 @@ function BrowseView() {
         </div>
       ) : agents.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-muted-foreground text-lg">No agents found.</p>
-          <p className="text-muted-foreground text-sm mt-2">Try adjusting your search or filters.</p>
+          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+            <Search className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <p className="text-lg font-medium mb-1">No agents found</p>
+          <p className="text-muted-foreground text-sm">Try adjusting your search or filters to find what you&apos;re looking for.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {agents.map((rawAgent) => {
-            const agent = parseAgent(rawAgent)
-            return (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {agents.map((agent) => (
               <div
                 key={agent.id}
                 onClick={() => {
@@ -775,10 +818,10 @@ function BrowseView() {
                   setCurrentView('detail')
                   window.scrollTo(0, 0)
                 }}
-                className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-emerald-500/50 hover:shadow-md transition-all cursor-pointer"
+                className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-emerald-500/50 hover:shadow-md transition-all cursor-pointer group"
               >
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-lg font-semibold">{agent.name}</h3>
+                  <h3 className="text-lg font-semibold group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{agent.name}</h3>
                   {agent.framework && (
                     <span className="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full shrink-0">
                       {agent.framework}
@@ -797,9 +840,19 @@ function BrowseView() {
                   )}
                 </div>
               </div>
-            )
-          })}
-        </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          <AgentPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalResults}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        </>
       )}
     </div>
   )
@@ -878,57 +931,197 @@ function SettingsView() {
 function KnowledgeHubView() {
   const { setCurrentView, setSelectedAgentId } = useAppStore()
   const [agents, setAgents] = useState<KnowledgeAgent[]>([])
+  const [allFrameworks, setAllFrameworks] = useState<string[]>([])
+  const [selectedFramework, setSelectedFramework] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(24)
+  const [totalResults, setTotalResults] = useState(0)
+  const [localSearch, setLocalSearch] = useState('')
 
+  // Fetch agents with pagination
   useEffect(() => {
-    api.knowledge.list({ page: 1, pageSize: 24 })
-      .then((data: any) => setAgents((data?.data || data || []).map(parseAgent)))
+    let cancelled = false
+    const params: any = { page: currentPage, pageSize }
+    if (localSearch) params.q = localSearch
+    if (selectedFramework) params.framework = selectedFramework
+
+    api.knowledge.list(params)
+      .then((data: any) => {
+        if (!cancelled) {
+          const parsedAgents = (data?.data || data || []).map(parseAgent)
+          setAgents(parsedAgents)
+          setTotalResults(data?.total || 0)
+          setLoading(false)
+        }
+      })
+      .catch((err) => {
+        console.error(err)
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [currentPage, pageSize, selectedFramework, localSearch])
+
+  // Load all framework names on mount via a broader query
+  useEffect(() => {
+    api.knowledge.list({ page: 1, pageSize: 50 })
+      .then((data: any) => {
+        const all = (data?.data || data || []).map(parseAgent)
+        const fws = [...new Set(all.map((a: KnowledgeAgent) => a.framework).filter(Boolean) as string[])]
+        setAllFrameworks(fws)
+      })
       .catch(console.error)
-      .finally(() => setLoading(false))
   }, [])
 
-  const frameworks = [...new Set(agents.map(a => a.framework).filter(Boolean))]
+  const totalPages = Math.ceil(totalResults / pageSize)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    setLoading(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize)
+    setCurrentPage(1)
+    setLoading(true)
+  }
+
+  const handleSearchChange = (value: string) => {
+    setLocalSearch(value)
+    setCurrentPage(1)
+    setLoading(true)
+  }
+
+  const handleFrameworkChange = (fw: string | null) => {
+    setSelectedFramework(fw)
+    setCurrentPage(1)
+    setLoading(true)
+  }
+
+  const frameworkColors: Record<string, string> = {
+    'LangGraph': 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+    'CrewAI': 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+    'AutoGen': 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300',
+    'Agno': 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300',
+    'LlamaIndex': 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300',
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <h1 className="text-3xl font-bold mb-2">Knowledge Hub</h1>
-      <p className="text-muted-foreground mb-8">Browse 200+ curated AI agent projects from the open-source community</p>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold relative inline-block">
+          Knowledge Hub
+          <span className="absolute -bottom-1 left-0 h-1 w-24 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full" />
+        </h1>
+        <p className="text-muted-foreground mt-3">
+          Browse 200+ curated AI agent projects from the open-source community. Filter by framework, search by name, and discover your next project.
+        </p>
+      </div>
 
-      {frameworks.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {frameworks.map(fw => (
-            <span key={fw} className="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full text-sm font-medium">
+      {/* Search Bar */}
+      <div className="relative mb-6">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.34-4.34" /></svg>
+        <input
+          type="text"
+          placeholder="Search knowledge base..."
+          value={localSearch}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
+        />
+      </div>
+
+      {/* Framework Filters */}
+      {allFrameworks.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-8">
+          <button
+            onClick={() => handleFrameworkChange(null)}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${!selectedFramework ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:text-foreground'}`}
+          >
+            All Frameworks
+          </button>
+          {allFrameworks.map(fw => (
+            <button
+              key={fw}
+              onClick={() => handleFrameworkChange(fw)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                selectedFramework === fw
+                  ? 'bg-emerald-600 text-white'
+                  : frameworkColors[fw] || 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+              }`}
+            >
               {fw}
-            </span>
+            </button>
           ))}
         </div>
       )}
 
+      {/* Agent Grid */}
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="h-8 w-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {agents.map((agent) => (
-            <div
-              key={agent.id}
-              onClick={() => {
-                setSelectedAgentId(agent.id)
-                setCurrentView('detail')
-                window.scrollTo(0, 0)
-              }}
-              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-emerald-500/50 hover:shadow-md transition-all cursor-pointer"
-            >
-              <h3 className="text-lg font-semibold mb-2">{agent.name}</h3>
-              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{agent.description}</p>
-              <div className="flex flex-wrap gap-1">
-                {agent.framework && <span className="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full">{agent.framework}</span>}
-                {agent.difficulty && <span className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full capitalize">{agent.difficulty}</span>}
-              </div>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 animate-pulse">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3" />
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2" />
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
             </div>
           ))}
         </div>
+      ) : agents.length === 0 ? (
+        <div className="text-center py-16">
+          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+            <BookOpen className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <p className="text-lg font-medium mb-1">No agents found</p>
+          <p className="text-muted-foreground text-sm">Try adjusting your search or framework filter.</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {agents.map((agent) => (
+              <div
+                key={agent.id}
+                onClick={() => {
+                  setSelectedAgentId(agent.id)
+                  setCurrentView('detail')
+                  window.scrollTo(0, 0)
+                }}
+                className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-emerald-500/50 hover:shadow-md transition-all cursor-pointer group"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="text-lg font-semibold group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{agent.name}</h3>
+                </div>
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{agent.description}</p>
+                <div className="flex flex-wrap gap-1">
+                  {agent.framework && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${frameworkColors[agent.framework] || 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'}`}>
+                      {agent.framework}
+                    </span>
+                  )}
+                  {agent.category && (
+                    <span className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{agent.category}</span>
+                  )}
+                  {agent.difficulty && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${agent.difficulty === 'beginner' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : agent.difficulty === 'advanced' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
+                      {agent.difficulty}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          <AgentPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalResults}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        </>
       )}
     </div>
   )

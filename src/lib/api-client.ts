@@ -32,13 +32,14 @@ export const api = {
     },
     get: (id: string) => fetchAPI(`/knowledge/${id}`),
     exportUrl: (id: string, format: 'code' | 'markdown' | 'zip' = 'code') => `/api/knowledge/${id}/export?format=${format}`,
-    list: (params?: { page?: number; pageSize?: number; framework?: string; industry?: string; category?: string }) => {
+    list: (params?: { page?: number; pageSize?: number; framework?: string; industry?: string; category?: string; q?: string }) => {
       const sp = new URLSearchParams()
       if (params?.page) sp.set('page', String(params.page))
       if (params?.pageSize) sp.set('pageSize', String(params.pageSize))
       if (params?.framework) sp.set('framework', params.framework)
       if (params?.industry) sp.set('industry', params.industry)
       if (params?.category) sp.set('category', params.category)
+      if (params?.q) sp.set('q', params.q)
       return fetchAPI(`/knowledge?${sp.toString()}`)
     },
     compare: (ids: string[]) => fetchAPI('/knowledge/compare', { method: 'POST', body: JSON.stringify({ ids }) }),
