@@ -74,14 +74,14 @@ const iconMap: Record<string, React.ElementType> = {
 
 // ─── Framework Colors ──────────────────────────────────────────────
 const frameworkColors: Record<string, { bar: string; text: string; badge: string; bg: string }> = {
-  LangGraph: { bar: 'from-emerald-400 to-emerald-600', text: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', bg: 'bg-emerald-500' },
-  CrewAI: { bar: 'from-amber-400 to-amber-600', text: 'text-amber-600', badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300', bg: 'bg-amber-500' },
-  AutoGen: { bar: 'from-rose-400 to-rose-600', text: 'text-rose-600', badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300', bg: 'bg-rose-500' },
-  Agno: { bar: 'from-violet-400 to-violet-600', text: 'text-violet-600', badge: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300', bg: 'bg-violet-500' },
-  LlamaIndex: { bar: 'from-teal-400 to-teal-600', text: 'text-teal-600', badge: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300', bg: 'bg-teal-500' },
+  LangGraph: { bar: 'from-emerald-400 to-emerald-600', text: 'text-emerald-600 dark:text-emerald-400', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', bg: 'bg-emerald-500' },
+  CrewAI: { bar: 'from-amber-400 to-amber-600', text: 'text-amber-600 dark:text-amber-400', badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300', bg: 'bg-amber-500' },
+  AutoGen: { bar: 'from-rose-400 to-rose-600', text: 'text-rose-600 dark:text-rose-400', badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300', bg: 'bg-rose-500' },
+  Agno: { bar: 'from-violet-400 to-violet-600', text: 'text-violet-600 dark:text-violet-400', badge: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300', bg: 'bg-violet-500' },
+  LlamaIndex: { bar: 'from-teal-400 to-teal-600', text: 'text-teal-600 dark:text-teal-400', badge: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300', bg: 'bg-teal-500' },
 }
 
-const defaultFrameworkColor = { bar: 'from-gray-400 to-gray-600', text: 'text-gray-600', badge: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', bg: 'bg-gray-500' }
+const defaultFrameworkColor = { bar: 'from-gray-400 to-gray-600', text: 'text-gray-600 dark:text-gray-400', badge: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', bg: 'bg-gray-500' }
 
 // ─── Relative Time ─────────────────────────────────────────────────
 function formatRelativeTime(dateStr: string): string {
@@ -430,7 +430,7 @@ export function AdminView() {
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600" />
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4 text-amber-600" />
+                  <RefreshCw className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                   Knowledge Base Re-Index
                 </CardTitle>
               </CardHeader>
@@ -438,7 +438,7 @@ export function AdminView() {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="flex items-center gap-6 flex-1">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-amber-600">
+                      <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
                         {stats?.knowledgeAgents ?? '—'}
                       </div>
                       <div className="text-xs text-muted-foreground">KB Agents</div>
@@ -635,7 +635,7 @@ export function AdminView() {
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-rose-400 via-pink-500 to-fuchsia-500" />
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-rose-600" />
+                  <Layers className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                   Top Categories
                 </CardTitle>
               </CardHeader>
@@ -828,11 +828,11 @@ export function AdminView() {
                       activities.map((activity, i) => {
                         const IconComp = iconMap[activity.icon] || Activity
                         const typeColorMap: Record<string, string> = {
-                          agent_created: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30',
-                          agent_featured: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30',
-                          knowledge_indexed: 'text-cyan-600 bg-cyan-100 dark:bg-cyan-900/30',
-                          user_signed_up: 'text-violet-600 bg-violet-100 dark:bg-violet-900/30',
-                          system: 'text-gray-600 bg-gray-100 dark:bg-gray-800',
+                          agent_created: 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30',
+                          agent_featured: 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30',
+                          knowledge_indexed: 'text-cyan-600 dark:text-cyan-400 bg-cyan-100 dark:bg-cyan-900/30',
+                          user_signed_up: 'text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/30',
+                          system: 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800',
                         }
                         const colorClass = typeColorMap[activity.type] || typeColorMap.system
 

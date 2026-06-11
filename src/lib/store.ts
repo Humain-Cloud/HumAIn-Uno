@@ -8,6 +8,13 @@ export interface ChatMessage {
   suggestedAgents?: Array<{ id: string; name: string; framework: string | null; description: string }>
 }
 
+export interface Collection {
+  id: string
+  name: string
+  agentIds: string[]
+  createdAt: string
+}
+
 interface AppState {
   // Navigation
   currentView: ViewType
@@ -28,12 +35,12 @@ interface AppState {
   setSelectedIndustry: (industry: string | null) => void
   selectedDifficulty: string | null
   setSelectedDifficulty: (difficulty: string | null) => void
-  sortBy: 'newest' | 'popular' | 'most-starred'
-  setSortBy: (sort: 'newest' | 'popular' | 'most-starred') => void
+  sortBy: 'newest' | 'popular' | 'most-starred' | 'az' | 'za' | 'recently-added'
+  setSortBy: (sort: 'newest' | 'popular' | 'most-starred' | 'az' | 'za' | 'recently-added') => void
   
   // View
-  viewMode: 'grid' | 'list'
-  setViewMode: (mode: 'grid' | 'list') => void
+  viewMode: 'grid' | 'list' | 'compact'
+  setViewMode: (mode: 'grid' | 'list' | 'compact') => void
   
   // Wizard
   wizardStep: number
@@ -61,6 +68,18 @@ interface AppState {
   chatMessages: ChatMessage[]
   addChatMessage: (msg: ChatMessage) => void
   clearChatMessages: () => void
+
+  // Bookmarks
+  bookmarkedAgentIds: string[]
+  toggleBookmark: (agentId: string) => void
+
+  // Collections
+  collections: Collection[]
+  createCollection: (name: string) => void
+  deleteCollection: (id: string) => void
+  renameCollection: (id: string, name: string) => void
+  addToCollection: (collectionId: string, agentId: string) => void
+  removeFromCollection: (collectionId: string, agentId: string) => void
   
   // Reset filters
   resetFilters: () => void
@@ -119,6 +138,116 @@ export const useAppStore = create<AppState>((set) => ({
   chatMessages: [],
   addChatMessage: (msg) => set((state) => ({ chatMessages: [...state.chatMessages, msg] })),
   clearChatMessages: () => set({ chatMessages: [] }),
+
+  // Bookmarks
+  bookmarkedAgentIds: (() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('humain-bookmarks')
+        return saved ? JSON.parse(saved) : []
+      } catch { return [] }
+    }
+    return []
+  })(),
+  toggleBookmark: (agentId) => set((state) => {
+    const isBookmarked = state.bookmarkedAgentIds.includes(agentId)
+    const newBookmarkList = isBookmarked
+      ? state.bookmarkedAgentIds.filter((id) => id !== agentId)
+      : [...state.bookmarkedAgentIds, agentId]
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('humain-bookmarks', JSON.stringify(newBookmarkList))
+    }
+    // Also add/remove from the default collection
+    let newCollections = state.collections
+    const defaultCol = state.collections.find((c) => c.id === 'default')
+    if (defaultCol) {
+      newCollections = state.collections.map((c) => {
+        if (c.id === 'default') {
+          if (isBookmarked) {
+            // Remove from default collection
+            return { ...c, agentIds: c.agentIds.filter((aid) => aid !== agentId) }
+          } else {
+            // Add to default collection (if not already there)
+            if (!c.agentIds.includes(agentId)) {
+              return { ...c, agentIds: [...c.agentIds, agentId] }
+            }
+          }
+        }
+        return c
+      })
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('humain-collections', JSON.stringify(newCollections))
+      }
+    }
+    return { bookmarkedAgentIds: newBookmarkList, collections: newCollections }
+  }),
+
+  // Collections
+  collections: (() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('humain-collections')
+        if (saved) return JSON.parse(saved)
+      } catch { /* ignore */ }
+    }
+    return [{
+      id: 'default',
+      name: 'My Favorites',
+      agentIds: [],
+      createdAt: new Date().toISOString(),
+    }]
+  })(),
+  createCollection: (name) => set((state) => {
+    const newCollection: Collection = {
+      id: `col-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name,
+      agentIds: [],
+      createdAt: new Date().toISOString(),
+    }
+    const newList = [...state.collections, newCollection]
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('humain-collections', JSON.stringify(newList))
+    }
+    return { collections: newList }
+  }),
+  deleteCollection: (id) => set((state) => {
+    const newList = state.collections.filter((c) => c.id !== id)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('humain-collections', JSON.stringify(newList))
+    }
+    return { collections: newList }
+  }),
+  renameCollection: (id, name) => set((state) => {
+    const newList = state.collections.map((c) => c.id === id ? { ...c, name } : c)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('humain-collections', JSON.stringify(newList))
+    }
+    return { collections: newList }
+  }),
+  addToCollection: (collectionId, agentId) => set((state) => {
+    const newList = state.collections.map((c) => {
+      if (c.id === collectionId && !c.agentIds.includes(agentId)) {
+        return { ...c, agentIds: [...c.agentIds, agentId] }
+      }
+      return c
+    })
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('humain-collections', JSON.stringify(newList))
+    }
+    return { collections: newList }
+  }),
+  removeFromCollection: (collectionId, agentId) => set((state) => {
+    const newList = state.collections.map((c) => {
+      if (c.id === collectionId) {
+        return { ...c, agentIds: c.agentIds.filter((aid) => aid !== agentId) }
+      }
+      return c
+    })
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('humain-collections', JSON.stringify(newList))
+    }
+    return { collections: newList }
+  }),
   
   resetFilters: () => set({
     searchQuery: '',

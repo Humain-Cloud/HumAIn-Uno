@@ -413,3 +413,362 @@
 6. **Performance optimization** - Lazy loading, code splitting, image optimization
 7. **Mobile app experience** - PWA support, offline mode
 8. **Integration tests** - End-to-end testing for critical flows
+
+---
+
+### Phase 7: Enhanced Browse View with Advanced Features (Task 2)
+
+#### New Features Implemented
+
+**1. Infinite Scroll / Load More Enhancement**
+- Added IntersectionObserver-based infinite scroll that auto-loads more agents when scrolling near the bottom (200px rootMargin for preloading)
+- Shows loading spinner ("Loading more agents...") at bottom while loading more
+- Preserved "Load More" button as fallback for manual loading
+- Smooth position maintenance during load
+
+**2. Active Filters Bar**
+- Enhanced existing active filters bar with animated entry/exit (framer-motion AnimatePresence)
+- Each filter chip colored by type: emerald=category, amber=framework, violet=industry, rose=difficulty
+- Each chip has an X button to remove that specific filter
+- "Clear all" ghost button to reset all filters at once
+- Smooth height animation on show/hide
+
+**3. Keyboard Shortcuts**
+- Added search input with "/" keyboard shortcut to focus (with placeholder hint)
+- "Esc" to clear search and blur input
+- "g" then "b" key sequence to navigate to Browse view (1 second timeout)
+- "?" to show keyboard shortcuts modal
+- Keyboard shortcuts don't trigger when typing in input/textarea fields
+- Floating "?" help button in bottom-right corner (animated entrance with spring physics)
+- Keyboard Shortcuts modal (Dialog) showing all shortcuts with styled kbd elements
+
+**4. View Toggle Enhancement (Compact Mode)**
+- Added "compact" view mode (third option alongside grid/list)
+- Compact mode shows a dense table-like layout using shadcn/ui Table component
+- Table columns: Name, Framework (badge), Category, Difficulty (colored badge)
+- Rows are clickable to navigate to agent detail
+- Animated row entrance with framer-motion (staggered)
+- View toggle now has 3 buttons: Grid (LayoutGrid icon), List (List icon), Compact (AlignJustify icon)
+
+**5. Sort Enhancement**
+- Added 3 new sort options: A-Z, Z-A (alphabetical), Recently Added (by createdAt)
+- Total 6 sort options: Popular, Newest, Most Starred, Recently Added, A-Z, Z-A
+- Sort dropdown with icons for each option (Flame, Clock, Star, CalendarPlus, ArrowAZ, ArrowZA)
+- A-Z and Z-A sorts applied client-side on the fetched results
+- Active sort label shown above the grid
+
+**6. Result Count and Timing**
+- Shows "X agents found" above the grid with timing indicator
+- Timing badge shows "Xms" with Timer icon in a subtle rounded-full pill
+- Timing calculated using performance.now() around the fetch call
+- Sort label displayed alongside ("Sorted by Popular" etc.)
+
+**7. Quick Preview on Hover**
+- Added HoverCard-based tooltip that appears after 500ms hover delay on agent cards
+- Preview shows: full description (first 200 chars), framework badge, difficulty badge, tools list (first 3)
+- "Click to view details" hint at bottom
+- HoverCard closes quickly (100ms closeDelay) for snappy feel
+- Applied to grid and list view cards (not compact, since compact already shows key info)
+
+**8. Saved Searches / Quick Filters**
+- Added "Quick Filters" section below header with 4 preset filter combinations:
+  - "Popular" (Flame icon, orange theme) - sorts by popular, clears all filters
+  - "Recently Added" (CalendarPlus icon, blue theme) - sorts by recently-added, clears all filters
+  - "Beginner Friendly" (GraduationCap icon, green theme) - sets difficulty=beginner
+  - "Multi-Agent" (Users icon, purple theme) - sets framework to langgraph
+- Each preset is a clickable chip with colored border/background
+- Active preset gets emerald ring highlight
+- Uses framer-motion whileHover/whileTap for micro-interactions
+
+#### Store Updates
+- `viewMode` type expanded from `'grid' | 'list'` to `'grid' | 'list' | 'compact'`
+- `sortBy` type expanded from `'newest' | 'popular' | 'most-starred'` to `'newest' | 'popular' | 'most-starred' | 'az' | 'za' | 'recently-added'`
+- `setViewMode` and `setSortBy` parameter types updated accordingly
+
+#### Files Modified
+- **Modified:** `src/lib/store.ts` (expanded viewMode and sortBy types)
+- **Modified:** `src/components/views/browse-view.tsx` (complete enhancement with all 8 features)
+
+#### New Imports Used
+- `Input` (shadcn/ui) - for search input
+- `Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription` - for keyboard shortcuts modal
+- `HoverCard, HoverCardTrigger, HoverCardContent` - for quick preview on hover
+- `Table, TableBody, TableCell, TableHead, TableHeader, TableRow` - for compact view
+- Lucide icons: `AlignJustify, ArrowAZ, ArrowZA, CalendarPlus, Flame, Star, GraduationCap, Users, HelpCircle, Keyboard, Zap, Timer`
+
+#### Verification
+- ✅ Lint passes clean (no errors)
+- ✅ Dev server compiles successfully
+- ✅ No breaking changes to existing functionality
+- ✅ All existing features (search, filters, categories, frameworks, industries, agent cards) preserved
+
+---
+
+### Phase 8: Enhanced Wizard View and Detail View (Task 3)
+
+#### Part A: Wizard View Enhancement (`src/components/views/wizard-view.tsx`)
+
+**1. Template Library in Step 1 (Choose Source)**
+- Added "From Template" as 3rd starting point option alongside "From Scratch" and "From Knowledge Base"
+- 6 pre-built templates: Customer Support Bot (AutoGen), Code Reviewer (LangGraph), Data Analyst (CrewAI), Research Assistant (Agno), Email Drafter (LangGraph), Content Writer (CrewAI)
+- Each template card shows: name, description, framework badge, difficulty badge, icon, and "Use Template" button (appears on hover)
+- Clicking "Use Template" pre-fills all wizard data (name, description, framework, category, difficulty, industry, llm, language, tags, tools, code) and advances to step 2
+- Template-specific icons (HeadphonesIcon, Code2, BarChart3, BookOpen, Mail, PenTool)
+- Full code scaffolds included for each template (real working agent code structures)
+
+**2. AI-Powered Description Generator in Step 2 (Basic Info)**
+- Added "✨ Generate with AI" button next to the description label
+- Calls `/api/ai/suggest` with the agent name + framework context
+- Shows loading spinner while generating
+- Falls back to a generic template description if API fails
+- Toast notification on failure with fallback message
+- Disabled when agent name is empty
+
+**3. Live Code Preview in Step 3 (Code)**
+- Split code step into 2-column layout: left editor, right live preview
+- `generateScaffoldedCode()` function creates live code scaffold based on: framework, name, language, tools, llm, description
+- Supports Python scaffolds for: LangGraph, CrewAI, AutoGen, Agno, LlamaIndex
+- Supports TypeScript scaffolds for LangGraph and generic agent
+- Code preview updates reactively as wizard data changes (framework, name, language, llm, etc.)
+- "Copy Code" and "Download" buttons on the preview panel
+- Sticky positioning for the preview panel so it stays visible while scrolling
+- ScrollArea component for the preview with gradient overlay
+
+**4. Progress Indicator Enhancement**
+- Added percentage indicator (e.g., "40% complete") badge in header next to title
+- When a framework is selected, current step uses that framework's brand color (emerald for LangGraph, amber for CrewAI, rose for AutoGen, violet for Agno, teal for LlamaIndex)
+- Error count badges on step indicators - red circle with count of validation errors
+- Checkmarks on completed steps (existing, preserved)
+- Gradient connecting line between steps (existing, preserved)
+
+**5. Validation and Error Handling**
+- Step 2 validation: name required (3+ chars), description required (10+ chars), category required
+- Validation errors shown inline next to labels with AlertCircle icon and red text
+- Red border on invalid inputs (border-rose-300)
+- "Next" button disabled when current step has validation errors
+- `validateStep()` function returns error map per step
+- `canGoNext()` checks validation errors
+- Real-time validation updates via useEffect on step changes and field changes
+
+#### Part B: Detail View Enhancement (`src/components/views/detail-view.tsx`)
+
+**1. Dependencies Tab - New 4th Tab**
+- New "Dependencies" tab with Package icon
+- SVG dependency graph visualization showing:
+  - Central node: the agent itself (emerald color, agent icon)
+  - Tool nodes orbiting the agent (amber color, wrench icon)
+  - Model/LLM nodes orbiting the agent (violet color, CPU icon)
+  - Framework node orbiting the agent (cyan color, layers icon)
+  - Dashed connection lines between agent and dependencies with arrow indicators
+  - Background grid pattern
+  - Legend at the bottom (Agent, Tool, Model, Framework)
+- Three summary cards below the graph: Tools (count + list), Models (count + list), Framework (badge + LLM provider)
+- Handles empty states gracefully with centered Package icon
+
+**2. Enhanced Comments Section**
+- Moved comments to dedicated tab (from inline in overview) for better organization
+- Comment input form with Avatar + Textarea + character count + Post button
+- 3 mock comments with realistic content and nested replies
+- Each comment shows: color-coded Avatar, name, timestamp, content
+- "Like" (Heart) button with count and fill animation (toggles on click)
+- "Reply" button that toggles inline reply input with Enter-to-send
+- Nested replies with left border indent and recursive rendering
+- Comment sorting: Newest, Oldest, Most Liked (Select dropdown)
+- `CommentCard` sub-component for recursive rendering of comments and replies
+- AnimatePresence for smooth comment transitions
+
+**3. Breadcrumb Navigation**
+- Added breadcrumbs at top: Home > Browse > [Agent Name]
+- Uses shadcn/ui Breadcrumb components (BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage)
+- Home link with Home icon, navigates to home view
+- Browse link navigates to browse view
+- Agent name as current page (non-clickable, truncated if long)
+- Positioned above the framework color strip
+
+**4. Floating Action Bar**
+- Appears when scrolling past the hero section (detected via scroll event checking heroRef bounding rect)
+- Contains: Star, Fork, Share, Download buttons with separator dividers
+- Spring animation for enter/exit (framer-motion, stiffness: 300, damping: 30)
+- Semi-transparent backdrop blur effect (bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl)
+- Rounded-2xl pill shape with border and shadow-lg
+- Fixed position at bottom center (z-50)
+- AnimatePresence for smooth show/hide
+
+**5. Related Agents Enhancement**
+- "Agents using [framework]" section with horizontal scrolling cards
+  - Separate API call searching by framework
+  - Agent count badge in section header
+  - "View all" link that navigates to browse with framework filter set
+- "Agents in [category]" section with horizontal scrolling cards
+  - Separate API call searching by category
+  - Agent count badge in section header
+  - "View all" link that navigates to browse with category filter set
+- Falls back to original "Related Agents" carousel if no framework/category agents found
+- Smooth scroll horizontal containers with snap scrolling
+
+#### Files Modified
+- **Modified:** `src/components/views/wizard-view.tsx` (complete enhancement with all Part A features, ~700 lines)
+- **Modified:** `src/components/views/detail-view.tsx` (complete enhancement with all Part B features, ~900 lines)
+
+#### New Imports Added
+- wizard-view: `LayoutTemplate, Copy, Download, AlertCircle, Wrench, Cpu, HeadphonesIcon, Code2, PenTool, Mail, BarChart3, BookOpen, ScrollArea`
+- detail-view: `Avatar, AvatarFallback, Breadcrumb*, Select*, Input, Package, Home, Heart, MessageCircle, ThumbsUp, LayoutGrid, ChevronDown, useMemo`
+
+#### Verification
+- ✅ Lint passes clean (0 errors, 0 warnings)
+- ✅ No API routes modified
+- ✅ No other components modified (only wizard-view.tsx and detail-view.tsx)
+- ✅ All existing functionality preserved
+- ✅ Dev server compiles successfully
+
+---
+
+### Phase 9: Enhanced Knowledge Hub View & Home View Polish (Task 4)
+
+#### Part A: Knowledge Hub View Enhancement (`src/components/views/knowledge-hub-view.tsx`)
+
+**1. Tag Cloud Section**
+- Added "Popular Tags" card in sidebar showing top 20 tags from knowledge agents
+- Tags sized by frequency (3 tiers: large for >80% freq, medium for >50%, small for rest)
+- Emerald color gradient for tag popularity (dark emerald for popular, light emerald for rare)
+- Tags are clickable and filter the agent list by selected tag
+- Active tag shown with ring highlight and inverted colors
+- Tag filter indicator above the agent grid with clear button
+- framer-motion stagger animation on tag entrance
+- Tag icon with teal accent in card header
+
+**2. Recently Added Section**
+- Added "Recently Added" card in sidebar showing agents added in the last 7 days
+- Clock icon with cyan accent in card header
+- Shows count badge ("5 new") in emerald color
+- Mini list of 3 most recent agent names with hover navigation
+- ArrowRight icon appears on hover for each agent name
+- Clicking a name navigates to the agent's detail view
+
+**3. Random Agent Picker**
+- Added "Discover Random" button at top of page (next to search)
+- Uses Shuffle icon from lucide-react with fun spinning animation on click
+- 800ms spin animation using framer-motion animate with rotate: 360
+- After spin, picks a random agent from the full list and navigates to its detail view
+- Responsive: shows full text on desktop, abbreviated "Random" on mobile
+- Disabled state when agents haven't loaded yet
+
+**4. Enhanced Stats Bar**
+- Added icon backgrounds behind each stat (rounded-lg with colored bg)
+- Each stat now has a 9x9 rounded-lg icon container with appropriate bg color
+- Added "Last updated: X minutes ago" indicator on the right side (desktop only)
+- Updates every 60 seconds via setInterval
+- Shows "just now" when first loaded
+- Clock icon with muted text styling
+
+**5. Framework Tabs Enhancement**
+- Added agent count as a small badge on each tab (was already present, enhanced)
+- Added colored dot indicator matching the framework color on each tab
+- Active tab dot becomes semi-transparent white; inactive tabs show framework color dot
+- Added bottom border animation on active tab using framer-motion layoutId
+- Spring physics animation (stiffness: 300, damping: 30) for smooth tab switching
+- Added dotColor to frameworkConfig for each framework
+
+**6. Agent Card Enhancement in Hub**
+- Added "Quick View" eye icon button that appears on hover (overlay)
+  - Positioned top-right of each card
+  - White/dark background with backdrop blur and shadow
+  - Opens a mini preview modal (Dialog) with agent details
+- Quick View modal shows:
+  - Agent name with framework badge
+  - Full description
+  - Category, difficulty, language badges
+  - Difficulty progress bar (using Progress component)
+  - Tools list with Wrench icons
+  - Models list with outline badges
+  - "View Full Details" and "Close" buttons
+- Added difficulty progress bar on card hover (appears bottom of card)
+- Added tool count badge on card hover (appears top-left with Wrench icon)
+- difficultyConfig maps each level to value (33/66/100), color, and progressColor
+
+**7. New Imports Added**
+- `Shuffle, Clock, Eye, Wrench, Tag` from lucide-react
+- `Dialog, DialogContent, DialogHeader, DialogTitle` from shadcn/ui
+- `Progress` from shadcn/ui
+- `useToast` hook
+- `useMemo` from React
+- `AnimatePresence` from framer-motion
+
+**8. New State Variables**
+- `allAgents` - stores all agents for tag cloud and random picker
+- `selectedTag` - currently selected tag filter
+- `randomSpinning` - spinning animation state
+- `previewAgent` - agent shown in quick preview modal
+- `lastUpdated` - timestamp of last stats update
+- `minutesAgo` - minutes since last update
+
+#### Part B: Home View Polish (`src/components/views/home-view.tsx`)
+
+**1. Cleaned Up Unused Imports**
+- Removed unused icons: `ArrowUpRight, FileText, Scale, BookMarked, GraduationCap, HeartHandshake, Rss, Youtube`
+- Only kept icons actually used in the component
+- Added new imports: `Play` (for Watch Demo button), `useToast` (for newsletter)
+
+**2. CTA Section Enhancement**
+- Added animated gradient border wrapper with blur effect (gradient-rotate animation)
+- Added animated counters showing live platform stats in the CTA section:
+  - Total Agents count (from stats API)
+  - Frameworks count (from stats API)
+  - Developers count (2500, growing number animation)
+- Each stat has different color (white, emerald-200, teal-200)
+- Staggered entrance animation for the 3 stats
+- Added "Watch Demo" button with Play icon that navigates to Knowledge Hub
+- Gradient border animation at top preserved
+
+**3. Newsletter Section Fix**
+- Email validation with regex (checks for valid email format)
+- Error message displayed below input when validation fails (rose-500 color)
+- "Subscribe" button actually works now:
+  - Shows toast "Subscribed successfully!" with description
+  - Transforms to success state with animated checkmark
+  - Spring physics animation on checkmark appearance (stiffness: 400, damping: 15)
+  - Smooth scale-up animation on success container
+  - Shows "You're subscribed!" heading with confirmation message
+- Enter key support to submit
+- ARIA attributes: aria-invalid, aria-describedby for error message
+- Error state: red border on input (border-rose-300)
+
+**4. Accessibility Improvements**
+- Added skip-to-content link at very top (sr-only focus:not-sr-only)
+  - Links to #main-content (Featured Agents section)
+  - Styled with emerald-600 bg and white text on focus
+- Added role="banner" to hero section
+- Added role="region" with aria-label to all sections:
+  - "Trending agents", "Platform statistics", "How it works"
+  - "Testimonials", "Featured agents", "Explore by category"
+  - "Supported frameworks", "Framework comparison", "Community"
+  - "Call to action"
+- Added aria-label to all interactive buttons:
+  - Browse agents, Create agent, View agent, Star on GitHub, etc.
+- Added aria-hidden="true" to all decorative elements (icons, blur circles, particles)
+- Added role="list" and role="listitem" to trust badges
+- Added role="row" and role="cell" and role="columnheader" to comparison table
+- Added aria-label to table cells (check="Supported", X="Not supported")
+- Added role="img" with aria-label to star ratings
+- Added role="tablist" and role="tab" with aria-selected to trending indicators
+- Category cards now have role="button" and tabIndex={0} with aria-label
+- Social link buttons already had aria-label (preserved)
+- Newsletter input has aria-label, aria-invalid, aria-describedby
+- Newsletter error message has role="alert"
+
+**5. New State Variables (Home View)**
+- newsletterEmail - current email input value
+- newsletterSubscribed - whether user has subscribed
+- newsletterError - validation error message
+
+#### Files Modified
+- **Modified:** `src/components/views/knowledge-hub-view.tsx` (major enhancement, ~640 lines)
+- **Modified:** `src/components/views/home-view.tsx` (polish + accessibility, ~620 lines)
+
+#### Verification
+- ✅ Lint passes clean (0 errors, 0 warnings)
+- ✅ Dev server compiles successfully
+- ✅ No API routes modified
+- ✅ No other components modified
+- ✅ All existing functionality preserved
+- ✅ No breaking changes

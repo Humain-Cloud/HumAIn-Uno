@@ -94,10 +94,10 @@ function Navbar() {
             <Bot className="h-5 w-5 text-white" />
           </div>
           <span className="font-bold text-lg hidden sm:inline tracking-tight">
-            Humain<span className="text-emerald-600">-Uno</span>
+            Humain<span className="text-emerald-600 dark:text-emerald-400">-Uno</span>
           </span>
           <span className="font-bold text-lg sm:hidden">
-            H<span className="text-emerald-600">-U</span>
+            H<span className="text-emerald-600 dark:text-emerald-400">-U</span>
           </span>
         </button>
 
@@ -108,7 +108,7 @@ function Navbar() {
               key={key}
               variant={currentView === key ? 'secondary' : 'ghost'}
               size="sm"
-              className={`text-sm transition-all ${currentView === key ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`text-sm transition-all min-h-[36px] ${currentView === key ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 font-medium' : 'text-muted-foreground hover:text-foreground'}`}
               onClick={() => handleNav(key)}
             >
               <Icon className="h-4 w-4 mr-1.5" />
@@ -119,7 +119,7 @@ function Navbar() {
             <Button
               variant={currentView === 'admin' ? 'secondary' : 'ghost'}
               size="sm"
-              className={`text-sm transition-all ${currentView === 'admin' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : ''}`}
+              className={`text-sm transition-all min-h-[36px] ${currentView === 'admin' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : ''}`}
               onClick={() => handleNav('admin')}
             >
               <Shield className="h-4 w-4 mr-1.5" />
@@ -134,7 +134,7 @@ function Navbar() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search 500+ agents..."
-              className="pl-9 h-9 text-sm bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 rounded-full focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
+              className="pl-9 h-9 text-sm bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 rounded-full focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 dark:focus:border-emerald-600 input-focus"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value)
@@ -162,7 +162,7 @@ function Navbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9"
+              className="h-9 w-9 min-h-[36px] min-w-[36px] btn-hover"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             >
               {theme === 'dark' ? (
@@ -175,7 +175,7 @@ function Navbar() {
 
           <Button
             size="sm"
-            className="hidden sm:flex bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-200 dark:shadow-emerald-900/30 transition-all"
+            className="hidden sm:flex bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-200 dark:shadow-emerald-900/30 transition-all btn-hover min-h-[36px]"
             onClick={() => handleNav('wizard')}
           >
             <PlusCircle className="h-4 w-4 mr-1.5" />
@@ -184,7 +184,7 @@ function Navbar() {
           <Button
             size="icon"
             variant="ghost"
-            className="sm:hidden h-9 w-9 text-emerald-600"
+            className="sm:hidden h-9 w-9 min-h-[36px] min-w-[36px] text-emerald-600 dark:text-emerald-400"
             onClick={() => handleNav('wizard')}
           >
             <PlusCircle className="h-5 w-5" />
@@ -196,7 +196,7 @@ function Navbar() {
                 {(session as any).role === 'admin' ? '👑 ' : ''}
                 {session.user?.name || 'User'}
               </Badge>
-              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => signOut()}>
+              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 min-h-[36px] min-w-[36px]" onClick={() => signOut()}>
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -204,7 +204,7 @@ function Navbar() {
             <Button
               size="sm"
               variant="outline"
-              className="hidden sm:flex rounded-full"
+              className="hidden sm:flex rounded-full min-h-[36px] btn-hover"
               onClick={() => setShowAuthModal(true)}
             >
               <LogIn className="h-4 w-4 mr-1.5" />
@@ -215,23 +215,23 @@ function Navbar() {
           {/* Mobile Menu */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden h-9 w-9">
+              <Button variant="ghost" size="icon" className="md:hidden h-9 w-9 min-h-[36px] min-w-[36px]">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-72">
+            <SheetContent side="right" className="w-72 dark:bg-gray-950">
               <SheetTitle className="flex items-center gap-2.5 mb-8">
                 <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                   <Bot className="h-5 w-5 text-white" />
                 </div>
-                <span className="font-bold tracking-tight">Humain<span className="text-emerald-600">-Uno</span></span>
+                <span className="font-bold tracking-tight">Humain<span className="text-emerald-600 dark:text-emerald-400">-Uno</span></span>
               </SheetTitle>
               <nav className="flex flex-col gap-1">
                 {navItems.map(({ key, label, icon: Icon }) => (
                   <Button
                     key={key}
                     variant={currentView === key ? 'secondary' : 'ghost'}
-                    className={`justify-start h-10 ${currentView === key ? 'bg-emerald-50 text-emerald-700 font-medium' : ''}`}
+                    className={`justify-start h-11 min-h-[44px] ${currentView === key ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 font-medium' : ''}`}
                     onClick={() => handleNav(key)}
                   >
                     <Icon className="h-4 w-4 mr-3" />
@@ -240,7 +240,7 @@ function Navbar() {
                 ))}
                 <Button
                   variant={currentView === 'wizard' ? 'secondary' : 'ghost'}
-                  className="justify-start h-10 text-emerald-600"
+                  className="justify-start h-11 min-h-[44px] text-emerald-600 dark:text-emerald-400"
                   onClick={() => handleNav('wizard')}
                 >
                   <Sparkles className="h-4 w-4 mr-3" />
@@ -249,33 +249,33 @@ function Navbar() {
                 {session && (session as any).role === 'admin' && (
                   <Button
                     variant={currentView === 'admin' ? 'secondary' : 'ghost'}
-                    className="justify-start h-10"
+                    className="justify-start h-11 min-h-[44px]"
                     onClick={() => handleNav('admin')}
                   >
                     <Shield className="h-4 w-4 mr-3" />
                     Admin
                   </Button>
                 )}
-                <div className="border-t my-3" />
+                <div className="border-t my-3 dark:border-gray-800" />
                 <div className="flex items-center justify-between px-4 py-2">
                   <span className="text-sm text-muted-foreground">Theme</span>
-                  <Button variant="ghost" size="sm" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                  <Button variant="ghost" size="sm" className="min-h-[36px]" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
                     {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4" />}
                   </Button>
                 </div>
-                <div className="border-t my-3" />
+                <div className="border-t my-3 dark:border-gray-800" />
                 {status === 'authenticated' && session ? (
                   <>
                     <div className="px-4 py-2 text-sm text-muted-foreground">
                       Signed in as <strong>{session.user?.name || session.user?.email}</strong>
                     </div>
-                    <Button variant="ghost" className="justify-start h-10 text-destructive" onClick={() => { signOut(); setMobileOpen(false) }}>
+                    <Button variant="ghost" className="justify-start h-11 min-h-[44px] text-destructive" onClick={() => { signOut(); setMobileOpen(false) }}>
                       <LogOut className="h-4 w-4 mr-3" />
                       Sign Out
                     </Button>
                   </>
                 ) : (
-                  <Button variant="outline" className="justify-start h-10" onClick={() => { setShowAuthModal(true); setMobileOpen(false) }}>
+                  <Button variant="outline" className="justify-start h-11 min-h-[44px]" onClick={() => { setShowAuthModal(true); setMobileOpen(false) }}>
                     <LogIn className="h-4 w-4 mr-3" />
                     Sign In
                   </Button>
@@ -337,7 +337,7 @@ function Footer() {
   }
 
   return (
-    <footer className="mt-auto border-t bg-gray-50 dark:bg-gray-950">
+    <footer className="mt-auto border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-10">
           {Object.entries(footerLinks).map(([, section]) => (
@@ -349,7 +349,7 @@ function Footer() {
                     {'view' in link ? (
                       <button
                         onClick={() => handleFooterNav(link.view)}
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[24px]"
                       >
                         <link.icon className="h-3.5 w-3.5" />
                         {link.label}
@@ -359,7 +359,7 @@ function Footer() {
                         href={link.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[24px]"
                       >
                         <link.icon className="h-3.5 w-3.5" />
                         {link.label}
@@ -373,7 +373,7 @@ function Footer() {
         </div>
         
         {/* Divider */}
-        <div className="border-t pt-8" />
+        <div className="border-t border-gray-200 dark:border-gray-800 pt-8" />
         
         {/* Bottom section */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -382,7 +382,7 @@ function Footer() {
               <Bot className="h-4 w-4 text-white" />
             </div>
             <span className="font-bold text-sm tracking-tight">
-              Humain<span className="text-emerald-600">-Uno</span>
+              Humain<span className="text-emerald-600 dark:text-emerald-400">-Uno</span>
             </span>
           </div>
           
@@ -400,7 +400,7 @@ function Footer() {
                 href={social.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="h-8 w-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                className="h-9 w-9 min-h-[36px] min-w-[36px] rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
                 aria-label={social.label}
               >
                 <social.icon className="h-4 w-4" />
@@ -414,15 +414,15 @@ function Footer() {
               © 2025 Humain-Uno. Powered by 500+ AI Agents Knowledge Base
             </p>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="hover:text-emerald-600 cursor-pointer transition-colors">LangGraph</span>
+              <span className="hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer transition-colors">LangGraph</span>
               <span>·</span>
-              <span className="hover:text-amber-600 cursor-pointer transition-colors">CrewAI</span>
+              <span className="hover:text-amber-600 dark:hover:text-amber-400 cursor-pointer transition-colors">CrewAI</span>
               <span>·</span>
-              <span className="hover:text-rose-600 cursor-pointer transition-colors">AutoGen</span>
+              <span className="hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer transition-colors">AutoGen</span>
               <span>·</span>
-              <span className="hover:text-violet-600 cursor-pointer transition-colors">Agno</span>
+              <span className="hover:text-violet-600 dark:hover:text-violet-400 cursor-pointer transition-colors">Agno</span>
               <span>·</span>
-              <span className="hover:text-teal-600 cursor-pointer transition-colors">LlamaIndex</span>
+              <span className="hover:text-teal-600 dark:hover:text-teal-400 cursor-pointer transition-colors">LlamaIndex</span>
             </div>
           </div>
         </div>
@@ -453,9 +453,21 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+      {/* Top gradient line */}
+      <div className="h-[1px] w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 shrink-0" aria-hidden="true" />
       <Navbar />
       <main className="flex-1">
-        <ViewComponent />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentView}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+          >
+            <ViewComponent />
+          </motion.div>
+        </AnimatePresence>
       </main>
       <Footer />
       <AuthModal />

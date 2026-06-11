@@ -24,7 +24,6 @@ import {
   Workflow,
   Brain,
   MessageSquare,
-  BookOpen,
   Zap,
   Globe,
   Database,
@@ -48,15 +47,9 @@ import {
   ChevronRight,
   TrendingUp,
   RefreshCw,
-  ArrowUpRight,
-  FileText,
-  Scale,
-  BookMarked,
-  GraduationCap,
-  HeartHandshake,
-  Rss,
-  Youtube,
+  Play,
 } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: number }) {
   const [count, setCount] = useState(0)
@@ -91,7 +84,7 @@ function MiniSparkline({ color = '#10b981', data = [20, 45, 30, 60, 40, 70, 55, 
   const points = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * (h - 4) - 2}`).join(' ')
 
   return (
-    <svg width={w} height={h} className="opacity-40">
+    <svg width={w} height={h} className="opacity-40" aria-hidden="true">
       <polyline fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={points} />
     </svg>
   )
@@ -244,12 +237,16 @@ const frameworkComparison = {
 
 export function HomeView() {
   const { setCurrentView, setSelectedAgentId } = useAppStore()
+  const { toast } = useToast()
   const [stats, setStats] = useState<Stats | null>(null)
   const [featuredAgents, setFeaturedAgents] = useState<KnowledgeAgent[]>([])
   const [trendingAgents, setTrendingAgents] = useState<KnowledgeAgent[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [trendingIndex, setTrendingIndex] = useState(0)
+  const [newsletterEmail, setNewsletterEmail] = useState('')
+  const [newsletterSubscribed, setNewsletterSubscribed] = useState(false)
+  const [newsletterError, setNewsletterError] = useState('')
   const trendingScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -306,12 +303,41 @@ export function HomeView() {
     window.scrollTo(0, 0)
   }
 
+  // Newsletter validation & subscribe
+  const handleNewsletterSubscribe = () => {
+    setNewsletterError('')
+    const email = newsletterEmail.trim()
+    if (!email) {
+      setNewsletterError('Please enter your email address')
+      return
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setNewsletterError('Please enter a valid email address')
+      return
+    }
+    // Simulate subscribe
+    setNewsletterSubscribed(true)
+    toast({
+      title: 'Subscribed successfully!',
+      description: 'Welcome to the Humain-Uno newsletter. Check your inbox for a confirmation.',
+    })
+  }
+
   return (
     <div>
+      {/* Skip to content link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-emerald-600 focus:text-white focus:rounded-lg focus:text-sm"
+      >
+        Skip to main content
+      </a>
+
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800">
+      <section className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800" role="banner" aria-label="Hero section">
         {/* Animated background decorations */}
-        <div className="absolute inset-0">
+        <div className="absolute inset-0" aria-hidden="true">
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-400/10 rounded-full blur-3xl animate-pulse" />
           <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-teal-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-300/5 rounded-full blur-3xl" />
@@ -346,12 +372,12 @@ export function HomeView() {
               transition={{ delay: 0.2 }}
               className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-emerald-100 text-sm mb-8"
             >
-              <Sparkles className="h-4 w-4" />
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
               Powered by 500+ curated AI agent projects
             </motion.div>
 
             <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-[1.1] tracking-tight">
-              Discover & Build<br />
+              Discover &amp; Build<br />
               <span className="bg-gradient-to-r from-emerald-200 via-teal-200 to-cyan-200 bg-clip-text text-transparent">
                 AI Agents
               </span>
@@ -365,8 +391,9 @@ export function HomeView() {
                 size="lg"
                 className="bg-white text-emerald-700 hover:bg-emerald-50 font-semibold px-8 h-13 text-base w-full sm:w-auto shadow-lg shadow-emerald-900/20 rounded-xl"
                 onClick={() => handleNav('browse')}
+                aria-label="Browse agents"
               >
-                <Search className="h-5 w-5 mr-2" />
+                <Search className="h-5 w-5 mr-2" aria-hidden="true" />
                 Browse Agents
               </Button>
               <Button
@@ -374,8 +401,9 @@ export function HomeView() {
                 variant="outline"
                 className="border-white/30 text-white hover:bg-white/10 font-semibold px-8 h-13 text-base w-full sm:w-auto backdrop-blur-sm rounded-xl"
                 onClick={() => handleNav('wizard')}
+                aria-label="Create a new agent"
               >
-                <PlusCircle className="h-5 w-5 mr-2" />
+                <PlusCircle className="h-5 w-5 mr-2" aria-hidden="true" />
                 Create Agent
               </Button>
             </div>
@@ -389,13 +417,13 @@ export function HomeView() {
                 className="mt-12 flex items-center justify-center gap-6 sm:gap-10 text-emerald-100/80 text-sm"
               >
                 <span className="flex items-center gap-1.5">
-                  <Bot className="h-4 w-4" /> {stats.totalAgents}+ Agents
+                  <Bot className="h-4 w-4" aria-hidden="true" /> {stats.totalAgents}+ Agents
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Cpu className="h-4 w-4" /> {stats.frameworks} Frameworks
+                  <Cpu className="h-4 w-4" aria-hidden="true" /> {stats.frameworks} Frameworks
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Users className="h-4 w-4" /> Open Source
+                  <Users className="h-4 w-4" aria-hidden="true" /> Open Source
                 </span>
               </motion.div>
             )}
@@ -404,7 +432,7 @@ export function HomeView() {
       </section>
 
       {/* Trending Agents Section */}
-      <section className="py-12 sm:py-16 bg-gradient-to-b from-orange-50 to-amber-50/50 dark:from-gray-950 dark:to-gray-900">
+      <section className="py-12 sm:py-16 bg-gradient-to-b from-orange-50 to-amber-50/50 dark:from-gray-950 dark:to-gray-900" role="region" aria-label="Trending agents">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -413,7 +441,7 @@ export function HomeView() {
             className="flex items-center justify-between mb-8"
           >
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-900/30">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-900/30" aria-hidden="true">
                 <Flame className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -422,10 +450,10 @@ export function HomeView() {
               </div>
             </div>
             <div className="hidden sm:flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={() => scrollTrending('left')}>
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={() => scrollTrending('left')} aria-label="Scroll trending agents left">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={() => scrollTrending('right')}>
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={() => scrollTrending('right')} aria-label="Scroll trending agents right">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -464,12 +492,12 @@ export function HomeView() {
                     className="min-w-[280px] max-w-[280px] snap-start shrink-0"
                   >
                     <Card className="h-full hover:shadow-lg transition-all border-0 shadow-sm overflow-hidden relative glow-amber shimmer">
-                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-red-500" />
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-red-500" aria-hidden="true" />
                       <CardContent className="p-5 pt-6">
                         <div className="flex items-start justify-between mb-2">
                           <h3 className="font-semibold text-sm line-clamp-1 flex-1 mr-2">{agent.name}</h3>
                           <Badge className="text-[10px] px-1.5 py-0 h-5 bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 shrink-0">
-                            <TrendingUp className="h-3 w-3 mr-0.5" /> Hot
+                            <TrendingUp className="h-3 w-3 mr-0.5" aria-hidden="true" /> Hot
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{agent.description}</p>
@@ -492,8 +520,9 @@ export function HomeView() {
                             setCurrentView('detail')
                             window.scrollTo(0, 0)
                           }}
+                          aria-label={`View agent: ${agent.name}`}
                         >
-                          <Eye className="h-3 w-3 mr-1" /> View Agent
+                          <Eye className="h-3 w-3 mr-1" aria-hidden="true" /> View Agent
                         </Button>
                       </CardContent>
                     </Card>
@@ -501,17 +530,19 @@ export function HomeView() {
                 ))}
               </div>
               {/* Fade edges */}
-              <div className="absolute top-0 left-0 bottom-4 w-8 bg-gradient-to-r from-orange-50 dark:from-gray-950 to-transparent pointer-events-none z-10" />
-              <div className="absolute top-0 right-0 bottom-4 w-8 bg-gradient-to-l from-amber-50/50 dark:from-gray-900 to-transparent pointer-events-none z-10" />
+              <div className="absolute top-0 left-0 bottom-4 w-8 bg-gradient-to-r from-orange-50 dark:from-gray-950 to-transparent pointer-events-none z-10" aria-hidden="true" />
+              <div className="absolute top-0 right-0 bottom-4 w-8 bg-gradient-to-l from-amber-50/50 dark:from-gray-900 to-transparent pointer-events-none z-10" aria-hidden="true" />
             </div>
           )}
           
           {/* Auto-cycle indicator */}
           {!loading && trendingAgents.length > 0 && (
-            <div className="flex items-center justify-center gap-1.5 mt-4">
+            <div className="flex items-center justify-center gap-1.5 mt-4" role="tablist" aria-label="Trending agents indicator">
               {trendingAgents.slice(0, 6).map((_, i) => (
                 <div
                   key={i}
+                  role="tab"
+                  aria-selected={i === trendingIndex % 6}
                   className={`h-1.5 rounded-full transition-all duration-500 ${
                     i === trendingIndex % 6 ? 'w-6 bg-gradient-to-r from-orange-500 to-red-500' : 'w-1.5 bg-gray-300 dark:bg-gray-700'
                   }`}
@@ -523,11 +554,11 @@ export function HomeView() {
       </section>
 
       {/* Enhanced Live Stats */}
-      <section className="py-14 sm:py-18 relative overflow-hidden">
+      <section className="py-14 sm:py-18 relative overflow-hidden" role="region" aria-label="Platform statistics">
         {/* Gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-emerald-50/30 dark:from-gray-950 dark:via-gray-950 dark:to-emerald-950/20" />
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-emerald-100/30 dark:bg-emerald-900/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-teal-100/30 dark:bg-teal-900/10 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-emerald-50/30 dark:from-gray-950 dark:via-gray-950 dark:to-emerald-950/20" aria-hidden="true" />
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-emerald-100/30 dark:bg-emerald-900/10 rounded-full blur-3xl" aria-hidden="true" />
+        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-teal-100/30 dark:bg-teal-900/10 rounded-full blur-3xl" aria-hidden="true" />
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
           {/* Updated daily badge */}
@@ -538,7 +569,7 @@ export function HomeView() {
             className="flex justify-center mb-8"
           >
             <Badge variant="outline" className="gap-1.5 px-3 py-1 text-xs bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
-              <RefreshCw className="h-3 w-3 text-emerald-500" />
+              <RefreshCw className="h-3 w-3 text-emerald-500" aria-hidden="true" />
               Updated daily
             </Badge>
           </motion.div>
@@ -569,17 +600,17 @@ export function HomeView() {
                 >
                   <Card className="border-0 shadow-sm hover:shadow-md transition-all relative overflow-hidden group will-change-transform">
                     {/* Animated border gradient on hover */}
-                    <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 p-[1.5px] bg-gradient-to-br from-emerald-400 via-cyan-400 to-violet-400 will-change-transform" style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }} />
+                    <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 p-[1.5px] bg-gradient-to-br from-emerald-400 via-cyan-400 to-violet-400 will-change-transform" style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }} aria-hidden="true" />
                     <CardContent className="p-5 sm:p-6 text-center relative">
                       <div className={`inline-flex items-center justify-center h-12 w-12 rounded-xl ${stat.bg} mb-3`}>
-                        <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                        <stat.icon className={`h-6 w-6 ${stat.color}`} aria-hidden="true" />
                       </div>
                       <div className="text-3xl sm:text-4xl font-bold tracking-tight">
                         <AnimatedCounter target={stat.value} />
                       </div>
                       <div className="text-sm text-muted-foreground mt-1 font-medium">{stat.label}</div>
                       {/* Sparkline decoration */}
-                      <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300" aria-hidden="true">
                         <MiniSparkline color={stat.sparkColor} data={stat.sparkData} />
                       </div>
                     </CardContent>
@@ -592,7 +623,7 @@ export function HomeView() {
       </section>
 
       {/* How It Works */}
-      <section className="py-16 sm:py-20 bg-gray-50 dark:bg-gray-900">
+      <section className="py-16 sm:py-20 bg-gray-50 dark:bg-gray-900" role="region" aria-label="How it works">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -617,12 +648,12 @@ export function HomeView() {
                 transition={{ delay: i * 0.15 }}
               >
                 <Card className="h-full border-0 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
-                  <div className="absolute top-3 right-3 text-6xl font-black text-gray-100 dark:text-gray-800 select-none">
+                  <div className="absolute top-3 right-3 text-6xl font-black text-gray-100 dark:text-gray-800 select-none" aria-hidden="true">
                     {item.step}
                   </div>
                   <CardContent className="p-6 pt-8 relative">
                     <div className={`inline-flex items-center justify-center h-12 w-12 rounded-xl mb-4 ${item.color}`}>
-                      <item.icon className="h-6 w-6" />
+                      <item.icon className="h-6 w-6" aria-hidden="true" />
                     </div>
                     <h3 className="font-bold text-lg mb-2">{item.title}</h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
@@ -635,7 +666,7 @@ export function HomeView() {
       </section>
 
       {/* Testimonials / Social Proof */}
-      <section className="py-16 sm:py-20 bg-white dark:bg-gray-950">
+      <section className="py-16 sm:py-20 bg-white dark:bg-gray-950" role="region" aria-label="Testimonials">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -660,9 +691,9 @@ export function HomeView() {
                 <Card className="h-full border-0 shadow-sm hover:shadow-md transition-all">
                   <CardContent className="p-6">
                     {/* Stars */}
-                    <div className="flex items-center gap-0.5 mb-4">
+                    <div className="flex items-center gap-0.5 mb-4" role="img" aria-label={`${t.stars} out of 5 stars`}>
                       {Array.from({ length: t.stars }).map((_, si) => (
-                        <Star key={si} className="h-4 w-4 fill-amber-400 text-amber-400" />
+                        <Star key={si} className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden="true" />
                       ))}
                     </div>
                     {/* Quote */}
@@ -671,7 +702,7 @@ export function HomeView() {
                     </p>
                     {/* Author */}
                     <div className="flex items-center gap-3">
-                      <div className={`h-10 w-10 rounded-full ${t.color} flex items-center justify-center text-white font-semibold text-sm`}>
+                      <div className={`h-10 w-10 rounded-full ${t.color} flex items-center justify-center text-white font-semibold text-sm`} aria-hidden="true">
                         {t.initials}
                       </div>
                       <div>
@@ -691,25 +722,27 @@ export function HomeView() {
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
             className="mt-10 flex flex-wrap items-center justify-center gap-6 text-muted-foreground text-sm"
+            role="list"
+            aria-label="Trust indicators"
           >
-            <span className="flex items-center gap-1.5">
-              <Users className="h-4 w-4" /> 2,500+ Developers
+            <span className="flex items-center gap-1.5" role="listitem">
+              <Users className="h-4 w-4" aria-hidden="true" /> 2,500+ Developers
             </span>
-            <span className="flex items-center gap-1.5">
-              <Star className="h-4 w-4 fill-amber-400 text-amber-400" /> 4.9/5 Rating
+            <span className="flex items-center gap-1.5" role="listitem">
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden="true" /> 4.9/5 Rating
             </span>
-            <span className="flex items-center gap-1.5">
-              <Github className="h-4 w-4" /> Open Source
+            <span className="flex items-center gap-1.5" role="listitem">
+              <Github className="h-4 w-4" aria-hidden="true" /> Open Source
             </span>
-            <span className="flex items-center gap-1.5">
-              <Globe className="h-4 w-4" /> 40+ Countries
+            <span className="flex items-center gap-1.5" role="listitem">
+              <Globe className="h-4 w-4" aria-hidden="true" /> 40+ Countries
             </span>
           </motion.div>
         </div>
       </section>
 
       {/* Featured Agents */}
-      <section className="py-16 sm:py-20 bg-gray-50 dark:bg-gray-900">
+      <section className="py-16 sm:py-20 bg-gray-50 dark:bg-gray-900" role="region" aria-label="Featured agents" id="main-content">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -719,15 +752,15 @@ export function HomeView() {
           >
             <div>
               <h2 className="text-2xl sm:text-4xl font-bold flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center" aria-hidden="true">
                   <Sparkles className="h-5 w-5 text-amber-600" />
                 </div>
                 Featured Agents
               </h2>
               <p className="text-muted-foreground mt-2 ml-[52px]">Hand-picked from our knowledge base</p>
             </div>
-            <Button variant="outline" className="hidden sm:flex rounded-lg" onClick={() => handleNav('browse')}>
-              View All <ArrowRight className="h-4 w-4 ml-1" />
+            <Button variant="outline" className="hidden sm:flex rounded-lg" onClick={() => handleNav('browse')} aria-label="View all agents">
+              View All <ArrowRight className="h-4 w-4 ml-1" aria-hidden="true" />
             </Button>
           </motion.div>
           {loading ? (
@@ -754,15 +787,15 @@ export function HomeView() {
             </div>
           )}
           <div className="mt-8 text-center sm:hidden">
-            <Button variant="outline" className="rounded-lg" onClick={() => handleNav('browse')}>
-              View All Agents <ArrowRight className="h-4 w-4 ml-1" />
+            <Button variant="outline" className="rounded-lg" onClick={() => handleNav('browse')} aria-label="View all agents">
+              View All Agents <ArrowRight className="h-4 w-4 ml-1" aria-hidden="true" />
             </Button>
           </div>
         </div>
       </section>
 
       {/* Category Cloud */}
-      <section className="py-16 sm:py-20 bg-white dark:bg-gray-950">
+      <section className="py-16 sm:py-20 bg-white dark:bg-gray-950" role="region" aria-label="Explore by category">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -801,10 +834,13 @@ export function HomeView() {
                         store.setSelectedAgentId(null)
                         window.scrollTo(0, 0)
                       }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${cat.name}: ${cat.agentCount || 0} agents`}
                     >
                       <CardContent className="p-5 text-center">
                         <div className="inline-flex items-center justify-center h-11 w-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 mb-3 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/30 transition-colors group-hover:scale-110 transition-transform duration-200">
-                          <IconComp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                          <IconComp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
                         </div>
                         <h3 className="font-semibold text-sm mb-1">{cat.name}</h3>
                         <p className="text-xs text-muted-foreground font-medium">
@@ -818,15 +854,15 @@ export function HomeView() {
             </div>
           )}
           <div className="mt-8 text-center">
-            <Button variant="outline" className="rounded-lg" onClick={() => handleNav('browse')}>
-              <Layers className="h-4 w-4 mr-2" /> View All Categories
+            <Button variant="outline" className="rounded-lg" onClick={() => handleNav('browse')} aria-label="View all categories">
+              <Layers className="h-4 w-4 mr-2" aria-hidden="true" /> View All Categories
             </Button>
           </div>
         </div>
       </section>
 
       {/* Framework Showcase */}
-      <section className="py-16 sm:py-20 bg-gray-50 dark:bg-gray-900">
+      <section className="py-16 sm:py-20 bg-gray-50 dark:bg-gray-900" role="region" aria-label="Supported frameworks">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -848,12 +884,12 @@ export function HomeView() {
                 whileHover={{ y: -6 }}
               >
                 <Card className="h-full hover:shadow-xl transition-all overflow-hidden border-0 shadow-sm will-change-transform">
-                  <div className={`h-1.5 bg-gradient-to-r ${fw.color}`} />
+                  <div className={`h-1.5 bg-gradient-to-r ${fw.color}`} aria-hidden="true" />
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${fw.color} flex items-center justify-center shadow-md ${fw.shadowColor} group-hover:scale-105 transition-transform duration-200`}>
-                          <fw.icon className="h-6 w-6 text-white group-hover:animate-pulse" />
+                          <fw.icon className="h-6 w-6 text-white group-hover:animate-pulse" aria-hidden="true" />
                         </div>
                         <div>
                           <h3 className="font-bold text-lg">{fw.name}</h3>
@@ -876,8 +912,9 @@ export function HomeView() {
                         store.setSelectedAgentId(null)
                         window.scrollTo(0, 0)
                       }}
+                      aria-label={`Browse ${fw.name} agents`}
                     >
-                      Browse {fw.name} agents <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                      Browse {fw.name} agents <ArrowRight className="h-3.5 w-3.5 ml-1" aria-hidden="true" />
                     </Button>
                   </CardContent>
                 </Card>
@@ -888,7 +925,7 @@ export function HomeView() {
       </section>
 
       {/* Framework Comparison Table */}
-      <section className="py-16 sm:py-20 bg-white dark:bg-gray-950">
+      <section className="py-16 sm:py-20 bg-white dark:bg-gray-950" role="region" aria-label="Framework comparison">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -909,8 +946,8 @@ export function HomeView() {
             <div className="min-w-[600px]">
               <Card className="border-0 shadow-sm overflow-hidden">
                 {/* Table Header */}
-                <div className="grid grid-cols-6 bg-gray-50 dark:bg-gray-900 border-b">
-                  <div className="p-4 font-semibold text-sm text-muted-foreground">Feature</div>
+                <div className="grid grid-cols-6 bg-gray-50 dark:bg-gray-900 border-b" role="row">
+                  <div className="p-4 font-semibold text-sm text-muted-foreground" role="columnheader">Feature</div>
                   {[
                     { key: 'langgraph', name: 'LangGraph' },
                     { key: 'crewai', name: 'CrewAI' },
@@ -918,27 +955,27 @@ export function HomeView() {
                     { key: 'agno', name: 'Agno' },
                     { key: 'llamaindex', name: 'LlamaIndex' },
                   ].map(fw => (
-                    <div key={fw.key} className={`p-4 font-semibold text-sm text-center ${frameworkComparison.frameworkColors[fw.key as keyof typeof frameworkComparison.frameworkColors]}`}>
+                    <div key={fw.key} className={`p-4 font-semibold text-sm text-center ${frameworkComparison.frameworkColors[fw.key as keyof typeof frameworkComparison.frameworkColors]}`} role="columnheader">
                       {fw.name}
                     </div>
                   ))}
                 </div>
                 {/* Table Rows */}
                 {frameworkComparison.features.map((feature, i) => (
-                  <div key={feature.name} className={`grid grid-cols-6 border-b last:border-b-0 ${i % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50/50 dark:bg-gray-900/50'}`}>
-                    <div className="p-4 text-sm font-medium">{feature.name}</div>
+                  <div key={feature.name} className={`grid grid-cols-6 border-b last:border-b-0 ${i % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50/50 dark:bg-gray-900/50'}`} role="row">
+                    <div className="p-4 text-sm font-medium" role="cell">{feature.name}</div>
                     {(['langgraph', 'crewai', 'autogen', 'agno', 'llamaindex'] as const).map(fw => {
                       const val = feature[fw]
                       return (
-                        <div key={fw} className="p-4 flex items-center justify-center">
+                        <div key={fw} className="p-4 flex items-center justify-center" role="cell">
                           {typeof val === 'boolean' ? (
                             val ? (
-                              <div className="h-7 w-7 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                                <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                              <div className="h-7 w-7 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center" aria-label="Supported">
+                                <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
                               </div>
                             ) : (
-                              <div className="h-7 w-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                                <X className="h-4 w-4 text-gray-400" />
+                              <div className="h-7 w-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center" aria-label="Not supported">
+                                <X className="h-4 w-4 text-gray-400" aria-hidden="true" />
                               </div>
                             )
                           ) : (
@@ -961,7 +998,7 @@ export function HomeView() {
       </section>
 
       {/* Community / Newsletter Section */}
-      <section className="py-16 sm:py-20 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
+      <section className="py-16 sm:py-20 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950" role="region" aria-label="Community">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -985,7 +1022,7 @@ export function HomeView() {
             >
               <Card className="h-full border-0 shadow-sm hover:shadow-md transition-all text-center">
                 <CardContent className="p-6">
-                  <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-gray-100 dark:bg-gray-800 mb-4">
+                  <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-gray-100 dark:bg-gray-800 mb-4" aria-hidden="true">
                     <Github className="h-7 w-7" />
                   </div>
                   <div className="text-3xl font-bold mb-1">
@@ -993,8 +1030,8 @@ export function HomeView() {
                   </div>
                   <div className="text-sm text-muted-foreground mb-3">GitHub Stars</div>
                   <Button variant="outline" size="sm" className="rounded-lg gap-1.5" asChild>
-                    <a href="https://github.com" target="_blank" rel="noopener noreferrer">
-                      <Star className="h-3.5 w-3.5" /> Star on GitHub
+                    <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="Star on GitHub">
+                      <Star className="h-3.5 w-3.5" aria-hidden="true" /> Star on GitHub
                     </a>
                   </Button>
                 </CardContent>
@@ -1010,7 +1047,7 @@ export function HomeView() {
             >
               <Card className="h-full border-0 shadow-sm hover:shadow-md transition-all text-center">
                 <CardContent className="p-6">
-                  <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 mb-4">
+                  <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 mb-4" aria-hidden="true">
                     <Users className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div className="text-3xl font-bold mb-1">
@@ -1018,7 +1055,7 @@ export function HomeView() {
                   </div>
                   <div className="text-sm text-muted-foreground mb-3">Contributors</div>
                   {/* Contributor avatars */}
-                  <div className="flex items-center justify-center -space-x-2 mb-3">
+                  <div className="flex items-center justify-center -space-x-2 mb-3" aria-hidden="true">
                     {['SC', 'MR', 'PP', 'AK', 'JW'].map((initials, i) => (
                       <div
                         key={initials}
@@ -1036,8 +1073,8 @@ export function HomeView() {
                     </div>
                   </div>
                   <Button variant="outline" size="sm" className="rounded-lg gap-1.5" asChild>
-                    <a href="https://github.com" target="_blank" rel="noopener noreferrer">
-                      <GitBranch className="h-3.5 w-3.5" /> Contribute
+                    <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="Contribute to the project">
+                      <GitBranch className="h-3.5 w-3.5" aria-hidden="true" /> Contribute
                     </a>
                   </Button>
                 </CardContent>
@@ -1053,7 +1090,7 @@ export function HomeView() {
             >
               <Card className="h-full border-0 shadow-sm hover:shadow-md transition-all text-center">
                 <CardContent className="p-6">
-                  <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 mb-4">
+                  <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 mb-4" aria-hidden="true">
                     <MessageCircle className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
                   </div>
                   <div className="text-3xl font-bold mb-1">
@@ -1061,8 +1098,8 @@ export function HomeView() {
                   </div>
                   <div className="text-sm text-muted-foreground mb-3">Discord Members</div>
                   <Button variant="outline" size="sm" className="rounded-lg gap-1.5" asChild>
-                    <a href="https://discord.gg" target="_blank" rel="noopener noreferrer">
-                      <MessageCircle className="h-3.5 w-3.5" /> Join Discord
+                    <a href="https://discord.gg" target="_blank" rel="noopener noreferrer" aria-label="Join Discord community">
+                      <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" /> Join Discord
                     </a>
                   </Button>
                 </CardContent>
@@ -1078,26 +1115,68 @@ export function HomeView() {
             transition={{ delay: 0.3 }}
           >
             <Card className="border-0 shadow-sm overflow-hidden max-w-2xl mx-auto">
-              <div className="h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
+              <div className="h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" aria-hidden="true" />
               <CardContent className="p-6 sm:p-8 text-center">
-                <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 mb-4">
-                  <Mail className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <h3 className="font-bold text-lg mb-2">Stay in the Loop</h3>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Get weekly updates on new agents, framework releases, and community highlights.
-                </p>
-                <div className="flex gap-3 max-w-md mx-auto">
-                  <Input
-                    type="email"
-                    placeholder="you@example.com"
-                    className="h-10 flex-1 rounded-lg"
-                  />
-                  <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-lg px-6 h-10 shrink-0">
-                    Subscribe
-                  </Button>
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-3">No spam, unsubscribe anytime. Join 1,200+ subscribers.</p>
+                {!newsletterSubscribed ? (
+                  <>
+                    <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 mb-4" aria-hidden="true">
+                      <Mail className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <h3 className="font-bold text-lg mb-2">Stay in the Loop</h3>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Get weekly updates on new agents, framework releases, and community highlights.
+                    </p>
+                    <div className="flex gap-3 max-w-md mx-auto">
+                      <div className="flex-1">
+                        <Input
+                          type="email"
+                          placeholder="you@example.com"
+                          className={`h-10 rounded-lg ${newsletterError ? 'border-rose-300 focus-visible:ring-rose-400' : ''}`}
+                          value={newsletterEmail}
+                          onChange={(e) => {
+                            setNewsletterEmail(e.target.value)
+                            setNewsletterError('')
+                          }}
+                          onKeyDown={(e) => e.key === 'Enter' && handleNewsletterSubscribe()}
+                          aria-label="Email address for newsletter"
+                          aria-invalid={!!newsletterError}
+                          aria-describedby={newsletterError ? 'newsletter-error' : undefined}
+                        />
+                      </div>
+                      <Button
+                        className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-lg px-6 h-10 shrink-0"
+                        onClick={handleNewsletterSubscribe}
+                        aria-label="Subscribe to newsletter"
+                      >
+                        Subscribe
+                      </Button>
+                    </div>
+                    {newsletterError && (
+                      <p id="newsletter-error" className="text-xs text-rose-500 mt-2" role="alert">{newsletterError}</p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground mt-3">No spam, unsubscribe anytime. Join 1,200+ subscribers.</p>
+                  </>
+                ) : (
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    className="py-4"
+                  >
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 15, delay: 0.1 }}
+                      className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-4"
+                    >
+                      <Check className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                    </motion.div>
+                    <h3 className="font-bold text-lg mb-2">You&apos;re subscribed!</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Welcome to the Humain-Uno newsletter. Check your inbox for a confirmation.
+                    </p>
+                  </motion.div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -1114,8 +1193,6 @@ export function HomeView() {
               { icon: Github, label: 'GitHub', href: 'https://github.com' },
               { icon: Twitter, label: 'Twitter', href: 'https://twitter.com' },
               { icon: MessageCircle, label: 'Discord', href: 'https://discord.gg' },
-              { icon: Youtube, label: 'YouTube', href: 'https://youtube.com' },
-              { icon: Rss, label: 'Blog RSS', href: '#' },
             ].map(social => (
               <Button
                 key={social.label}
@@ -1134,11 +1211,13 @@ export function HomeView() {
       </section>
 
       {/* CTA Section */}
-      <section className="relative py-20 sm:py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800" />
+      <section className="relative py-20 sm:py-24 overflow-hidden" role="region" aria-label="Call to action">
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800" aria-hidden="true" />
         {/* Animated gradient border at top */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400" style={{ backgroundSize: '200% 100%', animation: 'gradient-rotate 3s ease infinite' }} />
-        <div className="absolute inset-0">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400" style={{ backgroundSize: '200% 100%', animation: 'gradient-rotate 3s ease infinite' }} aria-hidden="true" />
+        {/* Gradient border animation wrapper */}
+        <div className="absolute inset-0 rounded-2xl m-2 p-[2px] bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400 opacity-20 blur-sm" style={{ backgroundSize: '200% 100%', animation: 'gradient-rotate 4s ease infinite' }} aria-hidden="true" />
+        <div className="absolute inset-0" aria-hidden="true">
           <div className="absolute -top-20 -right-20 w-[400px] h-[400px] bg-emerald-400/20 rounded-full blur-3xl" />
           <div className="absolute -bottom-20 -left-20 w-[400px] h-[400px] bg-teal-400/20 rounded-full blur-3xl" />
         </div>
@@ -1148,22 +1227,45 @@ export function HomeView() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 mb-6" aria-hidden="true">
               <Rocket className="h-8 w-8 text-white" />
             </div>
             <h2 className="text-3xl sm:text-5xl font-extrabold text-white mb-4 tracking-tight">
               Ready to build your AI agent?
             </h2>
-            <p className="text-emerald-100 text-lg sm:text-xl mb-10 max-w-xl mx-auto leading-relaxed">
+            <p className="text-emerald-100 text-lg sm:text-xl mb-8 max-w-xl mx-auto leading-relaxed">
               Start from scratch or remix from 500+ curated templates. Deploy in minutes with AI assistance.
             </p>
+            {/* Animated platform stats */}
+            <div className="flex items-center justify-center gap-8 sm:gap-12 mb-10">
+              {[
+                { value: stats?.totalAgents || 105, label: 'Agents', color: 'text-white' },
+                { value: stats?.frameworks || 5, label: 'Frameworks', color: 'text-emerald-200' },
+                { value: 2500, label: 'Developers', color: 'text-teal-200' },
+              ].map((item, i) => (
+                <motion.div
+                  key={item.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.3 + i * 0.1 }}
+                  className="text-center"
+                >
+                  <div className={`text-2xl sm:text-3xl font-bold ${item.color}`}>
+                    <AnimatedCounter target={item.value} duration={1.5} />
+                  </div>
+                  <div className="text-xs text-emerald-200/80 font-medium">{item.label}</div>
+                </motion.div>
+              ))}
+            </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button
                 size="lg"
                 className="bg-white text-emerald-700 hover:bg-emerald-50 font-semibold px-8 h-13 text-base shadow-lg shadow-emerald-900/20 rounded-xl"
                 onClick={() => handleNav('wizard')}
+                aria-label="Create your agent now"
               >
-                <PlusCircle className="h-5 w-5 mr-2" />
+                <PlusCircle className="h-5 w-5 mr-2" aria-hidden="true" />
                 Create Your Agent Now
               </Button>
               <Button
@@ -1171,9 +1273,20 @@ export function HomeView() {
                 variant="outline"
                 className="border-white/30 text-white hover:bg-white/10 font-semibold px-8 h-13 text-base rounded-xl"
                 onClick={() => handleNav('browse')}
+                aria-label="Explore agent gallery"
               >
-                <Eye className="h-5 w-5 mr-2" />
+                <Eye className="h-5 w-5 mr-2" aria-hidden="true" />
                 Explore Gallery
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-white/30 text-white hover:bg-white/10 font-semibold px-8 h-13 text-base rounded-xl"
+                onClick={() => handleNav('hub')}
+                aria-label="Watch demo of knowledge hub"
+              >
+                <Play className="h-5 w-5 mr-2" aria-hidden="true" />
+                Watch Demo
               </Button>
             </div>
           </motion.div>

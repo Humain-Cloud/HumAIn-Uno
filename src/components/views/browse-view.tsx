@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useAppStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
 import type { KnowledgeAgent, Category } from '@/lib/types'
@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -17,16 +18,49 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import {
+  HoverCard,
+  HoverCardTrigger,
+  HoverCardContent,
+} from '@/components/ui/hover-card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
   Search,
   SlidersHorizontal,
   Grid3X3,
   List,
+  AlignJustify,
   X,
   Loader2,
   ChevronDown,
   Filter,
   ArrowUpDown,
   Sparkles,
+  Clock,
+  ArrowUpAZ,
+  ArrowUpZA,
+  CalendarPlus,
+  Flame,
+  Star,
+  GraduationCap,
+  Users,
+  HelpCircle,
+  Keyboard,
+  Zap,
+  Timer,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -41,6 +75,48 @@ interface Industry {
   count: number
 }
 
+// Saved filter presets
+const SAVED_FILTERS = [
+  {
+    id: 'popular',
+    label: 'Popular',
+    icon: Flame,
+    color: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800',
+    apply: { sortBy: 'popular' as const, category: null, framework: null, industry: null, difficulty: null },
+  },
+  {
+    id: 'recently-added',
+    label: 'Recently Added',
+    icon: CalendarPlus,
+    color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
+    apply: { sortBy: 'recently-added' as const, category: null, framework: null, industry: null, difficulty: null },
+  },
+  {
+    id: 'beginner-friendly',
+    label: 'Beginner Friendly',
+    icon: GraduationCap,
+    color: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800',
+    apply: { sortBy: 'popular' as const, category: null, framework: null, industry: null, difficulty: 'beginner' },
+  },
+  {
+    id: 'multi-agent',
+    label: 'Multi-Agent',
+    icon: Users,
+    color: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800',
+    apply: { sortBy: 'popular' as const, category: null, framework: null, industry: null, difficulty: null },
+    // We'll handle multi-agent specially
+  },
+]
+
+const SORT_OPTIONS = [
+  { value: 'popular', label: 'Popular', icon: Flame },
+  { value: 'newest', label: 'Newest', icon: Clock },
+  { value: 'most-starred', label: 'Most Starred', icon: Star },
+  { value: 'recently-added', label: 'Recently Added', icon: CalendarPlus },
+  { value: 'az', label: 'A-Z', icon: ArrowUpAZ },
+  { value: 'za', label: 'Z-A', icon: ArrowUpZA },
+]
+
 export function BrowseView() {
   const {
     searchQuery, setSearchQuery,
@@ -51,6 +127,7 @@ export function BrowseView() {
     sortBy, setSortBy,
     viewMode, setViewMode,
     resetFilters,
+    setCurrentView,
   } = useAppStore()
 
   const [agents, setAgents] = useState<KnowledgeAgent[]>([])
@@ -62,6 +139,13 @@ export function BrowseView() {
   const [hasMore, setHasMore] = useState(true)
   const [total, setTotal] = useState(0)
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery)
+  const [searchTiming, setSearchTiming] = useState(0)
+  const [showShortcuts, setShowShortcuts] = useState(false)
+
+  // Refs
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const infiniteScrollRef = useRef<HTMLDivElement>(null)
+  const keySequenceRef = useRef('')
 
   // Debounce search query
   useEffect(() => {
@@ -84,15 +168,14 @@ export function BrowseView() {
 
   // Resolve category name from ID or name
   const resolveCategoryName = useCallback((catValue: string): string => {
-    // If it's already a name (not a cuid), return as-is
     if (!catValue.startsWith('cl')) return catValue
-    // Look up the category name from the categories list
     const cat = categories.find(c => c.id === catValue)
     return cat?.name || catValue
   }, [categories])
 
   // Fetch agents
   const fetchAgents = useCallback(async (pageNum: number, append = false) => {
+    const startTime = performance.now()
     if (pageNum === 1) setLoading(true)
     else setLoadingMore(true)
 
@@ -105,9 +188,18 @@ export function BrowseView() {
       if (selectedFramework) params.framework = selectedFramework
       if (selectedIndustry) params.industry = selectedIndustry
       if (selectedCategory) params.category = resolveCategoryName(selectedCategory)
+      if (selectedDifficulty) params.difficulty = selectedDifficulty
 
       const data: any = await api.knowledge.search(params)
-      const newAgents = data?.data || data || []
+      let newAgents = data?.data || data || []
+
+      // Client-side sort for A-Z, Z-A, and recently-added
+      if (sortBy === 'az') {
+        newAgents = [...newAgents].sort((a: KnowledgeAgent, b: KnowledgeAgent) => a.name.localeCompare(b.name))
+      } else if (sortBy === 'za') {
+        newAgents = [...newAgents].sort((a: KnowledgeAgent, b: KnowledgeAgent) => b.name.localeCompare(a.name))
+      }
+      // 'recently-added' is handled by API's 'newest' sort - we map it below
 
       if (append) {
         setAgents(prev => [...prev, ...newAgents])
@@ -116,19 +208,75 @@ export function BrowseView() {
       }
       setTotal(data?.total || newAgents.length)
       setHasMore(data?.hasMore !== undefined ? data.hasMore : newAgents.length >= 24)
+
+      const elapsed = performance.now() - startTime
+      setSearchTiming(Math.round(elapsed))
     } catch (err) {
       console.error('Failed to fetch agents:', err)
     } finally {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [debouncedQuery, selectedFramework, selectedIndustry, selectedCategory, resolveCategoryName])
+  }, [debouncedQuery, selectedFramework, selectedIndustry, selectedCategory, selectedDifficulty, sortBy, resolveCategoryName])
 
   // Reset page and fetch when filters change
   useEffect(() => {
     setPage(1)
     fetchAgents(1)
   }, [fetchAgents])
+
+  // Infinite scroll with IntersectionObserver
+  useEffect(() => {
+    if (!infiniteScrollRef.current || !hasMore || loadingMore) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          const nextPage = page + 1
+          setPage(nextPage)
+          fetchAgents(nextPage, true)
+        }
+      },
+      { threshold: 0.1, rootMargin: '200px' }
+    )
+
+    observer.observe(infiniteScrollRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, loadingMore, loading, page, fetchAgents])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger in input/textarea fields
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        if (e.key === 'Escape') {
+          setSearchQuery('')
+          target.blur()
+        }
+        return
+      }
+
+      if (e.key === '/') {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      } else if (e.key === 'Escape') {
+        setSearchQuery('')
+        searchInputRef.current?.blur()
+      } else if (e.key === '?') {
+        setShowShortcuts(true)
+      } else if (e.key === 'g') {
+        keySequenceRef.current = 'g'
+        setTimeout(() => { keySequenceRef.current = '' }, 1000)
+      } else if (e.key === 'b' && keySequenceRef.current === 'g') {
+        keySequenceRef.current = ''
+        setCurrentView('browse')
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [setSearchQuery, setCurrentView])
 
   const loadMore = () => {
     const nextPage = page + 1
@@ -150,6 +298,46 @@ export function BrowseView() {
     { value: 'agno', label: 'Agno', color: 'text-violet-600' },
     { value: 'llamaindex', label: 'LlamaIndex', color: 'text-teal-600' },
   ]
+
+  // Apply saved filter preset
+  const applySavedFilter = (filterId: string) => {
+    const preset = SAVED_FILTERS.find(f => f.id === filterId)
+    if (!preset) return
+
+    if (filterId === 'multi-agent') {
+      // For multi-agent, we cycle through frameworks or just set framework
+      setSelectedCategory(null)
+      setSelectedIndustry(null)
+      setSelectedDifficulty(null)
+      setSortBy(preset.apply.sortBy)
+      // Multi-agent means langgraph, crewai, or autogen - just pick the first one as filter
+      setSelectedFramework('langgraph')
+    } else if (filterId === 'beginner-friendly') {
+      setSelectedCategory(null)
+      setSelectedFramework(null)
+      setSelectedIndustry(null)
+      setSelectedDifficulty('beginner')
+      setSortBy(preset.apply.sortBy)
+    } else {
+      setSelectedCategory(preset.apply.category)
+      setSelectedFramework(preset.apply.framework)
+      setSelectedIndustry(preset.apply.industry)
+      setSelectedDifficulty(preset.apply.difficulty)
+      setSortBy(preset.apply.sortBy)
+    }
+  }
+
+  // Check if a saved filter is active
+  const isActiveSavedFilter = (filterId: string): boolean => {
+    if (filterId === 'popular') return sortBy === 'popular' && !selectedCategory && !selectedFramework && !selectedIndustry && !selectedDifficulty
+    if (filterId === 'recently-added') return sortBy === 'recently-added' && !selectedCategory && !selectedFramework && !selectedIndustry && !selectedDifficulty
+    if (filterId === 'beginner-friendly') return selectedDifficulty === 'beginner' && sortBy === 'popular'
+    if (filterId === 'multi-agent') return (selectedFramework === 'langgraph' || selectedFramework === 'crewai' || selectedFramework === 'autogen') && !selectedCategory && !selectedIndustry && !selectedDifficulty
+    return false
+  }
+
+  // Multi-agent frameworks for filter display
+  const multiAgentFrameworks = ['langgraph', 'crewai', 'autogen']
 
   const FilterSidebar = () => (
     <div className="space-y-5">
@@ -232,15 +420,20 @@ export function BrowseView() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="popular">Popular</SelectItem>
-            <SelectItem value="newest">Newest</SelectItem>
-            <SelectItem value="most-starred">Most Starred</SelectItem>
+            {SORT_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                <span className="flex items-center gap-1.5">
+                  <opt.icon className="h-3.5 w-3.5" />
+                  {opt.label}
+                </span>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       {activeFilterCount > 0 && (
-        <Button variant="outline" className="w-full rounded-xl border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/20" onClick={resetFilters}>
+        <Button variant="outline" className="w-full rounded-xl border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 min-h-[44px]" onClick={resetFilters}>
           <X className="h-4 w-4 mr-1" /> Clear Filters ({activeFilterCount})
         </Button>
       )}
@@ -256,8 +449,89 @@ export function BrowseView() {
       const cat = categories.find(c => c.id === value || c.name === value)
       return cat?.name || value
     }
+    if (type === 'difficulty') {
+      return value.charAt(0).toUpperCase() + value.slice(1)
+    }
     return value
   }
+
+  // Compact view row component
+  const CompactRow = ({ agent, index }: { agent: KnowledgeAgent; index: number }) => {
+    const fwColor = agent.framework
+      ? { langgraph: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300', crewai: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', autogen: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300', agno: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300', llamaindex: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300' }[agent.framework.toLowerCase()] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+      : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+
+    const diffColor = agent.difficulty
+      ? { beginner: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', intermediate: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', advanced: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' }[agent.difficulty.toLowerCase()] || ''
+      : ''
+
+    return (
+      <motion.tr
+        initial={{ opacity: 0, y: 5 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.02, duration: 0.2 }}
+        className="cursor-pointer hover:bg-muted/50 transition-colors border-b"
+        onClick={() => useAppStore.getState().navigateToAgent(agent.id)}
+      >
+        <TableCell className="font-medium text-sm py-2.5">{agent.name}</TableCell>
+        <TableCell className="py-2.5">
+          {agent.framework ? (
+            <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 h-5 ${fwColor}`}>
+              {agent.framework}
+            </Badge>
+          ) : <span className="text-muted-foreground text-xs">—</span>}
+        </TableCell>
+        <TableCell className="py-2.5 text-xs text-muted-foreground">{agent.category}</TableCell>
+        <TableCell className="py-2.5">
+          {agent.difficulty ? (
+            <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 h-5 ${diffColor}`}>
+              {agent.difficulty}
+            </Badge>
+          ) : <span className="text-muted-foreground text-xs">—</span>}
+        </TableCell>
+      </motion.tr>
+    )
+  }
+
+  // Agent preview tooltip
+  const AgentPreviewTooltip = ({ agent, children }: { agent: KnowledgeAgent; children: React.ReactNode }) => (
+    <HoverCard openDelay={500} closeDelay={100}>
+      <HoverCardTrigger asChild>{children}</HoverCardTrigger>
+      <HoverCardContent className="w-72 p-3" side="top" align="center">
+        <div className="space-y-2">
+          <h4 className="font-semibold text-sm">{agent.name}</h4>
+          <p className="text-xs text-muted-foreground line-clamp-4">
+            {agent.description?.slice(0, 200)}{agent.description && agent.description.length > 200 ? '...' : ''}
+          </p>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {agent.framework && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
+                {agent.framework}
+              </Badge>
+            )}
+            {agent.difficulty && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 capitalize">
+                {agent.difficulty}
+              </Badge>
+            )}
+          </div>
+          {agent.tools && agent.tools.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {agent.tools.slice(0, 3).map((tool) => (
+                <span key={tool} className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                  {tool}
+                </span>
+              ))}
+              {agent.tools.length > 3 && (
+                <span className="text-[10px] text-muted-foreground">+{agent.tools.length - 3}</span>
+              )}
+            </div>
+          )}
+          <p className="text-[10px] text-muted-foreground italic">Click to view details</p>
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  )
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -270,9 +544,34 @@ export function BrowseView() {
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
             {loading ? 'Loading...' : `${total} agents found`}
+            {!loading && searchTiming > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground/60">
+                <Timer className="h-3 w-3" /> {searchTiming}ms
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              ref={searchInputRef}
+              placeholder="Search agents... (press /)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-8 h-9 w-48 sm:w-64 rounded-xl"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
           {/* Mobile Filter Toggle */}
           <Sheet>
             <SheetTrigger asChild>
@@ -297,7 +596,7 @@ export function BrowseView() {
             <Button
               variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
               size="sm"
-              className={`rounded-none h-8 px-3 ${viewMode === 'grid' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : ''}`}
+              className={`rounded-none h-8 px-3 min-w-[36px] ${viewMode === 'grid' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : ''}`}
               onClick={() => setViewMode('grid')}
             >
               <Grid3X3 className="h-4 w-4" />
@@ -305,60 +604,98 @@ export function BrowseView() {
             <Button
               variant={viewMode === 'list' ? 'secondary' : 'ghost'}
               size="sm"
-              className={`rounded-none h-8 px-3 ${viewMode === 'list' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : ''}`}
+              className={`rounded-none h-8 px-3 min-w-[36px] ${viewMode === 'list' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : ''}`}
               onClick={() => setViewMode('list')}
             >
               <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'compact' ? 'secondary' : 'ghost'}
+              size="sm"
+              className={`rounded-none h-8 px-3 min-w-[36px] ${viewMode === 'compact' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : ''}`}
+              onClick={() => setViewMode('compact')}
+            >
+              <AlignJustify className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Active Filters */}
+      {/* Saved Filters / Quick Filters */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+            <Zap className="h-3 w-3" /> Quick Filters:
+          </span>
+          {SAVED_FILTERS.map((filter) => {
+            const active = isActiveSavedFilter(filter.id)
+            return (
+              <motion.button
+                key={filter.id}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => applySavedFilter(filter.id)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all duration-200 ${
+                  active
+                    ? 'ring-2 ring-emerald-400 ring-offset-1 ' + filter.color
+                    : filter.color + ' hover:shadow-sm'
+                }`}
+              >
+                <filter.icon className="h-3 w-3" />
+                {filter.label}
+              </motion.button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Active Filters Bar */}
       <AnimatePresence>
         {activeFilterCount > 0 && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="flex flex-wrap items-center gap-2 mb-4"
+            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+            animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+            className="overflow-hidden"
           >
-            <span className="text-xs text-muted-foreground font-medium">Active:</span>
-            {selectedCategory && (
-              <Badge variant="secondary" className="gap-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 rounded-lg px-2.5 py-1">
-                {getFilterDisplayName('category', selectedCategory)}
-                <button onClick={() => setSelectedCategory(null)} className="hover:bg-emerald-200 dark:hover:bg-emerald-800 rounded-full p-0.5">
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {selectedFramework && (
-              <Badge variant="secondary" className="gap-1.5 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 rounded-lg px-2.5 py-1">
-                {getFilterDisplayName('framework', selectedFramework)}
-                <button onClick={() => setSelectedFramework(null)} className="hover:bg-amber-200 dark:hover:bg-amber-800 rounded-full p-0.5">
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {selectedIndustry && (
-              <Badge variant="secondary" className="gap-1.5 bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 rounded-lg px-2.5 py-1">
-                {selectedIndustry}
-                <button onClick={() => setSelectedIndustry(null)} className="hover:bg-violet-200 dark:hover:bg-violet-800 rounded-full p-0.5">
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {selectedDifficulty && (
-              <Badge variant="secondary" className="gap-1.5 bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 rounded-lg px-2.5 py-1">
-                {selectedDifficulty}
-                <button onClick={() => setSelectedDifficulty(null)} className="hover:bg-rose-200 dark:hover:bg-rose-800 rounded-full p-0.5">
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground hover:text-foreground" onClick={resetFilters}>
-              Clear all
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground font-medium">Active:</span>
+              {selectedCategory && (
+                <Badge variant="secondary" className="gap-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 rounded-lg px-2.5 py-1">
+                  {getFilterDisplayName('category', selectedCategory)}
+                  <button onClick={() => setSelectedCategory(null)} className="hover:bg-emerald-200 dark:hover:bg-emerald-800 rounded-full p-0.5">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {selectedFramework && (
+                <Badge variant="secondary" className="gap-1.5 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 rounded-lg px-2.5 py-1">
+                  {getFilterDisplayName('framework', selectedFramework)}
+                  <button onClick={() => setSelectedFramework(null)} className="hover:bg-amber-200 dark:hover:bg-amber-800 rounded-full p-0.5">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {selectedIndustry && (
+                <Badge variant="secondary" className="gap-1.5 bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 rounded-lg px-2.5 py-1">
+                  {selectedIndustry}
+                  <button onClick={() => setSelectedIndustry(null)} className="hover:bg-violet-200 dark:hover:bg-violet-800 rounded-full p-0.5">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {selectedDifficulty && (
+                <Badge variant="secondary" className="gap-1.5 bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 rounded-lg px-2.5 py-1">
+                  {getFilterDisplayName('difficulty', selectedDifficulty)}
+                  <button onClick={() => setSelectedDifficulty(null)} className="hover:bg-rose-200 dark:hover:bg-rose-800 rounded-full p-0.5">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground hover:text-foreground" onClick={resetFilters}>
+                Clear all
+              </Button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -378,9 +715,32 @@ export function BrowseView() {
 
         {/* Main Content */}
         <div className="flex-1 min-w-0">
+          {/* Result Count & Timing */}
+          {!loading && agents.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center justify-between mb-4"
+            >
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{total}</span> agents found
+                {searchTiming > 0 && (
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/60 bg-muted px-2 py-0.5 rounded-full">
+                    <Timer className="h-3 w-3" /> {searchTiming}ms
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Sorted by {SORT_OPTIONS.find(o => o.value === sortBy)?.label || sortBy}
+              </div>
+            </motion.div>
+          )}
+
           {loading ? (
             <div className={viewMode === 'grid'
               ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4'
+              : viewMode === 'compact'
+              ? 'space-y-0'
               : 'space-y-3'
             }>
               {Array.from({ length: 12 }).map((_, i) => (
@@ -410,6 +770,46 @@ export function BrowseView() {
                 Clear Filters
               </Button>
             </div>
+          ) : viewMode === 'compact' ? (
+            <>
+              <Card className="rounded-xl overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Framework</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Difficulty</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {agents.map((agent, i) => (
+                      <CompactRow key={agent.id} agent={agent} index={i} />
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
+              {/* Infinite scroll sentinel */}
+              {hasMore && (
+                <div ref={infiniteScrollRef} className="flex justify-center py-4">
+                  {loadingMore ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading more...
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={loadMore}
+                      className="min-w-[200px] rounded-xl hover:bg-gradient-to-r hover:from-emerald-50 hover:to-cyan-50 dark:hover:from-emerald-900/20 dark:hover:to-cyan-900/20 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300"
+                    >
+                      <ChevronDown className="h-4 w-4 mr-1" />
+                      Load More
+                    </Button>
+                  )}
+                </div>
+              )}
+            </>
           ) : (
             <>
               <div className={viewMode === 'grid'
@@ -423,38 +823,89 @@ export function BrowseView() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04, duration: 0.3 }}
                   >
-                    <AgentCard agent={agent} index={i} viewMode={viewMode} />
+                    <AgentPreviewTooltip agent={agent}>
+                      <div>
+                        <AgentCard agent={agent} index={i} viewMode={viewMode} />
+                      </div>
+                    </AgentPreviewTooltip>
                   </motion.div>
                 ))}
               </div>
 
-              {/* Load More */}
+              {/* Infinite scroll sentinel + Load More fallback */}
               {hasMore && (
-                <div className="text-center mt-8">
-                  <Button
-                    variant="outline"
-                    onClick={loadMore}
-                    disabled={loadingMore}
-                    className="min-w-[200px] rounded-xl hover:bg-gradient-to-r hover:from-emerald-50 hover:to-cyan-50 dark:hover:from-emerald-900/20 dark:hover:to-cyan-900/20 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300"
-                  >
-                    {loadingMore ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="h-4 w-4 mr-1" />
-                        Load More
-                      </>
-                    )}
-                  </Button>
+                <div ref={infiniteScrollRef} className="text-center mt-8">
+                  {loadingMore ? (
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading more agents...
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={loadMore}
+                      disabled={loadingMore}
+                      className="min-w-[200px] rounded-xl hover:bg-gradient-to-r hover:from-emerald-50 hover:to-cyan-50 dark:hover:from-emerald-900/20 dark:hover:to-cyan-900/20 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300"
+                    >
+                      <ChevronDown className="h-4 w-4 mr-1" />
+                      Load More
+                    </Button>
+                  )}
                 </div>
               )}
             </>
           )}
         </div>
       </div>
+
+      {/* Keyboard Shortcuts Modal */}
+      <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
+        <DialogContent className="sm:max-w-md rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Keyboard className="h-5 w-5 text-emerald-600" />
+              Keyboard Shortcuts
+            </DialogTitle>
+            <DialogDescription>
+              Use these shortcuts to navigate faster
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            {[
+              { keys: ['/', 'Search'], desc: 'Focus search input' },
+              { keys: ['Esc'], desc: 'Clear search and blur input' },
+              { keys: ['g', 'b'], desc: 'Go to Browse view' },
+              { keys: ['?'], desc: 'Show this help dialog' },
+            ].map((shortcut, i) => (
+              <div key={i} className="flex items-center justify-between py-1.5">
+                <span className="text-sm text-muted-foreground">{shortcut.desc}</span>
+                <div className="flex items-center gap-1">
+                  {shortcut.keys.map((key, ki) => (
+                    <span key={ki}>
+                      {ki > 0 && <span className="text-xs text-muted-foreground mx-0.5">then</span>}
+                      <kbd className="inline-flex items-center justify-center h-6 px-2 text-xs font-mono bg-muted border rounded-md">
+                        {key}
+                      </kbd>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Keyboard Shortcut Hint (bottom-right) */}
+      <motion.button
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 1, type: 'spring', stiffness: 200, damping: 15 }}
+        onClick={() => setShowShortcuts(true)}
+        className="fixed bottom-6 right-6 z-40 h-10 w-10 rounded-full bg-background border shadow-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:shadow-xl transition-all duration-200"
+        title="Keyboard shortcuts (?)"
+      >
+        <HelpCircle className="h-5 w-5" />
+      </motion.button>
     </div>
   )
 }
