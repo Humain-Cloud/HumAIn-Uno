@@ -49,6 +49,12 @@ import {
   CheckCircle2,
   FolderOpen,
   ChevronRight,
+  Newspaper,
+  Users,
+  ChefHat,
+  Bolt,
+  Truck,
+  Building,
 } from 'lucide-react'
 
 // ─── Icons (inline SVGs to avoid importing all of lucide-react) ───
@@ -353,6 +359,105 @@ const categoryStyleMap: Record<string, CategoryStyle> = {
     border: 'border-teal-100 dark:border-teal-900/30',
     hoverBorder: 'hover:border-teal-300 dark:hover:border-teal-700/50',
   },
+  'Software Development': {
+    icon: Code2,
+    gradient: 'bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-slate-900/40',
+    hoverGradient: 'hover:from-gray-100 hover:to-slate-100 dark:hover:from-gray-800/60 dark:hover:to-slate-800/50',
+    iconBg: 'bg-gray-200 dark:bg-gray-700/60',
+    iconHoverBg: 'group-hover:bg-gray-300 dark:group-hover:bg-gray-600/70',
+    iconColor: 'text-gray-600 dark:text-gray-400',
+    accent: 'text-gray-700 dark:text-gray-300',
+    border: 'border-gray-200 dark:border-gray-800/50',
+    hoverBorder: 'hover:border-gray-400 dark:hover:border-gray-600/60',
+  },
+  'Productivity': {
+    icon: Zap,
+    gradient: 'bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/40 dark:to-amber-950/30',
+    hoverGradient: 'hover:from-yellow-100 hover:to-amber-100 dark:hover:from-yellow-950/60 dark:hover:to-amber-950/50',
+    iconBg: 'bg-yellow-100 dark:bg-yellow-900/50',
+    iconHoverBg: 'group-hover:bg-yellow-200 dark:group-hover:bg-yellow-800/60',
+    iconColor: 'text-yellow-600 dark:text-yellow-400',
+    accent: 'text-yellow-700 dark:text-yellow-300',
+    border: 'border-yellow-100 dark:border-yellow-900/30',
+    hoverBorder: 'hover:border-yellow-300 dark:hover:border-yellow-700/50',
+  },
+  'Media': {
+    icon: Newspaper,
+    gradient: 'bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/40 dark:to-violet-950/30',
+    hoverGradient: 'hover:from-purple-100 hover:to-violet-100 dark:hover:from-purple-950/60 dark:hover:to-violet-950/50',
+    iconBg: 'bg-purple-100 dark:bg-purple-900/50',
+    iconHoverBg: 'group-hover:bg-purple-200 dark:group-hover:bg-purple-800/60',
+    iconColor: 'text-purple-600 dark:text-purple-400',
+    accent: 'text-purple-700 dark:text-purple-300',
+    border: 'border-purple-100 dark:border-purple-900/30',
+    hoverBorder: 'hover:border-purple-300 dark:hover:border-purple-700/50',
+  },
+  'Human Resources': {
+    icon: Users,
+    gradient: 'bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/40 dark:to-cyan-950/30',
+    hoverGradient: 'hover:from-teal-100 hover:to-cyan-100 dark:hover:from-teal-950/60 dark:hover:to-cyan-950/50',
+    iconBg: 'bg-teal-100 dark:bg-teal-900/50',
+    iconHoverBg: 'group-hover:bg-teal-200 dark:group-hover:bg-teal-800/60',
+    iconColor: 'text-teal-600 dark:text-teal-400',
+    accent: 'text-teal-700 dark:text-teal-300',
+    border: 'border-teal-100 dark:border-teal-900/30',
+    hoverBorder: 'hover:border-teal-300 dark:hover:border-teal-700/50',
+  },
+  'General': {
+    icon: Layers,
+    gradient: 'bg-gradient-to-br from-zinc-50 to-neutral-50 dark:from-zinc-900/50 dark:to-neutral-900/40',
+    hoverGradient: 'hover:from-zinc-100 hover:to-neutral-100 dark:hover:from-zinc-800/60 dark:hover:to-neutral-800/50',
+    iconBg: 'bg-zinc-200 dark:bg-zinc-700/60',
+    iconHoverBg: 'group-hover:bg-zinc-300 dark:group-hover:bg-zinc-600/70',
+    iconColor: 'text-zinc-600 dark:text-zinc-400',
+    accent: 'text-zinc-700 dark:text-zinc-300',
+    border: 'border-zinc-200 dark:border-zinc-800/50',
+    hoverBorder: 'hover:border-zinc-400 dark:hover:border-zinc-600/60',
+  },
+  'Food': {
+    icon: ChefHat,
+    gradient: 'bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/40 dark:to-red-950/30',
+    hoverGradient: 'hover:from-orange-100 hover:to-red-100 dark:hover:from-orange-950/60 dark:hover:to-red-950/50',
+    iconBg: 'bg-orange-100 dark:bg-orange-900/50',
+    iconHoverBg: 'group-hover:bg-orange-200 dark:group-hover:bg-orange-800/60',
+    iconColor: 'text-orange-600 dark:text-orange-400',
+    accent: 'text-orange-700 dark:text-orange-300',
+    border: 'border-orange-100 dark:border-orange-900/30',
+    hoverBorder: 'hover:border-orange-300 dark:hover:border-orange-700/50',
+  },
+  'Energy': {
+    icon: Bolt,
+    gradient: 'bg-gradient-to-br from-lime-50 to-green-50 dark:from-lime-950/40 dark:to-green-950/30',
+    hoverGradient: 'hover:from-lime-100 hover:to-green-100 dark:hover:from-lime-950/60 dark:hover:to-green-950/50',
+    iconBg: 'bg-lime-100 dark:bg-lime-900/50',
+    iconHoverBg: 'group-hover:bg-lime-200 dark:group-hover:bg-lime-800/60',
+    iconColor: 'text-lime-600 dark:text-lime-400',
+    accent: 'text-lime-700 dark:text-lime-300',
+    border: 'border-lime-100 dark:border-lime-900/30',
+    hoverBorder: 'hover:border-lime-300 dark:hover:border-lime-700/50',
+  },
+  'Supply Chain': {
+    icon: Truck,
+    gradient: 'bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/40 dark:to-blue-950/30',
+    hoverGradient: 'hover:from-sky-100 hover:to-blue-100 dark:hover:from-sky-950/60 dark:hover:to-blue-950/50',
+    iconBg: 'bg-sky-100 dark:bg-sky-900/50',
+    iconHoverBg: 'group-hover:bg-sky-200 dark:group-hover:bg-sky-800/60',
+    iconColor: 'text-sky-600 dark:text-sky-400',
+    accent: 'text-sky-700 dark:text-sky-300',
+    border: 'border-sky-100 dark:border-sky-900/30',
+    hoverBorder: 'hover:border-sky-300 dark:hover:border-sky-700/50',
+  },
+  'Real Estate': {
+    icon: Building,
+    gradient: 'bg-gradient-to-br from-amber-50 to-stone-50 dark:from-amber-950/40 dark:to-stone-900/30',
+    hoverGradient: 'hover:from-amber-100 hover:to-stone-100 dark:hover:from-amber-950/60 dark:hover:to-stone-900/50',
+    iconBg: 'bg-amber-100 dark:bg-amber-900/50',
+    iconHoverBg: 'group-hover:bg-amber-200 dark:group-hover:bg-amber-800/60',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+    accent: 'text-amber-700 dark:text-amber-300',
+    border: 'border-amber-100 dark:border-amber-900/30',
+    hoverBorder: 'hover:border-amber-300 dark:hover:border-amber-700/50',
+  },
 }
 
 // Fallback palette for categories not in the map — cycles through distinctive colors
@@ -416,7 +521,7 @@ function CategoriesGrid({ categories, loading, onNavigate }: { categories: Categ
                 <button
                   key={cat.id}
                   onClick={() => {
-                    useAppStore.getState().setSelectedCategory(cat.slug)
+                    useAppStore.getState().setSelectedCategory(cat.name)
                     onNavigate('browse')
                   }}
                   className={`
@@ -731,8 +836,8 @@ function BrowseView() {
     setLoading(true)
   }
 
-  const handleCategoryChange = (slug: string | null) => {
-    setSelectedCategory(slug)
+  const handleCategoryChange = (name: string | null) => {
+    setSelectedCategory(name)
     setCurrentPage(1)
     setLoading(true)
   }
@@ -778,8 +883,8 @@ function BrowseView() {
           return (
             <button
               key={cat.id}
-              onClick={() => handleCategoryChange(cat.slug)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${selectedCategory === cat.slug ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:text-foreground'}`}
+              onClick={() => handleCategoryChange(cat.name)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${selectedCategory === cat.name ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:text-foreground'}`}
             >
               <CatIcon className="h-3.5 w-3.5" />
               {cat.name}

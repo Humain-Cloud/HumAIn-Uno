@@ -217,6 +217,60 @@ const categoryCapabilities: Record<string, Capability[]> = {
     { title: 'Predictive Maintenance', description: 'Predicts equipment failures before they occur by analyzing sensor data patterns, vibration signatures, and operational parameters to schedule maintenance and prevent downtime.', icon: 'Wrench' },
     { title: 'Digital Twin Simulation', description: 'Creates and maintains digital twins of physical systems for simulation, what-if analysis, and optimization without disrupting real-world operations.', icon: 'Layers' },
   ],
+  'Software Development': [
+    { title: 'Full-Stack Development', description: 'Generates complete, production-ready application code spanning frontend, backend, database layers, and deployment configurations from high-level specifications with consistent architecture patterns.', icon: 'Code2' },
+    { title: 'API Design & Integration', description: 'Designs RESTful and GraphQL APIs with proper schema definitions, authentication, rate limiting, and integrates with third-party services through well-structured adapter patterns.', icon: 'Workflow' },
+    { title: 'Code Quality & Review', description: 'Performs automated code reviews identifying bugs, security vulnerabilities, performance bottlenecks, and style violations while suggesting refactoring improvements with detailed explanations.', icon: 'CheckCircle2' },
+    { title: 'Dev Environment Automation', description: 'Automates development environment setup, dependency management, build pipelines, and local testing infrastructure to eliminate configuration drift and accelerate onboarding.', icon: 'Wrench' },
+  ],
+  'Productivity': [
+    { title: 'Task Prioritization & Scheduling', description: 'Analyzes task urgency, dependencies, and resource availability to automatically prioritize work items and generate optimal daily schedules that maximize throughput and minimize context switching.', icon: 'Zap' },
+    { title: 'Focus & Time Management', description: 'Monitors work patterns, identifies time sinks and distraction triggers, and provides personalized focus strategies including Pomodoro scheduling, deep-work blocks, and interruption management.', icon: 'Clock' },
+    { title: 'Document Drafting & Editing', description: 'Accelerates document creation with intelligent templates, auto-completion, style-consistent editing, grammar checking, and formatting optimization for reports, proposals, and correspondence.', icon: 'FileCode' },
+    { title: 'Habit & Goal Tracking', description: 'Tracks personal and team habits against defined goals, provides streak analytics, identifies behavioral patterns, and delivers actionable nudges to maintain momentum toward objectives.', icon: 'BarChart3' },
+  ],
+  'Media': [
+    { title: 'Content Curation & Distribution', description: 'Aggregates, filters, and curates content from diverse sources, then distributes across platforms with optimized scheduling, formatting, and audience-specific customization.', icon: 'Newspaper' },
+    { title: 'Audience Engagement Analytics', description: 'Measures and analyzes audience engagement metrics across media channels, identifying peak interaction times, content preferences, and sentiment trends to optimize reach and retention.', icon: 'BarChart3' },
+    { title: 'Multimedia Production', description: 'Assists in multimedia content production workflows including script generation, audio-visual synchronization, caption generation, and format adaptation for cross-platform publishing.', icon: 'Palette' },
+    { title: 'Misinformation Detection', description: 'Identifies potentially misleading or false content by cross-referencing claims against verified sources, analyzing metadata patterns, and flagging inconsistencies for editorial review.', icon: 'Shield' },
+  ],
+  'Human Resources': [
+    { title: 'Talent Acquisition & Screening', description: 'Automates candidate sourcing, resume parsing, skills assessment, and initial screening interviews to identify top talent while reducing bias and time-to-hire across all positions.', icon: 'Users' },
+    { title: 'Employee Onboarding', description: 'Creates personalized onboarding journeys with automated task assignments, documentation delivery, mentor matching, and progress tracking to accelerate new hire productivity.', icon: 'Briefcase' },
+    { title: 'Engagement & Retention Analytics', description: 'Monitors employee engagement signals including survey responses, participation rates, and behavioral patterns to predict attrition risk and recommend retention interventions.', icon: 'Heart' },
+    { title: 'Policy & Compliance Management', description: 'Maintains and updates HR policies, tracks regulatory compliance requirements across jurisdictions, and automates policy acknowledgment workflows with audit-ready documentation.', icon: 'Scale' },
+  ],
+  'General': [
+    { title: 'Universal Task Automation', description: 'Provides flexible automation capabilities for common cross-domain tasks including data entry, file management, email processing, and report generation with configurable trigger conditions.', icon: 'Workflow' },
+    { title: 'Smart Summarization', description: 'Condenses lengthy documents, meetings, and data streams into concise, actionable summaries preserving key insights, decisions, and action items while filtering noise and redundancy.', icon: 'BookOpen' },
+    { title: 'Configuration Validation', description: 'Validates system configurations, environment settings, and deployment parameters against best practice templates, flagging inconsistencies and security issues before they reach production.', icon: 'CheckCircle2' },
+    { title: 'Cross-Domain Integration', description: 'Bridges disparate systems and data sources through adaptive integration patterns, enabling seamless data flow and workflow coordination across organizational boundaries and technology stacks.', icon: 'Layers' },
+  ],
+  'Food': [
+    { title: 'Recipe Development & Optimization', description: 'Creates and optimizes recipes considering nutritional requirements, dietary restrictions, ingredient availability, and cost constraints while maintaining flavor profiles and presentation standards.', icon: 'ChefHat' },
+    { title: 'Food Safety Compliance', description: 'Monitors and ensures compliance with food safety regulations including HACCP, FDA, and local health codes through automated checklist generation, temperature monitoring, and incident documentation.', icon: 'Shield' },
+    { title: 'Supply Chain Freshness', description: 'Tracks perishable goods through the supply chain with freshness prediction models, optimal routing algorithms, and automated quality checks to minimize waste and ensure product integrity.', icon: 'Truck' },
+    { title: 'Menu Engineering', description: 'Optimizes menu composition based on ingredient costs, popularity analysis, margin contribution, and seasonal availability to maximize profitability while maintaining customer satisfaction.', icon: 'BarChart3' },
+  ],
+  'Energy': [
+    { title: 'Grid Load Prediction', description: 'Forecasts electricity demand using weather data, historical consumption patterns, and event calendars to optimize generation scheduling and prevent grid instability.', icon: 'Bolt' },
+    { title: 'Renewable Output Optimization', description: 'Maximizes renewable energy generation through predictive modeling of solar irradiance and wind patterns, panel and turbine positioning recommendations, and storage dispatch optimization.', icon: 'Sprout' },
+    { title: 'Carbon Footprint Tracking', description: 'Calculates, tracks, and reports organizational carbon emissions across scopes 1, 2, and 3 with automated data collection, emission factor application, and regulatory reporting.', icon: 'BarChart3' },
+    { title: 'Energy Market Analysis', description: 'Analyzes energy market dynamics including pricing trends, regulatory changes, and supply-demand shifts to inform procurement strategies, hedging decisions, and long-term energy planning.', icon: 'Brain' },
+  ],
+  'Supply Chain': [
+    { title: 'Demand Forecasting', description: 'Predicts product demand using machine learning models that incorporate historical sales, seasonal patterns, market trends, and external signals to optimize inventory and production planning.', icon: 'BarChart3' },
+    { title: 'Supplier Risk Assessment', description: 'Evaluates supplier reliability through financial health analysis, geographic risk mapping, compliance tracking, and performance scoring to proactively identify and mitigate supply disruptions.', icon: 'Shield' },
+    { title: 'Route Optimization', description: 'Calculates optimal shipping routes considering cost, transit time, fuel consumption, customs requirements, and real-time conditions to minimize logistics expenses while meeting delivery commitments.', icon: 'Truck' },
+    { title: 'Inventory Optimization', description: 'Determines optimal inventory levels across warehouses using demand variability, lead time analysis, safety stock calculations, and ABC classification to balance service levels with carrying costs.', icon: 'Database' },
+  ],
+  'Real Estate': [
+    { title: 'Property Valuation', description: 'Estimates property values using comparable sales analysis, neighborhood trend data, property characteristics, and market conditions to provide accurate, data-driven valuations for buyers, sellers, and lenders.', icon: 'Building' },
+    { title: 'Lease Analysis', description: 'Analyzes lease terms including rent escalations, renewal options, tenant improvement allowances, and operating expense structures to identify favorable terms and potential hidden costs.', icon: 'Scale' },
+    { title: 'Market Trend Forecasting', description: 'Predicts real estate market trends using macroeconomic indicators, demographic shifts, zoning changes, and development pipeline data to inform investment timing and location selection.', icon: 'BarChart3' },
+    { title: 'Investment Portfolio Analysis', description: 'Evaluates real estate portfolio performance with metrics including NOI, cap rate, cash-on-cash return, and IRR, providing diversification recommendations and risk-adjusted return optimization.', icon: 'Briefcase' },
+  ],
 }
 
 // ─── Framework-specific architecture patterns ───
