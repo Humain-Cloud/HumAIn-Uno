@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useSyncExternalStore } from 'react'
+import { useState, useEffect, useSyncExternalStore, useCallback } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTheme } from 'next-themes'
@@ -12,11 +12,13 @@ import { DashboardView } from '@/components/views/dashboard-view'
 import { WizardView } from '@/components/views/wizard-view'
 import { AdminView } from '@/components/views/admin-view'
 import { KnowledgeHubView } from '@/components/views/knowledge-hub-view'
+import { SettingsView } from '@/components/views/settings-view'
 import { AuthModal } from '@/components/auth/auth-modal'
 import { CompareBar } from '@/components/agents/compare-bar'
 import { CompareModal } from '@/components/agents/compare-modal'
 import { AiChatButton } from '@/components/ai/ai-chat-button'
 import { AiChatPanel } from '@/components/ai/ai-chat-panel'
+import { NotificationCenter } from '@/components/notifications/notification-center'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -47,6 +49,9 @@ import {
   HeartHandshake,
   GraduationCap,
   BookMarked,
+  Settings,
+  Bookmark,
+  X as XIcon,
 } from 'lucide-react'
 import {
   Sheet,
@@ -54,14 +59,22 @@ import {
   SheetTrigger,
   SheetTitle,
 } from '@/components/ui/sheet'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import { api } from '@/lib/api-client'
 
 function Navbar() {
-  const { currentView, setCurrentView, searchQuery, setSearchQuery, setSelectedAgentId } = useAppStore()
+  const { currentView, setCurrentView, searchQuery, setSearchQuery, setSelectedAgentId, bookmarkedAgentIds, toggleBookmark } = useAppStore()
   const { data: session, status } = useSession()
   const { setShowAuthModal } = useAppStore()
   const { theme, setTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchFocused, setSearchFocused] = useState(false)
+  const [bookmarkAgents, setBookmarkAgents] = useState<any[]>([])
+  const [bookmarkLoading, setBookmarkLoading] = useState(false)
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -72,7 +85,8 @@ function Navbar() {
     { key: 'home' as const, label: 'Home', icon: Home },
     { key: 'hub' as const, label: 'Knowledge Hub', icon: Library },
     { key: 'browse' as const, label: 'Browse', icon: Compass },
-    { key: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
+    { key: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard, badge: bookmarkedAgentIds.length > 0 ? bookmarkedAgentIds.length : undefined },
+    { key: 'settings' as const, label: 'Settings', icon: Settings },
   ]
 
   const handleNav = (view: any) => {
@@ -81,6 +95,28 @@ function Navbar() {
     setMobileOpen(false)
     window.scrollTo(0, 0)
   }
+
+  const loadBookmarkAgents = useCallback(async () => {
+    if (bookmarkedAgentIds.length === 0) {
+      setBookmarkAgents([])
+      return
+    }
+    setBookmarkLoading(true)
+    const agents: any[] = []
+    for (const id of bookmarkedAgentIds.slice(0, 8)) {
+      try {
+        const agent = await api.knowledge.get(id)
+        agents.push(agent)
+      } catch {
+        try {
+          const agent = await api.agents.get(id)
+          agents.push(agent)
+        } catch { /* ignore */ }
+      }
+    }
+    setBookmarkAgents(agents)
+    setBookmarkLoading(false)
+  }, [bookmarkedAgentIds])
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 dark:bg-gray-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-950/60">
@@ -103,7 +139,7 @@ function Navbar() {
 
         {/* Nav Links - Desktop */}
         <nav className="hidden md:flex items-center gap-1">
-          {navItems.map(({ key, label, icon: Icon }) => (
+          {navItems.map(({ key, label, icon: Icon, badge }) => (
             <Button
               key={key}
               variant={currentView === key ? 'secondary' : 'ghost'}
@@ -113,6 +149,11 @@ function Navbar() {
             >
               <Icon className="h-4 w-4 mr-1.5" />
               {label}
+              {badge && (
+                <span className="ml-1 h-4 min-w-[16px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {badge > 9 ? '9+' : badge}
+                </span>
+              )}
             </Button>
           ))}
           {session && (session as any).role === 'admin' && (
@@ -157,6 +198,104 @@ function Navbar() {
 
         {/* Actions */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Bookmarks Quick View */}
+          <Popover onOpenChange={(open) => { if (open) loadBookmarkAgents() }}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 min-h-[36px] min-w-[36px] btn-hover relative"
+              >
+                <Bookmark className={`h-4 w-4 ${bookmarkedAgentIds.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`} />
+                {bookmarkedAgentIds.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    {bookmarkedAgentIds.length > 9 ? '9+' : bookmarkedAgentIds.length}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-0">
+              <div className="p-4 border-b">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                    <Bookmark className="h-4 w-4 text-amber-600" />
+                    Bookmarked Agents
+                    {bookmarkedAgentIds.length > 0 && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5">{bookmarkedAgentIds.length}</Badge>
+                    )}
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-emerald-600 text-xs h-7"
+                    onClick={() => {
+                      setCurrentView('dashboard')
+                      setSelectedAgentId(null)
+                    }}
+                  >
+                    View All
+                  </Button>
+                </div>
+              </div>
+              <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                {bookmarkLoading ? (
+                  <div className="p-4 text-center">
+                    <div className="h-5 w-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                  </div>
+                ) : bookmarkAgents.length === 0 ? (
+                  <div className="p-6 text-center">
+                    <Bookmark className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No bookmarked agents yet</p>
+                    <p className="text-xs text-muted-foreground mt-1">Click the bookmark icon on any agent to save it</p>
+                  </div>
+                ) : (
+                  <div className="py-1">
+                    {bookmarkAgents.map((agent: any) => (
+                      <div
+                        key={agent.id}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors group"
+                        onClick={() => {
+                          setSelectedAgentId(agent.id)
+                          setCurrentView('detail')
+                        }}
+                      >
+                        <div className="h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                          <Bot className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{agent.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            {agent.framework && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{agent.framework}</Badge>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleBookmark(agent.id)
+                            setBookmarkAgents(prev => prev.filter((a: any) => a.id !== agent.id))
+                          }}
+                          className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+                        >
+                          <XIcon className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {bookmarkedAgentIds.length > bookmarkAgents.length && (
+                      <div className="px-4 py-2 text-center">
+                        <p className="text-xs text-muted-foreground">
+                          +{bookmarkedAgentIds.length - bookmarkAgents.length} more bookmarked
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+          {/* Notification Center */}
+          <NotificationCenter />
           {/* Dark Mode Toggle */}
           {mounted && (
             <Button
@@ -227,7 +366,7 @@ function Navbar() {
                 <span className="font-bold tracking-tight">Humain<span className="text-emerald-600 dark:text-emerald-400">-Uno</span></span>
               </SheetTitle>
               <nav className="flex flex-col gap-1">
-                {navItems.map(({ key, label, icon: Icon }) => (
+                {navItems.map(({ key, label, icon: Icon, badge }) => (
                   <Button
                     key={key}
                     variant={currentView === key ? 'secondary' : 'ghost'}
@@ -236,6 +375,11 @@ function Navbar() {
                   >
                     <Icon className="h-4 w-4 mr-3" />
                     {label}
+                    {badge && (
+                      <span className="ml-auto h-4 min-w-[16px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+                        {badge > 9 ? '9+' : badge}
+                      </span>
+                    )}
                   </Button>
                 ))}
                 <Button
@@ -439,6 +583,7 @@ const viewComponents: Record<string, React.ComponentType> = {
   dashboard: DashboardView,
   wizard: WizardView,
   admin: AdminView,
+  settings: SettingsView,
 }
 
 export function AppLayout() {

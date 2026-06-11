@@ -34,6 +34,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   ArrowLeft,
   Star,
   GitFork,
@@ -58,8 +65,7 @@ import {
   Calendar,
   Database,
   ChevronRight,
-  ToggleLeft,
-  ToggleRight,
+
   Heart,
   MessageCircle,
   ThumbsUp,
@@ -67,11 +73,15 @@ import {
   LayoutGrid,
   ChevronDown,
   Package,
+  Bookmark,
+  BookmarkCheck,
+  MoreVertical,
+  Plus,
+  FolderPlus,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { CodePlayground } from '@/components/agents/code-playground'
 
 // Framework gradient configurations
 const frameworkGradients: Record<string, { from: string; to: string; badge: string; text: string; bar: string }> = {
@@ -191,7 +201,7 @@ const nodeColors: Record<string, string> = {
 }
 
 export function DetailView() {
-  const { selectedAgentId, setCurrentView, setSelectedAgentId } = useAppStore()
+  const { selectedAgentId, setCurrentView, setSelectedAgentId, bookmarkedAgentIds, toggleBookmark, collections, addToCollection, removeFromCollection, createCollection, ratings, setRating, addNotification } = useAppStore()
   const { session, status, requireAuth, isAuthenticated } = useRequireAuth()
   const [agent, setAgent] = useState<KnowledgeAgent | null>(null)
   const [loading, setLoading] = useState(true)
@@ -206,10 +216,14 @@ export function DetailView() {
   const [similarAgents, setSimilarAgents] = useState<KnowledgeAgent[]>([])
   const [sameFrameworkAgents, setSameFrameworkAgents] = useState<KnowledgeAgent[]>([])
   const [sameCategoryAgents, setSameCategoryAgents] = useState<KnowledgeAgent[]>([])
-  const [showLineNumbers, setShowLineNumbers] = useState(true)
   const [codeLanguage, setCodeLanguage] = useState('python')
   const [downloading, setDownloading] = useState(false)
   const [showFloatingBar, setShowFloatingBar] = useState(false)
+  const [bookmarkAnim, setBookmarkAnim] = useState(false)
+  const [newCollectionName, setNewCollectionName] = useState('')
+  const [showNewCollectionInput, setShowNewCollectionInput] = useState(false)
+  const [readingProgress, setReadingProgress] = useState(0)
+  const [showStickyBar, setShowStickyBar] = useState(false)
   const carouselRef = useRef<HTMLDivElement>(null)
   const heroRef = useRef<HTMLDivElement>(null)
 
@@ -281,6 +295,12 @@ export function DetailView() {
       if (heroRef.current) {
         const heroBottom = heroRef.current.getBoundingClientRect().bottom
         setShowFloatingBar(heroBottom < 0)
+        setShowStickyBar(heroBottom < -100)
+      }
+      // Reading progress
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight
+      if (scrollHeight > 0) {
+        setReadingProgress(Math.min(100, (window.scrollY / scrollHeight) * 100))
       }
     }
     window.addEventListener('scroll', handleScroll, { passive: true })
@@ -316,6 +336,46 @@ export function DetailView() {
   const handleStar = () => {
     if (!requireAuth()) return
     setStarred(!starred)
+  }
+
+  const handleBookmarkToggle = () => {
+    if (!selectedAgentId) return
+    const wasBookmarked = bookmarkedAgentIds.includes(selectedAgentId)
+    toggleBookmark(selectedAgentId)
+    setBookmarkAnim(true)
+    setTimeout(() => setBookmarkAnim(false), 400)
+    if (!wasBookmarked) {
+      addNotification({
+        type: 'bookmark_reminder',
+        title: 'Agent bookmarked',
+        message: `"${agent?.name}" has been added to your bookmarks.`,
+      })
+    }
+  }
+
+  const handleAddToCollection = (collectionId: string) => {
+    if (!selectedAgentId) return
+    const collection = collections.find((c) => c.id === collectionId)
+    if (collection) {
+      if (collection.agentIds.includes(selectedAgentId)) {
+        removeFromCollection(collectionId, selectedAgentId)
+      } else {
+        addToCollection(collectionId, selectedAgentId)
+      }
+    }
+  }
+
+  const handleCreateAndAdd = () => {
+    if (newCollectionName.trim()) {
+      createCollection(newCollectionName.trim())
+      addNotification({
+        type: 'system',
+        title: 'Collection created',
+        message: `New collection "${newCollectionName.trim()}" has been created.`,
+      })
+      setNewCollectionName('')
+      setShowNewCollectionInput(false)
+    }
   }
 
   const handleFork = () => {
@@ -769,6 +829,43 @@ export function DetailView() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      {/* Reading Progress Bar */}
+      <div className="reading-progress" style={{ width: `${readingProgress}%` }} />
+
+      {/* Sticky Agent Name Bar */}
+      <AnimatePresence>
+        {showStickyBar && agent && (
+          <motion.div
+            initial={{ y: -60, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -60, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="sticky-name-bar bg-white/80 dark:bg-gray-900/80 py-2.5 px-4 -mx-4 sm:-mx-6 -mt-6 sm:-mt-8 mb-6"
+          >
+            <div className="max-w-5xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={goBack}>
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <span className="font-semibold text-sm truncate">{agent.name}</span>
+                {agent.framework && (
+                  <Badge className={`text-[10px] shrink-0 ${fwGradient.badge}`}>{agent.framework}</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleBookmarkToggle}>
+                  {bookmarkedAgentIds.includes(agent.id) ? <BookmarkCheck className="h-3.5 w-3.5 mr-1" /> : <Bookmark className="h-3.5 w-3.5 mr-1" />}
+                  Save
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleShareLink}>
+                  <Share2 className="h-3.5 w-3.5 mr-1" /> Share
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Framework Color Strip */}
       <motion.div
         initial={{ scaleX: 0 }}
@@ -847,6 +944,85 @@ export function DetailView() {
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <motion.div
+                animate={bookmarkAnim ? { scale: [1, 1.15, 0.95, 1.05, 1] } : { scale: 1 }}
+                transition={bookmarkAnim ? { duration: 0.4, ease: 'easeInOut' } : { duration: 0.1 }}
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBookmarkToggle}
+                  className={`transition-all duration-200 hover:scale-105 ${
+                    selectedAgentId && bookmarkedAgentIds.includes(selectedAgentId)
+                      ? 'bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-400'
+                      : 'hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 hover:border-amber-300 dark:hover:from-amber-900/20 dark:hover:to-orange-900/20'
+                  }`}
+                >
+                  {selectedAgentId && bookmarkedAgentIds.includes(selectedAgentId) ? (
+                    <BookmarkCheck className="h-4 w-4 mr-1" />
+                  ) : (
+                    <Bookmark className="h-4 w-4 mr-1" />
+                  )}
+                  {selectedAgentId && bookmarkedAgentIds.includes(selectedAgentId) ? 'Saved' : 'Save'}
+                </Button>
+              </motion.div>
+              {/* Collection Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="hover:scale-105 transition-transform duration-200">
+                    <FolderPlus className="h-4 w-4 mr-1" /> Collect
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => handleAddToCollection('default')} className="cursor-pointer">
+                    <span className="mr-2">★</span>
+                    Add to Favorites
+                    {collections.find((c) => c.id === 'default')?.agentIds.includes(selectedAgentId || '') && (
+                      <Check className="h-3 w-3 ml-auto text-emerald-600" />
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {collections.filter((c) => c.id !== 'default').map((col) => (
+                    <DropdownMenuItem key={col.id} onClick={() => handleAddToCollection(col.id)} className="cursor-pointer">
+                      <FolderPlus className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                      {col.name}
+                      {col.agentIds.includes(selectedAgentId || '') && (
+                        <Check className="h-3 w-3 ml-auto text-emerald-600" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  {showNewCollectionInput ? (
+                    <div className="p-2 flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Input
+                        placeholder="Collection name..."
+                        value={newCollectionName}
+                        onChange={(e) => setNewCollectionName(e.target.value)}
+                        onKeyDown={(e) => {
+                          e.stopPropagation()
+                          if (e.key === 'Enter' && newCollectionName.trim()) {
+                            handleCreateAndAdd()
+                          }
+                          if (e.key === 'Escape') {
+                            setShowNewCollectionInput(false)
+                            setNewCollectionName('')
+                          }
+                        }}
+                        className="h-7 text-xs"
+                        autoFocus
+                      />
+                      <Button size="sm" className="h-7 px-2 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleCreateAndAdd}>
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <DropdownMenuItem onClick={() => setShowNewCollectionInput(true)} className="cursor-pointer">
+                      <Plus className="h-3.5 w-3.5 mr-2 text-emerald-600" />
+                      <span className="text-emerald-600">New Collection</span>
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 variant="outline"
                 size="sm"
@@ -1036,6 +1212,41 @@ export function DetailView() {
                     </div>
                   )}
 
+                  {/* Rating */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Star className="h-4 w-4 text-amber-500" />
+                      <span className="text-muted-foreground">Your Rating</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => setRating(agent.id, star)}
+                          className="transition-all duration-150 hover:scale-125"
+                        >
+                          <Star
+                            className={`h-5 w-5 transition-colors ${
+                              (ratings[agent.id] || 0) >= star
+                                ? 'fill-amber-400 text-amber-400'
+                                : 'text-gray-300 dark:text-gray-600 hover:text-amber-300'
+                            }`}
+                          />
+                        </button>
+                      ))}
+                      {ratings[agent.id] && (
+                        <span className="text-xs text-muted-foreground ml-1.5">
+                          {ratings[agent.id]}/5
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Star className="h-3 w-3" />
+                      Community: {(((agent.id.charCodeAt(0) % 3) + 3) + ((agent.id.charCodeAt(1) % 10) / 10)).toFixed(1)}/5
+                      <span className="text-muted-foreground/60">(mock)</span>
+                    </div>
+                  </div>
+
                   {/* Industry */}
                   {agent.industry && (
                     <div className="space-y-1">
@@ -1183,97 +1394,14 @@ export function DetailView() {
           </div>
         </TabsContent>
 
-        {/* Code Tab - Enhanced */}
+        {/* Code Tab - Enhanced with Code Playground */}
         {agent.codeSnippet && (
           <TabsContent value="code">
-            <Card>
-              <CardContent className="p-0 relative">
-                {/* Code Toolbar */}
-                <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
-                  <div className="flex items-center gap-3">
-                    {/* Language Selector */}
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <Code2 className="h-3.5 w-3.5 text-muted-foreground" />
-                      <select
-                        value={codeLanguage}
-                        onChange={(e) => setCodeLanguage(e.target.value)}
-                        className="bg-transparent border-none text-xs font-medium focus:outline-none cursor-pointer text-foreground"
-                      >
-                        <option value="python">Python</option>
-                        <option value="typescript">TypeScript</option>
-                        <option value="javascript">JavaScript</option>
-                      </select>
-                    </div>
-
-                    <Separator orientation="vertical" className="h-4" />
-
-                    {/* Line Numbers Toggle */}
-                    <button
-                      onClick={() => setShowLineNumbers(!showLineNumbers)}
-                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showLineNumbers ? (
-                        <ToggleRight className="h-4 w-4 text-emerald-500" />
-                      ) : (
-                        <ToggleLeft className="h-4 w-4" />
-                      )}
-                      Lines
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDownload('code')}
-                      disabled={downloading}
-                      className="h-7 text-xs"
-                    >
-                      {downloading ? (
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      ) : (
-                        <Download className="h-3 w-3 mr-1" />
-                      )}
-                      Download
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleCopy}
-                      className="h-7 text-xs"
-                    >
-                      {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="relative">
-                  <SyntaxHighlighter
-                    language={codeLanguage}
-                    style={oneDark}
-                    customStyle={{
-                      margin: 0,
-                      borderRadius: '0 0 0.5rem 0.5rem',
-                      fontSize: '0.8rem',
-                      maxHeight: '600px',
-                    }}
-                    showLineNumbers={showLineNumbers}
-                    lineNumberStyle={{
-                      minWidth: '3em',
-                      paddingRight: '1em',
-                      color: '#4b5563',
-                      background: '#1e1e2e',
-                      borderRight: '1px solid #374151',
-                    }}
-                  >
-                  {agent.codeSnippet}
-                </SyntaxHighlighter>
-                  {/* Gradient overlay at bottom for "scroll for more" hint */}
-                  <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#282c34] to-transparent pointer-events-none rounded-b-lg" />
-                </div>
-              </CardContent>
-            </Card>
+            <CodePlayground
+              code={agent.codeSnippet}
+              language={codeLanguage}
+              agentName={agent.name}
+            />
           </TabsContent>
         )}
 
@@ -1603,6 +1731,25 @@ export function DetailView() {
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border shadow-lg"
           >
+            <motion.div
+              animate={bookmarkAnim ? { scale: [1, 1.2, 0.9, 1.1, 1] } : { scale: 1 }}
+              transition={bookmarkAnim ? { duration: 0.4, ease: 'easeInOut' } : { duration: 0.1 }}
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBookmarkToggle}
+                className={`h-8 ${selectedAgentId && bookmarkedAgentIds.includes(selectedAgentId) ? 'text-amber-600' : ''}`}
+              >
+                {selectedAgentId && bookmarkedAgentIds.includes(selectedAgentId) ? (
+                  <BookmarkCheck className="h-4 w-4 mr-1" />
+                ) : (
+                  <Bookmark className="h-4 w-4 mr-1" />
+                )}
+                {selectedAgentId && bookmarkedAgentIds.includes(selectedAgentId) ? 'Saved' : 'Save'}
+              </Button>
+            </motion.div>
+            <Separator orientation="vertical" className="h-5" />
             <Button
               variant="ghost"
               size="sm"

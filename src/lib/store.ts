@@ -1,6 +1,18 @@
 import { create } from 'zustand'
 
-export type ViewType = 'home' | 'browse' | 'detail' | 'dashboard' | 'wizard' | 'admin' | 'hub'
+export type ViewType = 'home' | 'browse' | 'detail' | 'dashboard' | 'wizard' | 'admin' | 'hub' | 'settings'
+
+export interface AppSettings {
+  theme: 'light' | 'dark' | 'system'
+  defaultView: 'home' | 'browse' | 'hub'
+  defaultViewMode: 'grid' | 'list' | 'compact'
+  defaultSortOrder: 'newest' | 'popular' | 'most-starred' | 'az' | 'za' | 'recently-added'
+  defaultFramework: string | null
+  itemsPerPage: 12 | 24 | 48
+  showAiChatSuggestions: boolean
+  showCompareBar: boolean
+  enableKeyboardShortcuts: boolean
+}
 
 export interface ChatMessage {
   role: 'user' | 'assistant'
@@ -12,6 +24,17 @@ export interface Collection {
   id: string
   name: string
   agentIds: string[]
+  createdAt: string
+}
+
+export type NotificationType = 'agent_update' | 'new_agent' | 'bookmark_reminder' | 'system'
+
+export interface Notification {
+  id: string
+  type: NotificationType
+  title: string
+  message: string
+  read: boolean
   createdAt: string
 }
 
@@ -69,6 +92,20 @@ interface AppState {
   addChatMessage: (msg: ChatMessage) => void
   clearChatMessages: () => void
 
+  // Settings
+  settings: AppSettings
+  updateSettings: (settings: Partial<AppSettings>) => void
+
+  // Search History
+  searchHistory: string[]
+  addSearchHistory: (query: string) => void
+  clearSearchHistory: () => void
+
+  // Ratings
+  ratings: Record<string, number>
+  setRating: (agentId: string, rating: number) => void
+  getRating: (agentId: string) => number | undefined
+
   // Bookmarks
   bookmarkedAgentIds: string[]
   toggleBookmark: (agentId: string) => void
@@ -80,7 +117,15 @@ interface AppState {
   renameCollection: (id: string, name: string) => void
   addToCollection: (collectionId: string, agentId: string) => void
   removeFromCollection: (collectionId: string, agentId: string) => void
-  
+
+  // Notifications
+  notifications: Notification[]
+  addNotification: (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => void
+  markNotificationRead: (id: string) => void
+  markAllNotificationsRead: () => void
+  clearNotifications: () => void
+  unreadCount: number
+
   // Reset filters
   resetFilters: () => void
   
@@ -138,6 +183,80 @@ export const useAppStore = create<AppState>((set) => ({
   chatMessages: [],
   addChatMessage: (msg) => set((state) => ({ chatMessages: [...state.chatMessages, msg] })),
   clearChatMessages: () => set({ chatMessages: [] }),
+
+  // Settings
+  settings: (() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('humain-settings')
+        if (saved) return JSON.parse(saved)
+      } catch { /* ignore */ }
+    }
+    return {
+      theme: 'system' as const,
+      defaultView: 'home' as const,
+      defaultViewMode: 'grid' as const,
+      defaultSortOrder: 'popular' as const,
+      defaultFramework: null,
+      itemsPerPage: 24,
+      showAiChatSuggestions: true,
+      showCompareBar: true,
+      enableKeyboardShortcuts: true,
+    }
+  })(),
+  updateSettings: (partial) => set((state) => {
+    const newSettings = { ...state.settings, ...partial }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('humain-settings', JSON.stringify(newSettings))
+    }
+    return { settings: newSettings }
+  }),
+
+  // Search History
+  searchHistory: (() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('humain-search-history')
+        return saved ? JSON.parse(saved) : []
+      } catch { return [] }
+    }
+    return []
+  })(),
+  addSearchHistory: (query) => set((state) => {
+    const trimmed = query.trim()
+    if (!trimmed) return state
+    const filtered = state.searchHistory.filter((q) => q.toLowerCase() !== trimmed.toLowerCase())
+    const newHistory = [trimmed, ...filtered].slice(0, 10)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('humain-search-history', JSON.stringify(newHistory))
+    }
+    return { searchHistory: newHistory }
+  }),
+  clearSearchHistory: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('humain-search-history')
+    }
+    set({ searchHistory: [] })
+  },
+
+  // Ratings
+  ratings: (() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('humain-ratings')
+        return saved ? JSON.parse(saved) : {}
+      } catch { return {} }
+    }
+    return {}
+  })(),
+  setRating: (agentId, rating) => set((state) => {
+    const newRatings = { ...state.ratings, [agentId]: rating }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('humain-ratings', JSON.stringify(newRatings))
+    }
+    return { ratings: newRatings }
+  }),
+  getRating: (agentId) => useAppStore.getState().ratings[agentId],
 
   // Bookmarks
   bookmarkedAgentIds: (() => {
@@ -248,6 +367,82 @@ export const useAppStore = create<AppState>((set) => ({
     }
     return { collections: newList }
   }),
+
+  // Notifications
+  notifications: (() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('humain-notifications')
+        if (saved) return JSON.parse(saved)
+      } catch { /* ignore */ }
+      // Generate initial sample notifications on first load
+      const initial: Notification[] = [
+        {
+          id: 'notif-welcome',
+          type: 'system',
+          title: 'Welcome to Humain-Uno!',
+          message: 'Explore 500+ curated AI agent projects across 5 frameworks. Start browsing or create your own agent.',
+          read: false,
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: 'notif-new-agents',
+          type: 'new_agent',
+          title: 'New agents added to Knowledge Base',
+          message: 'Check out the latest AI agents added from the 500-AI-Agents-Projects repository.',
+          read: false,
+          createdAt: new Date(Date.now() - 3600000).toISOString(),
+        },
+        {
+          id: 'notif-ai-chat',
+          type: 'system',
+          title: 'Try the AI Chat assistant',
+          message: 'Click the sparkle button in the bottom-right corner to chat with our AI assistant about agents.',
+          read: false,
+          createdAt: new Date(Date.now() - 7200000).toISOString(),
+        },
+      ]
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('humain-notifications', JSON.stringify(initial))
+      }
+      return initial
+    }
+    return []
+  })(),
+  addNotification: (notification) => set((state) => {
+    const newNotification: Notification = {
+      ...notification,
+      id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      read: false,
+      createdAt: new Date().toISOString(),
+    }
+    const newList = [newNotification, ...state.notifications].slice(0, 50)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('humain-notifications', JSON.stringify(newList))
+    }
+    return { notifications: newList }
+  }),
+  markNotificationRead: (id) => set((state) => {
+    const newList = state.notifications.map((n) => n.id === id ? { ...n, read: true } : n)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('humain-notifications', JSON.stringify(newList))
+    }
+    return { notifications: newList }
+  }),
+  markAllNotificationsRead: () => set((state) => {
+    const newList = state.notifications.map((n) => ({ ...n, read: true }))
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('humain-notifications', JSON.stringify(newList))
+    }
+    return { notifications: newList }
+  }),
+  clearNotifications: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('humain-notifications')
+    }
+    set({ notifications: [] })
+  },
+  unreadCount: 0,
   
   resetFilters: () => set({
     searchQuery: '',

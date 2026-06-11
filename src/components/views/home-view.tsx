@@ -48,6 +48,7 @@ import {
   TrendingUp,
   RefreshCw,
   Play,
+  AlertCircle,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
@@ -247,39 +248,89 @@ export function HomeView() {
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false)
   const [newsletterError, setNewsletterError] = useState('')
+  const [sectionErrors, setSectionErrors] = useState<{stats?: string; featured?: string; trending?: string; categories?: string}>({})
   const trendingScrollRef = useRef<HTMLDivElement>(null)
+
+  // Parse the agents data
+  const parseAgents = (raw: any) => {
+    const arr = (raw as any)?.data || raw || []
+    return arr.map((a: any) => ({
+      ...a,
+      tools: typeof a.tools === 'string' ? JSON.parse(a.tools || '[]') : a.tools || [],
+      models: typeof a.models === 'string' ? JSON.parse(a.models || '[]') : a.models || [],
+      tags: typeof a.tags === 'string' ? JSON.parse(a.tags || '[]') : a.tags || [],
+    }))
+  }
 
   useEffect(() => {
     async function load() {
+      // Load each section independently so partial content can be shown
+      const newErrors: {stats?: string; featured?: string; trending?: string; categories?: string} = {}
+
+      // Load stats
       try {
-        const [statsData, agentsData, trendingData, catsData] = await Promise.all([
-          api.stats.get(),
-          api.knowledge.list({ page: 1, pageSize: 6 }),
-          api.knowledge.list({ page: 1, pageSize: 8 }),
-          api.categories.list(),
-        ])
+        const statsData = await api.stats.get()
         setStats(statsData as Stats)
-        // Parse the agents data
-        const parseAgents = (raw: any) => {
-          const arr = (raw as any)?.data || raw || []
-          return arr.map((a: any) => ({
-            ...a,
-            tools: typeof a.tools === 'string' ? JSON.parse(a.tools || '[]') : a.tools || [],
-            models: typeof a.models === 'string' ? JSON.parse(a.models || '[]') : a.models || [],
-            tags: typeof a.tags === 'string' ? JSON.parse(a.tags || '[]') : a.tags || [],
-          }))
-        }
+      } catch (err) {
+        console.error('Failed to load stats:', err)
+        newErrors.stats = 'Unable to load statistics.'
+      }
+
+      // Load featured agents
+      try {
+        const agentsData = await api.knowledge.list({ page: 1, pageSize: 6 })
         setFeaturedAgents(parseAgents(agentsData))
+      } catch (err) {
+        console.error('Failed to load featured agents:', err)
+        newErrors.featured = 'Unable to load featured agents.'
+      }
+
+      // Load trending agents
+      try {
+        const trendingData = await api.knowledge.list({ page: 1, pageSize: 8 })
         setTrendingAgents(parseAgents(trendingData))
+      } catch (err) {
+        console.error('Failed to load trending agents:', err)
+        newErrors.trending = 'Unable to load trending agents.'
+      }
+
+      // Load categories
+      try {
+        const catsData = await api.categories.list()
         setCategories(Array.isArray(catsData) ? catsData : [])
       } catch (err) {
-        console.error('Failed to load home data:', err)
-      } finally {
-        setLoading(false)
+        console.error('Failed to load categories:', err)
+        newErrors.categories = 'Unable to load categories.'
       }
+
+      setSectionErrors(newErrors)
+      setLoading(false)
     }
     load()
   }, [])
+
+  // Retry a specific section
+  const retrySection = async (section: 'stats' | 'featured' | 'trending' | 'categories') => {
+    setSectionErrors(prev => ({ ...prev, [section]: undefined }))
+    try {
+      if (section === 'stats') {
+        const statsData = await api.stats.get()
+        setStats(statsData as Stats)
+      } else if (section === 'featured') {
+        const agentsData = await api.knowledge.list({ page: 1, pageSize: 6 })
+        setFeaturedAgents(parseAgents(agentsData))
+      } else if (section === 'trending') {
+        const trendingData = await api.knowledge.list({ page: 1, pageSize: 8 })
+        setTrendingAgents(parseAgents(trendingData))
+      } else if (section === 'categories') {
+        const catsData = await api.categories.list()
+        setCategories(Array.isArray(catsData) ? catsData : [])
+      }
+    } catch (err) {
+      console.error(`Failed to retry ${section}:`, err)
+      setSectionErrors(prev => ({ ...prev, [section]: 'Still unable to load. Please try again.' }))
+    }
+  }
 
   // Auto-cycle trending agents
   useEffect(() => {
@@ -389,7 +440,7 @@ export function HomeView() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button
                 size="lg"
-                className="bg-white text-emerald-700 hover:bg-emerald-50 font-semibold px-8 h-13 text-base w-full sm:w-auto shadow-lg shadow-emerald-900/20 rounded-xl"
+                className="bg-white text-emerald-700 hover:bg-emerald-50 font-semibold px-8 h-13 text-base w-full sm:w-auto shadow-lg shadow-emerald-900/20 rounded-xl gradient-border-animated"
                 onClick={() => handleNav('browse')}
                 aria-label="Browse agents"
               >
@@ -399,7 +450,7 @@ export function HomeView() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 font-semibold px-8 h-13 text-base w-full sm:w-auto backdrop-blur-sm rounded-xl"
+                className="border-white/30 text-white hover:bg-white/10 font-semibold px-8 h-13 text-base w-full sm:w-auto backdrop-blur-sm rounded-xl gradient-border-animated"
                 onClick={() => handleNav('wizard')}
                 aria-label="Create a new agent"
               >
@@ -408,25 +459,45 @@ export function HomeView() {
               </Button>
             </div>
 
-            {/* Quick stats under hero */}
-            {!loading && stats && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="mt-12 flex items-center justify-center gap-6 sm:gap-10 text-emerald-100/80 text-sm"
-              >
-                <span className="flex items-center gap-1.5">
-                  <Bot className="h-4 w-4" aria-hidden="true" /> {stats.totalAgents}+ Agents
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Cpu className="h-4 w-4" aria-hidden="true" /> {stats.frameworks} Frameworks
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Users className="h-4 w-4" aria-hidden="true" /> Open Source
-                </span>
-              </motion.div>
-            )}
+            {/* Floating animated badges/pills */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="mt-10 flex flex-wrap items-center justify-center gap-3"
+            >
+              {stats ? [
+                { label: `${stats.totalAgents}+ Agents`, icon: Bot },
+                { label: `${stats.frameworks} Frameworks`, icon: Cpu },
+                { label: 'Open Source', icon: Users },
+              ].map((pill, pi) => (
+                <motion.div
+                  key={pill.label}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.6 + pi * 0.1 }}
+                  whileHover={{ scale: 1.08, y: -2 }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-emerald-100 text-sm cursor-default"
+                >
+                  <pill.icon className="h-3.5 w-3.5" aria-hidden="true" />
+                  {pill.label}
+                </motion.div>
+              )) : null}
+            </motion.div>
+          </motion.div>
+
+          {/* Scroll down indicator */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2 }}
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-emerald-200/60"
+            aria-hidden="true"
+          >
+            <span className="text-[10px] uppercase tracking-widest font-medium">Scroll</span>
+            <div className="animate-bounce-down">
+              <svg width="16" height="10" viewBox="0 0 16 10" fill="none"><path d="M1 1l7 7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
           </motion.div>
         </div>
       </section>
@@ -474,6 +545,16 @@ export function HomeView() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          ) : sectionErrors.trending ? (
+            <div className="text-center py-10">
+              <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-rose-50 dark:bg-rose-900/20 mb-3">
+                <AlertCircle className="h-6 w-6 text-rose-500 dark:text-rose-400" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">{sectionErrors.trending}</p>
+              <Button variant="outline" size="sm" className="rounded-xl" onClick={() => retrySection('trending')}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
+              </Button>
             </div>
           ) : (
             <div className="relative">
@@ -554,7 +635,7 @@ export function HomeView() {
       </section>
 
       {/* Enhanced Live Stats */}
-      <section className="py-14 sm:py-18 relative overflow-hidden" role="region" aria-label="Platform statistics">
+      <section className="py-14 sm:py-18 relative overflow-hidden bg-grid-pattern" role="region" aria-label="Platform statistics">
         {/* Gradient background */}
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-emerald-50/30 dark:from-gray-950 dark:via-gray-950 dark:to-emerald-950/20" aria-hidden="true" />
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-emerald-100/30 dark:bg-emerald-900/10 rounded-full blur-3xl" aria-hidden="true" />
@@ -584,6 +665,16 @@ export function HomeView() {
                   </CardContent>
                 </Card>
               ))
+            ) : sectionErrors.stats ? (
+              <div className="col-span-full text-center py-8">
+                <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-rose-50 dark:bg-rose-900/20 mb-3">
+                  <AlertCircle className="h-6 w-6 text-rose-500 dark:text-rose-400" />
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">{sectionErrors.stats}</p>
+                <Button variant="outline" size="sm" className="rounded-xl" onClick={() => retrySection('stats')}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
+                </Button>
+              </div>
             ) : stats ? (
               [
                 { label: 'Total Agents', value: stats.totalAgents, icon: Bot, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', sparkColor: '#10b981', sparkData: [20, 45, 30, 60, 40, 70, 55, 80, 65, 90] },
@@ -638,29 +729,38 @@ export function HomeView() {
               From idea to deployed AI agent in four simple steps
             </p>
           </motion.div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {howItWorks.map((item, i) => (
-              <motion.div
-                key={item.step}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.15 }}
-              >
-                <Card className="h-full border-0 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
-                  <div className="absolute top-3 right-3 text-6xl font-black text-gray-100 dark:text-gray-800 select-none" aria-hidden="true">
-                    {item.step}
-                  </div>
-                  <CardContent className="p-6 pt-8 relative">
-                    <div className={`inline-flex items-center justify-center h-12 w-12 rounded-xl mb-4 ${item.color}`}>
-                      <item.icon className="h-6 w-6" aria-hidden="true" />
+          {/* Steps with connecting line */}
+          <div className="relative">
+            {/* Connecting gradient line (desktop only) */}
+            <div className="hidden lg:block absolute top-16 left-[12.5%] right-[12.5%] h-[2px] bg-gradient-to-r from-amber-300 via-emerald-300 via-violet-300 to-rose-300 opacity-40" aria-hidden="true" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {howItWorks.map((item, i) => (
+                <motion.div
+                  key={item.step}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.15 }}
+                >
+                  <Card className="h-full border-0 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                    {/* Numbered step badge */}
+                    <div className="absolute top-3 left-3 h-7 w-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-sm z-10">
+                      {item.step}
                     </div>
-                    <h3 className="font-bold text-lg mb-2">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+                    <div className="absolute top-3 right-3 text-6xl font-black text-gray-100/50 dark:text-gray-800/50 select-none" aria-hidden="true">
+                      {item.step}
+                    </div>
+                    <CardContent className="p-6 pt-8 relative">
+                      <div className={`inline-flex items-center justify-center h-12 w-12 rounded-xl mb-4 ${item.color} group-hover:scale-110 transition-transform duration-300`}>
+                        <item.icon className="h-6 w-6" aria-hidden="true" />
+                      </div>
+                      <h3 className="font-bold text-lg mb-2">{item.title}</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -779,6 +879,16 @@ export function HomeView() {
                 </Card>
               ))}
             </div>
+          ) : sectionErrors.featured ? (
+            <div className="text-center py-10">
+              <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-rose-50 dark:bg-rose-900/20 mb-3">
+                <AlertCircle className="h-6 w-6 text-rose-500 dark:text-rose-400" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">{sectionErrors.featured}</p>
+              <Button variant="outline" size="sm" className="rounded-xl" onClick={() => retrySection('featured')}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
+              </Button>
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {featuredAgents.map((agent, i) => (
@@ -811,6 +921,16 @@ export function HomeView() {
               {Array.from({ length: 8 }).map((_, i) => (
                 <Skeleton key={i} className="h-28 rounded-xl" />
               ))}
+            </div>
+          ) : sectionErrors.categories ? (
+            <div className="text-center py-10">
+              <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-rose-50 dark:bg-rose-900/20 mb-3">
+                <AlertCircle className="h-6 w-6 text-rose-500 dark:text-rose-400" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">{sectionErrors.categories}</p>
+              <Button variant="outline" size="sm" className="rounded-xl" onClick={() => retrySection('categories')}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
+              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">

@@ -103,6 +103,8 @@ export function DashboardView() {
     renameCollection,
     addToCollection,
     removeFromCollection,
+    bookmarkedAgentIds,
+    toggleBookmark,
   } = useAppStore()
   const [activeTab, setActiveTab] = useState('overview')
   const [myAgents, setMyAgents] = useState<any[]>([])
@@ -116,6 +118,7 @@ export function DashboardView() {
   const [newCollectionName, setNewCollectionName] = useState('')
   const [showNewCollectionInput, setShowNewCollectionInput] = useState(false)
   const [collectionAgents, setCollectionAgents] = useState<Record<string, any[]>>({})
+  const [bookmarkedAgents, setBookmarkedAgents] = useState<any[]>([])
 
   useEffect(() => {
     async function loadPublicData() {
@@ -181,6 +184,30 @@ export function DashboardView() {
     }
     loadCollectionAgents()
   }, [expandedCollection, collections])
+
+  // Load bookmarked agents
+  useEffect(() => {
+    async function loadBookmarkedAgents() {
+      if (bookmarkedAgentIds.length === 0) {
+        setBookmarkedAgents([])
+        return
+      }
+      const agents: any[] = []
+      for (const id of bookmarkedAgentIds.slice(0, 10)) {
+        try {
+          const agent = await api.knowledge.get(id)
+          agents.push(agent)
+        } catch {
+          try {
+            const agent = await api.agents.get(id)
+            agents.push(agent)
+          } catch { /* ignore */ }
+        }
+      }
+      setBookmarkedAgents(agents)
+    }
+    loadBookmarkedAgents()
+  }, [bookmarkedAgentIds])
 
   const handleDeleteAgent = async (id: string) => {
     if (!confirm('Are you sure you want to delete this agent?')) return
@@ -494,6 +521,11 @@ export function DashboardView() {
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
+            <div className="flex items-center gap-2 mb-0.5">
+              <Badge className="bg-white/20 text-white border-white/30 text-xs">
+                <Sparkles className="h-3 w-3 mr-1" /> Hello!
+              </Badge>
+            </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold">
               Welcome back, {session?.user?.name?.split(' ')[0] || 'Developer'}!
             </h1>
@@ -504,13 +536,14 @@ export function DashboardView() {
             </p>
           </div>
           <Button
-            className="bg-white text-emerald-700 hover:bg-white/90 font-semibold shadow-lg hidden sm:flex"
+            className="bg-white text-emerald-700 hover:bg-white/90 font-semibold shadow-lg hidden sm:flex rounded-xl"
             onClick={() => { setCurrentView('wizard'); setSelectedAgentId(null) }}
           >
             <PlusCircle className="h-4 w-4 mr-2" /> Create Agent
           </Button>
         </div>
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-xl" />
+        <div className="absolute -right-4 -bottom-8 h-24 w-24 rounded-full bg-white/5 blur-xl" />
       </motion.div>
 
       {/* Tab Navigation */}
@@ -547,8 +580,8 @@ export function DashboardView() {
                 {[
                   { label: 'Total Agents', value: myAgents.length, icon: Bot, gradient: 'from-emerald-500 to-teal-600', iconBg: 'bg-emerald-100 dark:bg-emerald-900/30', iconColor: 'text-emerald-600' },
                   { label: 'Public Agents', value: publicCount, icon: Globe, gradient: 'from-cyan-500 to-blue-600', iconBg: 'bg-cyan-100 dark:bg-cyan-900/30', iconColor: 'text-cyan-600' },
-                  { label: 'Private Agents', value: privateCount, icon: Lock, gradient: 'from-gray-500 to-gray-600', iconBg: 'bg-gray-100 dark:bg-gray-800', iconColor: 'text-gray-600 dark:text-gray-400' },
-                  { label: 'Total Stars', value: totalStars, icon: Star, gradient: 'from-amber-500 to-orange-600', iconBg: 'bg-amber-100 dark:bg-amber-900/30', iconColor: 'text-amber-600' },
+                  { label: 'Bookmarks', value: bookmarkedAgentIds.length, icon: Heart, gradient: 'from-rose-500 to-pink-600', iconBg: 'bg-rose-100 dark:bg-rose-900/30', iconColor: 'text-rose-600' },
+                  { label: 'Collections', value: collections.length, icon: FolderOpen, gradient: 'from-amber-500 to-orange-600', iconBg: 'bg-amber-100 dark:bg-amber-900/30', iconColor: 'text-amber-600' },
                 ].map((stat, i) => (
                   <motion.div
                     key={stat.label}
@@ -594,7 +627,7 @@ export function DashboardView() {
               </div>
 
               {/* Recent Activity */}
-              <Card className="rounded-xl">
+              <Card className="rounded-xl mb-6">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Activity className="h-4 w-4 text-emerald-600" /> Recent Activity
@@ -624,6 +657,67 @@ export function DashboardView() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Bookmarked Agents Quick View */}
+              {bookmarkedAgentIds.length > 0 && (
+                <Card className="rounded-xl">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Heart className="h-4 w-4 text-rose-600" /> Bookmarked Agents
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-emerald-600"
+                        onClick={() => setActiveTab('collections')}
+                      >
+                        View Collections <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+                      {bookmarkedAgents.map((agent: any, i: number) => (
+                        <motion.div
+                          key={agent.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors group"
+                          onClick={() => { setSelectedAgentId(agent.id); setCurrentView('detail') }}
+                        >
+                          <div className="h-8 w-8 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center shrink-0">
+                            <Bot className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{agent.name}</p>
+                            <div className="flex items-center gap-1.5">
+                              {agent.framework && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{agent.framework}</Badge>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleBookmark(agent.id)
+                            }}
+                            className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </motion.div>
+                      ))}
+                      {bookmarkedAgentIds.length > bookmarkedAgents.length && (
+                        <p className="text-xs text-muted-foreground text-center py-2">
+                          +{bookmarkedAgentIds.length - bookmarkedAgents.length} more bookmarked
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

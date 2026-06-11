@@ -61,6 +61,8 @@ import {
   Keyboard,
   Zap,
   Timer,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -128,6 +130,7 @@ export function BrowseView() {
     viewMode, setViewMode,
     resetFilters,
     setCurrentView,
+    searchHistory, addSearchHistory, clearSearchHistory,
   } = useAppStore()
 
   const [agents, setAgents] = useState<KnowledgeAgent[]>([])
@@ -141,6 +144,10 @@ export function BrowseView() {
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery)
   const [searchTiming, setSearchTiming] = useState(0)
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showSearchHistory, setShowSearchHistory] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Refs
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -173,8 +180,8 @@ export function BrowseView() {
     return cat?.name || catValue
   }, [categories])
 
-  // Fetch agents
-  const fetchAgents = useCallback(async (pageNum: number, append = false) => {
+  // Fetch agents with auto-retry
+  const fetchAgents = useCallback(async (pageNum: number, append = false, attempt = 0) => {
     const startTime = performance.now()
     if (pageNum === 1) setLoading(true)
     else setLoadingMore(true)
@@ -211,17 +218,39 @@ export function BrowseView() {
 
       const elapsed = performance.now() - startTime
       setSearchTiming(Math.round(elapsed))
+      setError(null)
+      setRetryCount(0)
     } catch (err) {
       console.error('Failed to fetch agents:', err)
+      if (attempt < 3) {
+        // Auto-retry with exponential backoff
+        const delay = Math.pow(2, attempt) * 1000
+        setRetryCount(attempt + 1)
+        if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+        retryTimerRef.current = setTimeout(() => {
+          fetchAgents(pageNum, append, attempt + 1)
+        }, delay)
+      } else {
+        setError('Unable to load agents. The server may be temporarily unavailable.')
+        setRetryCount(0)
+      }
     } finally {
       setLoading(false)
       setLoadingMore(false)
     }
   }, [debouncedQuery, selectedFramework, selectedIndustry, selectedCategory, selectedDifficulty, sortBy, resolveCategoryName])
 
+  // Cleanup retry timer on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+    }
+  }, [])
+
   // Reset page and fetch when filters change
   useEffect(() => {
     setPage(1)
+    setError(null)
     fetchAgents(1)
   }, [fetchAgents])
 
@@ -533,6 +562,16 @@ export function BrowseView() {
     </HoverCard>
   )
 
+  // Scroll to top button visibility
+  const [showScrollTop, setShowScrollTop] = useState(false)
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400)
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* Header */}
@@ -543,7 +582,7 @@ export function BrowseView() {
             <span className="absolute -bottom-1 left-0 h-1 w-24 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full" />
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            {loading ? 'Loading...' : `${total} agents found`}
+            {loading ? 'Loading...' : error ? 'Error loading agents' : `${total} agents found`}
             {!loading && searchTiming > 0 && (
               <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground/60">
                 <Timer className="h-3 w-3" /> {searchTiming}ms
@@ -559,7 +598,28 @@ export function BrowseView() {
               ref={searchInputRef}
               placeholder="Search agents... (press /)"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setShowSearchHistory(false)
+              }}
+              onFocus={() => {
+                if (searchHistory.length > 0 && !searchQuery) {
+                  setShowSearchHistory(true)
+                }
+              }}
+              onBlur={() => {
+                // Delay to allow click on history item
+                setTimeout(() => setShowSearchHistory(false), 200)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && searchQuery.trim()) {
+                  addSearchHistory(searchQuery.trim())
+                  setShowSearchHistory(false)
+                }
+                if (e.key === 'Escape') {
+                  setShowSearchHistory(false)
+                }
+              }}
               className="pl-9 pr-8 h-9 w-48 sm:w-64 rounded-xl"
             />
             {searchQuery && (
@@ -569,6 +629,44 @@ export function BrowseView() {
               >
                 <X className="h-3.5 w-3.5" />
               </button>
+            )}
+            {/* Search History Dropdown */}
+            {showSearchHistory && searchHistory.length > 0 && !searchQuery && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border rounded-xl shadow-lg z-50 overflow-hidden"
+              >
+                <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
+                  <span className="text-xs font-medium text-muted-foreground">Recent Searches</span>
+                  <button
+                    onClick={() => {
+                      clearSearchHistory()
+                      setShowSearchHistory(false)
+                    }}
+                    className="text-xs text-rose-500 hover:text-rose-600 transition-colors"
+                  >
+                    Clear history
+                  </button>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  {searchHistory.map((query, i) => (
+                    <button
+                      key={i}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors flex items-center gap-2"
+                      onClick={() => {
+                        setSearchQuery(query)
+                        addSearchHistory(query)
+                        setShowSearchHistory(false)
+                      }}
+                    >
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="truncate">{query}</span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
             )}
           </div>
 
@@ -716,7 +814,7 @@ export function BrowseView() {
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           {/* Result Count & Timing */}
-          {!loading && agents.length > 0 && (
+          {!loading && !error && agents.length > 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -753,21 +851,54 @@ export function BrowseView() {
                 </Card>
               ))}
             </div>
+          ) : error ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-16"
+            >
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-rose-50 dark:bg-rose-900/20 mb-4">
+                <AlertCircle className="h-8 w-8 text-rose-500 dark:text-rose-400" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Failed to load agents</h3>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">{error}</p>
+              <Button
+                onClick={() => {
+                  setError(null)
+                  setRetryCount(0)
+                  fetchAgents(1)
+                }}
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            </motion.div>
           ) : agents.length === 0 ? (
             <div className="text-center py-16">
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                className="mb-6"
               >
-                <Search className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" style={{ animation: 'float 3s ease-in-out infinite' }} />
+                {/* Animated empty state illustration */}
+                <div className="relative inline-block">
+                  <div className="h-24 w-24 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center mx-auto" style={{ animation: 'float 3s ease-in-out infinite' }}>
+                    <Search className="h-10 w-10 text-emerald-400 dark:text-emerald-500" />
+                  </div>
+                  {/* Decorative dots around the circle */}
+                  <div className="absolute -top-2 -right-2 h-4 w-4 rounded-full bg-emerald-300 dark:bg-emerald-700 opacity-60" style={{ animation: 'float 2.5s ease-in-out infinite', animationDelay: '0.3s' }} />
+                  <div className="absolute -bottom-1 -left-3 h-3 w-3 rounded-full bg-teal-300 dark:bg-teal-700 opacity-50" style={{ animation: 'float 3.2s ease-in-out infinite', animationDelay: '0.8s' }} />
+                  <div className="absolute top-1 -left-4 h-2 w-2 rounded-full bg-cyan-300 dark:bg-cyan-700 opacity-40" style={{ animation: 'float 2.8s ease-in-out infinite', animationDelay: '1.2s' }} />
+                </div>
               </motion.div>
               <h3 className="text-lg font-semibold mb-2">No agents found</h3>
               <p className="text-muted-foreground mb-4">
                 Try adjusting your search or filters
               </p>
-              <Button variant="outline" className="rounded-xl" onClick={resetFilters}>
-                Clear Filters
+              <Button variant="outline" className="rounded-xl hover:bg-gradient-to-r hover:from-emerald-50 hover:to-teal-50 dark:hover:from-emerald-900/20 dark:hover:to-teal-900/20 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-200" onClick={resetFilters}>
+                <X className="h-4 w-4 mr-1.5" /> Clear Filters
               </Button>
             </div>
           ) : viewMode === 'compact' ? (
@@ -906,6 +1037,15 @@ export function BrowseView() {
       >
         <HelpCircle className="h-5 w-5" />
       </motion.button>
+
+      {/* Scroll to Top Button */}
+      <button
+        className={`scroll-to-top h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-200/50 dark:shadow-emerald-900/30 flex items-center justify-center hover:shadow-xl hover:scale-110 transition-all duration-200 ${showScrollTop ? 'visible' : ''}`}
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        aria-label="Scroll to top"
+      >
+        <svg width="16" height="10" viewBox="0 0 16 10" fill="none"><path d="M1 9l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </button>
     </div>
   )
 }

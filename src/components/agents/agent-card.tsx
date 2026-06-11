@@ -5,17 +5,10 @@ import { motion } from 'framer-motion'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Star, Code2, Eye, BookOpen, GitCompareArrows, Check, Bookmark, BookmarkCheck, MoreVertical, Plus, FolderPlus } from 'lucide-react'
+import { Star, Code2, Eye, BookOpen, GitCompareArrows, Check, Bookmark, BookmarkCheck } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { AgentQuickActions } from '@/components/agents/agent-quick-actions'
 import type { KnowledgeAgent } from '@/lib/types'
 
 interface AgentCardProps {
@@ -30,6 +23,20 @@ const frameworkColors: Record<string, string> = {
   autogen: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300',
   agno: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
   llamaindex: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
+}
+
+const frameworkGradientBorder: Record<string, string> = {
+  langgraph: 'from-emerald-400 to-emerald-600',
+  crewai: 'from-amber-400 to-orange-500',
+  autogen: 'from-rose-400 to-pink-500',
+  agno: 'from-violet-400 to-purple-500',
+  llamaindex: 'from-teal-400 to-cyan-500',
+}
+
+const difficultyDotColors: Record<string, string> = {
+  beginner: 'bg-green-500',
+  intermediate: 'bg-amber-500',
+  advanced: 'bg-red-500',
 }
 
 const frameworkGlow: Record<string, string> = {
@@ -54,18 +61,15 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
     removeCompareAgent,
     bookmarkedAgentIds,
     toggleBookmark,
-    collections,
-    addToCollection,
-    removeFromCollection,
-    createCollection,
+    ratings,
+    addNotification,
   } = useAppStore()
 
   const isInCompare = compareAgentIds.includes(agent.id)
   const isCompareFull = compareAgentIds.length >= 4
   const canCompare = isInCompare || !isCompareFull
   const isBookmarked = bookmarkedAgentIds.includes(agent.id)
-  const [newCollectionName, setNewCollectionName] = useState('')
-  const [showNewCollectionInput, setShowNewCollectionInput] = useState(false)
+  const [bookmarkAnim, setBookmarkAnim] = useState(false)
 
   const toggleCompare = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -78,33 +82,29 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
 
   const handleBookmarkToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
+    const wasBookmarked = isBookmarked
     toggleBookmark(agent.id)
-  }
-
-  const handleAddToCollection = (collectionId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    const collection = collections.find((c) => c.id === collectionId)
-    if (collection) {
-      if (collection.agentIds.includes(agent.id)) {
-        removeFromCollection(collectionId, agent.id)
-      } else {
-        addToCollection(collectionId, agent.id)
-      }
-    }
-  }
-
-  const handleCreateAndAdd = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (newCollectionName.trim()) {
-      createCollection(newCollectionName.trim())
-      setNewCollectionName('')
-      setShowNewCollectionInput(false)
+    setBookmarkAnim(true)
+    setTimeout(() => setBookmarkAnim(false), 400)
+    if (!wasBookmarked) {
+      addNotification({
+        type: 'bookmark_reminder',
+        title: 'Agent bookmarked',
+        message: `"${agent.name}" has been added to your bookmarks.`,
+      })
     }
   }
 
   const fwColor = frameworkColors[(agent.framework || '').toLowerCase()] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
   const fwGlow = frameworkGlow[(agent.framework || '').toLowerCase()] || ''
+  const fwBorder = frameworkGradientBorder[(agent.framework || '').toLowerCase()] || 'from-gray-400 to-gray-500'
   const diffColor = difficultyColors[(agent.difficulty || '').toLowerCase()] || 'text-gray-500'
+  const diffDot = difficultyDotColors[(agent.difficulty || '').toLowerCase()] || 'bg-gray-400'
+  const userRating = ratings[agent.id]
+  // Mock community rating: deterministic based on agent id hash
+  const communityRating = ((agent.id.charCodeAt(0) % 3) + 3) + ((agent.id.charCodeAt(1) % 10) / 10)
+  // NEW badge: show for agents created in the last 7 days (simulated based on id hash for KB agents)
+  const isNew = agent.isCurated ? (agent.id.charCodeAt(0) % 7 === 0) : false
 
   if (viewMode === 'list') {
     return (
@@ -166,15 +166,23 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
               <Badge variant="outline" className="text-[10px]">
                 {agent.category}
               </Badge>
+              {userRating && (
+                <span className="flex items-center gap-0.5 text-xs">
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                  <span className="font-medium">{userRating}</span>
+                </span>
+              )}
             </div>
-            {/* Bookmark + Collection dropdown */}
+            {/* Bookmark + Quick Actions */}
             <div className="flex items-center gap-1 shrink-0">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <motion.button
                       onClick={handleBookmarkToggle}
-                      whileTap={{ scale: 0.8 }}
+                      whileTap={{ scale: 0.7 }}
+                      animate={bookmarkAnim ? { scale: [1, 1.3, 0.9, 1.1, 1] } : { scale: 1 }}
+                      transition={bookmarkAnim ? { duration: 0.4, ease: 'easeInOut' } : { duration: 0.1 }}
                       className={`h-7 w-7 rounded-full flex items-center justify-center transition-colors duration-200 ${
                         isBookmarked
                           ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
@@ -189,67 +197,7 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="h-7 w-7 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-foreground hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <MoreVertical className="h-3.5 w-3.5" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenuItem onClick={(e) => handleAddToCollection('default', e as unknown as React.MouseEvent)} className="cursor-pointer">
-                    <span className="mr-2">★</span>
-                    Add to Favorites
-                    {collections.find((c) => c.id === 'default')?.agentIds.includes(agent.id) && (
-                      <Check className="h-3 w-3 ml-auto text-emerald-600" />
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {collections.filter((c) => c.id !== 'default').map((col) => (
-                    <DropdownMenuItem key={col.id} onClick={(e) => handleAddToCollection(col.id, e as unknown as React.MouseEvent)} className="cursor-pointer">
-                      <FolderPlus className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
-                      {col.name}
-                      {col.agentIds.includes(agent.id) && (
-                        <Check className="h-3 w-3 ml-auto text-emerald-600" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  {showNewCollectionInput ? (
-                    <div className="p-2 flex gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Input
-                        placeholder="Collection name..."
-                        value={newCollectionName}
-                        onChange={(e) => setNewCollectionName(e.target.value)}
-                        onKeyDown={(e) => {
-                          e.stopPropagation()
-                          if (e.key === 'Enter' && newCollectionName.trim()) {
-                            createCollection(newCollectionName.trim())
-                            setNewCollectionName('')
-                            setShowNewCollectionInput(false)
-                          }
-                          if (e.key === 'Escape') {
-                            setShowNewCollectionInput(false)
-                            setNewCollectionName('')
-                          }
-                        }}
-                        className="h-7 text-xs"
-                        autoFocus
-                      />
-                      <Button size="sm" className="h-7 px-2 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleCreateAndAdd}>
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowNewCollectionInput(true) }} className="cursor-pointer">
-                      <Plus className="h-3.5 w-3.5 mr-2 text-emerald-600" />
-                      <span className="text-emerald-600">New Collection</span>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <AgentQuickActions agent={agent} />
             </div>
           </CardContent>
         </Card>
@@ -265,12 +213,26 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
       whileHover={{ scale: 1.02, y: -2 }}
     >
       <Card
-        className="cursor-pointer hover:shadow-lg transition-all duration-300 h-full flex flex-col hover:-translate-y-0.5 will-change-transform"
+        className="cursor-pointer hover:shadow-lg transition-all duration-300 h-full flex flex-col hover:-translate-y-1 will-change-transform overflow-hidden relative hover:bg-white/90 dark:hover:bg-gray-900/90 hover:backdrop-blur-sm group"
         onClick={() => navigateToAgent(agent.id)}
       >
+        {/* Gradient top border based on framework color */}
+        <div className={`h-[2px] bg-gradient-to-r ${fwBorder}`} />
         <CardContent className="p-4 flex-1">
           <div className="flex items-start justify-between mb-2">
-            <h3 className="font-semibold text-sm line-clamp-1 flex-1 mr-2">{agent.name}</h3>
+            <h3 className="font-semibold text-sm line-clamp-1 flex-1 mr-2 flex items-center gap-1.5">
+              {/* Difficulty dot */}
+              {agent.difficulty && (
+                <span className={`inline-block h-2 w-2 rounded-full ${diffDot} shrink-0`} title={agent.difficulty} />
+              )}
+              <span className="truncate">{agent.name}</span>
+              {/* NEW badge */}
+              {isNew && (
+                <Badge className="text-[9px] px-1 py-0 h-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 shrink-0 font-bold tracking-wide">
+                  NEW
+                </Badge>
+              )}
+            </h3>
             <div className="flex items-center gap-1 shrink-0">
               {/* Bookmark button */}
               <TooltipProvider>
@@ -278,7 +240,9 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
                   <TooltipTrigger asChild>
                     <motion.button
                       onClick={handleBookmarkToggle}
-                      whileTap={{ scale: 0.8 }}
+                      whileTap={{ scale: 0.7 }}
+                      animate={bookmarkAnim ? { scale: [1, 1.3, 0.9, 1.1, 1] } : { scale: 1 }}
+                      transition={bookmarkAnim ? { duration: 0.4, ease: 'easeInOut' } : { duration: 0.1 }}
                       className={`h-6 w-6 rounded-full flex items-center justify-center transition-colors duration-200 ${
                         isBookmarked
                           ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
@@ -315,70 +279,10 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
                   </Tooltip>
                 </TooltipProvider>
               )}
-              {/* Collection dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="h-6 w-6 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-foreground hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <MoreVertical className="h-3 w-3" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenuItem onClick={(e) => handleAddToCollection('default', e as unknown as React.MouseEvent)} className="cursor-pointer">
-                    <span className="mr-2">★</span>
-                    Add to Favorites
-                    {collections.find((c) => c.id === 'default')?.agentIds.includes(agent.id) && (
-                      <Check className="h-3 w-3 ml-auto text-emerald-600" />
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {collections.filter((c) => c.id !== 'default').map((col) => (
-                    <DropdownMenuItem key={col.id} onClick={(e) => handleAddToCollection(col.id, e as unknown as React.MouseEvent)} className="cursor-pointer">
-                      <FolderPlus className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
-                      {col.name}
-                      {col.agentIds.includes(agent.id) && (
-                        <Check className="h-3 w-3 ml-auto text-emerald-600" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  {showNewCollectionInput ? (
-                    <div className="p-2 flex gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Input
-                        placeholder="Collection name..."
-                        value={newCollectionName}
-                        onChange={(e) => setNewCollectionName(e.target.value)}
-                        onKeyDown={(e) => {
-                          e.stopPropagation()
-                          if (e.key === 'Enter' && newCollectionName.trim()) {
-                            createCollection(newCollectionName.trim())
-                            setNewCollectionName('')
-                            setShowNewCollectionInput(false)
-                          }
-                          if (e.key === 'Escape') {
-                            setShowNewCollectionInput(false)
-                            setNewCollectionName('')
-                          }
-                        }}
-                        className="h-7 text-xs"
-                        autoFocus
-                      />
-                      <Button size="sm" className="h-7 px-2 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleCreateAndAdd}>
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowNewCollectionInput(true) }} className="cursor-pointer">
-                      <Plus className="h-3.5 w-3.5 mr-2 text-emerald-600" />
-                      <span className="text-emerald-600">New Collection</span>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* Quick Actions */}
+              <AgentQuickActions agent={agent} />
               {agent.isCurated && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 dark:from-emerald-900/30 dark:to-teal-900/30 dark:text-emerald-300">
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 dark:from-emerald-900/30 dark:to-teal-900/30 dark:text-emerald-300 shadow-sm shadow-emerald-100 dark:shadow-emerald-900/20">
                   <BookOpen className="h-3 w-3 mr-0.5" />KB
                 </Badge>
               )}
@@ -387,7 +291,7 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
           <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{agent.description}</p>
           <div className="flex flex-wrap gap-1.5">
             {agent.framework && (
-              <Badge variant="secondary" className={`text-[10px] ${fwColor} shadow-sm ${fwGlow}`}>
+              <Badge variant="secondary" className={`text-[10px] ${fwColor} shadow-sm ${fwGlow} group-hover:shadow-md transition-shadow duration-200`}>
                 {agent.framework}
               </Badge>
             )}
@@ -420,8 +324,19 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
                 <Code2 className="h-3 w-3" /> Code
               </span>
             )}
+            {userRating && (
+              <span className="flex items-center gap-0.5">
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                {userRating}/5
+              </span>
+            )}
+            {!userRating && (
+              <span className="flex items-center gap-0.5 text-muted-foreground/50">
+                <Star className="h-3 w-3" /> {communityRating.toFixed(1)}
+              </span>
+            )}
           </div>
-          <Button size="sm" variant="ghost" className="h-7 text-xs hover:scale-105 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-teal-50 dark:hover:from-emerald-900/20 dark:hover:to-teal-900/20 transition-all duration-200" onClick={(e) => { e.stopPropagation(); navigateToAgent(agent.id) }}>
+          <Button size="sm" variant="ghost" className="h-7 text-xs hover:scale-110 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-teal-50 dark:hover:from-emerald-900/20 dark:hover:to-teal-900/20 transition-all duration-200 rounded-lg" onClick={(e) => { e.stopPropagation(); navigateToAgent(agent.id) }}>
             <Eye className="h-3 w-3 mr-1" /> View
           </Button>
         </CardFooter>

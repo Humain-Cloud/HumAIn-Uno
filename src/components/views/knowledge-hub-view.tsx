@@ -43,6 +43,8 @@ import {
   Eye,
   Wrench,
   Tag,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
@@ -239,6 +241,9 @@ export function KnowledgeHubView() {
   const [previewAgent, setPreviewAgent] = useState<KnowledgeAgent | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [minutesAgo, setMinutesAgo] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Debounce search
   useEffect(() => {
@@ -277,6 +282,13 @@ export function KnowledgeHubView() {
       }
     }
     loadStats()
+  }, [])
+
+  // Cleanup retry timer on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+    }
   }, [])
 
   // Load all agents for tag cloud and random picker
@@ -344,8 +356,8 @@ export function KnowledgeHubView() {
     return allAgents.slice(0, 5)
   }, [allAgents])
 
-  // Fetch agents based on filters
-  const fetchAgents = useCallback(async (pageNum: number, append = false) => {
+  // Fetch agents with auto-retry
+  const fetchAgents = useCallback(async (pageNum: number, append = false, attempt = 0) => {
     if (pageNum === 1) setLoading(true)
     else setLoadingMore(true)
 
@@ -383,8 +395,22 @@ export function KnowledgeHubView() {
       }
       setTotal(data?.total || filtered.length)
       setHasMore(data?.hasMore !== undefined ? data.hasMore : newAgents.length >= 24)
+      setError(null)
+      setRetryCount(0)
     } catch (err) {
       console.error('Failed to fetch agents:', err)
+      if (attempt < 3) {
+        // Auto-retry with exponential backoff
+        const delay = Math.pow(2, attempt) * 1000
+        setRetryCount(attempt + 1)
+        if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+        retryTimerRef.current = setTimeout(() => {
+          fetchAgents(pageNum, append, attempt + 1)
+        }, delay)
+      } else {
+        setError('Unable to load agents. The server may be temporarily unavailable.')
+        setRetryCount(0)
+      }
     } finally {
       setLoading(false)
       setLoadingMore(false)
@@ -394,6 +420,7 @@ export function KnowledgeHubView() {
   // Re-fetch when filters change
   useEffect(() => {
     setPage(1)
+    setError(null)
     fetchAgents(1)
   }, [fetchAgents])
 
@@ -438,6 +465,33 @@ export function KnowledgeHubView() {
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-400/10 rounded-full blur-3xl animate-pulse" />
           <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-teal-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-cyan-300/5 rounded-full blur-3xl" />
+          {/* Constellation / Particle effect */}
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute rounded-full bg-white constellation-particle"
+              style={{
+                width: `${2 + (i % 3)}px`,
+                height: `${2 + (i % 3)}px`,
+                left: `${5 + (i * 4.7) % 90}%`,
+                top: `${5 + (i * 6.3) % 85}%`,
+                '--twinkle-duration': `${2 + (i % 4)}s`,
+                '--twinkle-delay': `${i * 0.3}s`,
+              } as React.CSSProperties}
+            />
+          ))}
+          {/* Constellation lines */}
+          <svg className="absolute inset-0 w-full h-full opacity-10" aria-hidden="true">
+            {[...Array(8)].map((_, i) => {
+              const x1 = 10 + (i * 12) % 80
+              const y1 = 15 + (i * 17) % 70
+              const x2 = 15 + ((i + 3) * 11) % 75
+              const y2 = 20 + ((i + 2) * 14) % 65
+              return (
+                <line key={i} x1={`${x1}%`} y1={`${y1}%`} x2={`${x2}%`} y2={`${y2}%`} stroke="white" strokeWidth="0.5" />
+              )
+            })}
+          </svg>
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20">
@@ -698,7 +752,7 @@ export function KnowledgeHubView() {
                   {selectedFramework === 'all' ? 'All Knowledge Agents' : frameworkConfig[selectedFramework]?.label + ' Agents'}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {loading ? 'Loading...' : `${total} agents found`}
+                  {loading ? 'Loading...' : error ? 'Error loading agents' : `${total} agents found`}
                 </p>
               </div>
             </div>
@@ -720,6 +774,29 @@ export function KnowledgeHubView() {
                   </Card>
                 ))}
               </div>
+            ) : error ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-16"
+              >
+                <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-rose-50 dark:bg-rose-900/20 mb-4">
+                  <AlertCircle className="h-8 w-8 text-rose-500 dark:text-rose-400" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Failed to load agents</h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">{error}</p>
+                <Button
+                  onClick={() => {
+                    setError(null)
+                    setRetryCount(0)
+                    fetchAgents(1)
+                  }}
+                  className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry
+                </Button>
+              </motion.div>
             ) : agents.length === 0 ? (
               <div className="text-center py-16">
                 <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
