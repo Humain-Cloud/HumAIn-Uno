@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Humain-Uno - AI Agent Marketplace",
-  description: "Discover, build, and share AI agents. Explore 200+ curated agents across LangGraph, CrewAI, AutoGen, Agno, and LlamaIndex.",
+  description: "Discover, build, and share AI agents. Explore 800+ curated agents across LangGraph, CrewAI, AutoGen, Agno, and LlamaIndex.",
   keywords: ["AI Agents", "LangGraph", "CrewAI", "AutoGen", "Agno", "LlamaIndex", "Agent Marketplace"],
   authors: [{ name: "Humain-Uno Team" }],
   icons: {
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Humain-Uno - AI Agent Marketplace",
-    description: "Discover, build, and share AI agents with 200+ curated templates",
+    description: "Discover, build, and share AI agents with 800+ curated templates",
     type: "website",
   },
 };

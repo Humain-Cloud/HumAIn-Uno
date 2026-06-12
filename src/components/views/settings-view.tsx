@@ -650,7 +650,7 @@ export function SettingsView() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Powered by 500+ curated AI agent projects
+                  Powered by 800+ curated AI agent projects
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   © 2025 Humain-Uno. Open Source under MIT.

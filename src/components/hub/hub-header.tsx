@@ -100,7 +100,7 @@ export function HubHeader({
                   Knowledge Hub
                 </h1>
                 <p className="text-lg sm:text-xl text-emerald-100/90 max-w-2xl leading-relaxed">
-                  Explore our curated collection of 500+ AI agent templates from the open-source community
+                  Explore our curated collection of 800+ AI agent templates from the open-source community
                 </p>
               </div>
 
