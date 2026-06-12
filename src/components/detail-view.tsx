@@ -78,6 +78,11 @@ import {
   Route,
   Package,
   Fuel,
+  Landmark,
+  Hotel,
+  Pill,
+  Radio,
+  Mountain,
 } from 'lucide-react'
 
 // ─── Framework Color Config ───
@@ -110,7 +115,7 @@ type DetailTab = 'overview' | 'capabilities' | 'prompts' | 'architecture' | 'set
 // ─── Icon mapping for capabilities ───
 function getCapIcon(iconName: string) {
   const map: Record<string, React.ComponentType<{ className?: string }>> = {
-    BookOpen, Brain, BarChart3, GitBranch, Zap, FileCode, Workflow, MessageSquare, Heart, Globe, User, Palette, Layers, Shield, Search, Database, Code2, CheckCircle2, Mail, ShoppingBag, Sprout, GraduationCap, Briefcase, Plane, Music, Gamepad2, Scale, Cpu, Wrench, Newspaper, Users, ChefHat, Bolt, Truck, Building, Clock, FileText, Target, HardHat, Trophy, Leaf, ShieldCheck, Ship, Activity, Dumbbell, Calculator, FileCheck, Recycle, Award, Route, Package, Fuel,
+    BookOpen, Brain, BarChart3, GitBranch, Zap, FileCode, Workflow, MessageSquare, Heart, Globe, User, Palette, Layers, Shield, Search, Database, Code2, CheckCircle2, Mail, ShoppingBag, Sprout, GraduationCap, Briefcase, Plane, Music, Gamepad2, Scale, Cpu, Wrench, Newspaper, Users, ChefHat, Bolt, Truck, Building, Clock, FileText, Target, HardHat, Trophy, Leaf, ShieldCheck, Ship, Activity, Dumbbell, Calculator, FileCheck, Recycle, Award, Route, Package, Fuel, Landmark, Hotel, Pill, Radio, Mountain,
   }
   return map[iconName] || Brain
 }

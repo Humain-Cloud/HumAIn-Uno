@@ -36,7 +36,7 @@ export function CtaSection({ stats, onNavigate }: CtaSectionProps) {
             Ready to build your AI agent?
           </h2>
           <p className="text-emerald-100 text-lg sm:text-xl mb-8 max-w-xl mx-auto leading-relaxed">
-            Start from scratch or remix from 500+ curated templates. Deploy in minutes with AI assistance.
+            Start from scratch or remix from 600+ curated templates. Deploy in minutes with AI assistance.
           </p>
           {/* Animated platform stats */}
           <div className="flex items-center justify-center gap-8 sm:gap-12 mb-10">

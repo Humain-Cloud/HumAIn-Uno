@@ -60,6 +60,11 @@ import {
   Leaf,
   ShieldCheck,
   Ship,
+  Landmark,
+  Hotel,
+  Pill,
+  Radio,
+  Mountain,
 } from 'lucide-react'
 
 // ─── Icons (inline SVGs to avoid importing all of lucide-react) ───
@@ -518,6 +523,61 @@ const categoryStyleMap: Record<string, CategoryStyle> = {
     border: 'border-teal-100 dark:border-teal-900/30',
     hoverBorder: 'hover:border-teal-300 dark:hover:border-teal-700/50',
   },
+  'Government': {
+    icon: Landmark,
+    gradient: 'bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950/40 dark:to-blue-950/30',
+    hoverGradient: 'hover:from-slate-100 hover:to-blue-100 dark:hover:from-slate-950/60 dark:hover:to-blue-950/50',
+    iconBg: 'bg-slate-100 dark:bg-slate-900/50',
+    iconHoverBg: 'group-hover:bg-slate-200 dark:group-hover:bg-slate-800/60',
+    iconColor: 'text-slate-600 dark:text-slate-400',
+    accent: 'text-slate-700 dark:text-slate-300',
+    border: 'border-slate-100 dark:border-slate-900/30',
+    hoverBorder: 'hover:border-slate-300 dark:hover:border-slate-700/50',
+  },
+  'Hospitality': {
+    icon: Hotel,
+    gradient: 'bg-gradient-to-br from-rose-50 to-pink-50 dark:from-rose-950/40 dark:to-pink-950/30',
+    hoverGradient: 'hover:from-rose-100 hover:to-pink-100 dark:hover:from-rose-950/60 dark:hover:to-pink-950/50',
+    iconBg: 'bg-rose-100 dark:bg-rose-900/50',
+    iconHoverBg: 'group-hover:bg-rose-200 dark:group-hover:bg-rose-800/60',
+    iconColor: 'text-rose-600 dark:text-rose-400',
+    accent: 'text-rose-700 dark:text-rose-300',
+    border: 'border-rose-100 dark:border-rose-900/30',
+    hoverBorder: 'hover:border-rose-300 dark:hover:border-rose-700/50',
+  },
+  'Pharmaceutical': {
+    icon: Pill,
+    gradient: 'bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/40 dark:to-green-950/30',
+    hoverGradient: 'hover:from-emerald-100 hover:to-green-100 dark:hover:from-emerald-950/60 dark:hover:to-green-950/50',
+    iconBg: 'bg-emerald-100 dark:bg-emerald-900/50',
+    iconHoverBg: 'group-hover:bg-emerald-200 dark:group-hover:bg-emerald-800/60',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+    accent: 'text-emerald-700 dark:text-emerald-300',
+    border: 'border-emerald-100 dark:border-emerald-900/30',
+    hoverBorder: 'hover:border-emerald-300 dark:hover:border-emerald-700/50',
+  },
+  'Telecommunications': {
+    icon: Radio,
+    gradient: 'bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/40 dark:to-purple-950/30',
+    hoverGradient: 'hover:from-violet-100 hover:to-purple-100 dark:hover:from-violet-950/60 dark:hover:to-purple-950/50',
+    iconBg: 'bg-violet-100 dark:bg-violet-900/50',
+    iconHoverBg: 'group-hover:bg-violet-200 dark:group-hover:bg-violet-800/60',
+    iconColor: 'text-violet-600 dark:text-violet-400',
+    accent: 'text-violet-700 dark:text-violet-300',
+    border: 'border-violet-100 dark:border-violet-900/30',
+    hoverBorder: 'hover:border-violet-300 dark:hover:border-violet-700/50',
+  },
+  'Mining & Resources': {
+    icon: Mountain,
+    gradient: 'bg-gradient-to-br from-amber-50 to-stone-50 dark:from-amber-950/40 dark:to-stone-950/30',
+    hoverGradient: 'hover:from-amber-100 hover:to-stone-100 dark:hover:from-amber-950/60 dark:hover:to-stone-950/50',
+    iconBg: 'bg-amber-100 dark:bg-amber-900/50',
+    iconHoverBg: 'group-hover:bg-amber-200 dark:group-hover:bg-amber-800/60',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+    accent: 'text-amber-700 dark:text-amber-300',
+    border: 'border-amber-100 dark:border-amber-900/30',
+    hoverBorder: 'hover:border-amber-300 dark:hover:border-amber-700/50',
+  },
 }
 
 // Fallback palette for categories not in the map — cycles through distinctive colors
@@ -690,14 +750,14 @@ function HomeView() {
         </div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28 lg:py-36 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-emerald-100 text-sm mb-8">
-            ✨ Powered by 500+ curated AI agent projects
+            ✨ Powered by 600+ curated AI agent projects
           </div>
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight tracking-tight">
             Discover & Build<br />
             <span className="bg-gradient-to-r from-emerald-200 via-teal-200 to-cyan-200 bg-clip-text text-transparent">AI Agents</span>
           </h1>
           <p className="text-lg sm:text-xl text-emerald-100/90 max-w-2xl mx-auto mb-10">
-            Explore 500+ curated AI agents across 5 frameworks. Find the perfect starting point, remix with your own twist, or build from scratch.
+            Explore 600+ curated AI agents across 5 frameworks. Find the perfect starting point, remix with your own twist, or build from scratch.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
@@ -821,7 +881,7 @@ function HomeView() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Ready to Build?</h2>
           <p className="text-emerald-100 text-lg mb-8 max-w-xl mx-auto">
-            Start creating your AI agent today with our powerful tools and 500+ templates.
+            Start creating your AI agent today with our powerful tools and 600+ templates.
           </p>
           <button
             onClick={() => handleNav('hub')}
@@ -1181,7 +1241,7 @@ function KnowledgeHubView() {
           <span className="absolute -bottom-1 left-0 h-1 w-24 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full" />
         </h1>
         <p className="text-muted-foreground mt-3">
-          Browse 500+ curated AI agent projects from the open-source community. Filter by framework, search by name, and discover your next project.
+          Browse 600+ curated AI agent projects from the open-source community. Filter by framework, search by name, and discover your next project.
         </p>
       </div>
 
@@ -1390,7 +1450,7 @@ export default function HomePage() {
               </div>
               <span className="font-bold text-sm">Humain<span className="text-emerald-600">-Uno</span></span>
             </div>
-            <p className="text-xs text-muted-foreground">© 2025 Humain-Uno. Powered by 500+ AI Agents Knowledge Base</p>
+            <p className="text-xs text-muted-foreground">© 2025 Humain-Uno. Powered by 600+ AI Agents Knowledge Base</p>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="hover:text-emerald-600 cursor-pointer">LangGraph</span>
               <span>·</span>

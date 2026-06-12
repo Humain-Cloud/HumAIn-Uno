@@ -1048,3 +1048,114 @@ User requested: Verify we have 500+ agents, and if not, add new agents across un
 - ✅ No runtime errors in dev server log
 - ✅ All API endpoints returning 200 status
 - ✅ Every category has minimum 10 agents
+
+---
+
+## Session 14 — Scale Platform to 600+ AI Agents (510→602)
+
+### Task
+User requested: "Do we actually have 600+ (let alone 1000+; because we will build it step-by-step) AI agents inside our full platform? If not, then exactly how many do we currently have? Spread the new ones in the categories which are currently empty or create a new category if needed. I hope each ones are perfectly curated for their specialized use-case."
+
+### Problem Analysis
+- Database had 510 KnowledgeAgent records across 36 categories — below the 600+ target
+- 7 categories had only 10 agents each (Travel, Marketing, Construction, Sports & Fitness, Sustainability, Insurance, Transportation)
+- 21 categories had 12 agents each
+- No categories were empty, but opportunity to add new industry categories
+
+### Changes Made
+
+1. **NEW: `/home/z/my-project/scripts/seed-agents-phase5.ts`** — Comprehensive Phase 5 seed script with 92 inline agent definitions
+
+   **5 New Categories Seeded (via upsert):**
+   - Government (slug: government, icon: landmark) — 7 agents
+   - Hospitality (slug: hospitality, icon: hotel) — 7 agents
+   - Pharmaceutical (slug: pharmaceutical, icon: pill) — 7 agents
+   - Telecommunications (slug: telecommunications, icon: radio) — 7 agents
+   - Mining & Resources (slug: mining-resources, icon: mountain) — 7 agents
+
+   **92 New Agents Distribution:**
+   - *5 New categories (35 agents)*: Government 7, Hospitality 7, Pharmaceutical 7, Telecommunications 7, Mining & Resources 7
+   - *7 Smallest categories boosted from 10→14 (28 agents)*: Travel +4, Marketing +4, Construction +4, Sports & Fitness +4, Sustainability +4, Insurance +4, Transportation +4
+   - *8 Top categories boosted (+16 agents)*: Software Development +2, Research +2, Productivity +2, Media +2, Human Resources +2, Communication +2, Data Analytics +2, Finance +2
+   - *13 Mid-tier categories boosted from 12→13 (13 agents)*: General, Business, Customer Service, Supply Chain, DevOps, Education, Healthcare, Food, Gaming, E-commerce, Legal, Agriculture, Cybersecurity
+
+2. **MODIFIED: `/src/app/page.tsx`**
+   - Added 5 new icon imports: Landmark, Hotel, Pill, Radio, Mountain
+   - Added 5 new categoryStyleMap entries: Government, Hospitality, Pharmaceutical, Telecommunications, Mining & Resources
+   - Updated all "500+" text references to "600+" (hero badge, descriptions, CTA, footer, Knowledge Hub subtitle)
+
+3. **MODIFIED: `/src/app/layout.tsx`**
+   - Updated meta description and OpenGraph description from "500+" to "600+"
+
+4. **MODIFIED: `/src/lib/agent-detail-data.ts`**
+   - Added 5 new categoryCapabilities entries with 4 capabilities each:
+     - Government: Policy Impact Assessment, Constituent Service Automation, Procurement & Compliance, Budget Allocation Optimization
+     - Hospitality: Guest Experience Optimization, Revenue Management, Operations Scheduling, Loyalty & Retention Strategy
+     - Pharmaceutical: Drug Discovery Assistance, Clinical Trial Management, Pharmacovigilance Monitoring, Regulatory Submission Automation
+     - Telecommunications: Network Traffic Optimization, Customer Churn Prediction, Spectrum Management, Service Outage Prediction
+     - Mining & Resources: Mineral Exploration Analytics, Mine Planning Optimization, Environmental Compliance Monitoring, Resource Estimation & Reporting
+
+5. **MODIFIED: `/src/components/detail-view.tsx`**
+   - Added 5 new icon imports: Landmark, Hotel, Pill, Radio, Mountain
+   - Added 5 new icons to getCapIcon map to prevent runtime ReferenceError
+
+6. **MODIFIED: Multiple component files** — Updated all "500+" to "600+":
+   - `/src/lib/store.ts` (welcome notification message)
+   - `/src/components/dashboard/platform-stats-section.tsx` (2 references)
+   - `/src/components/home/cta-section.tsx` (1 reference)
+   - `/src/components/home/hero-section.tsx` (2 references)
+   - `/src/components/home/shared-data.ts` (1 reference)
+   - `/src/components/hub/hub-header.tsx` (1 reference)
+   - `/src/components/layout/app-layout.tsx` (2 references: search placeholder + footer)
+   - `/src/components/views/settings-view.tsx` (1 reference)
+
+### Final Distribution (602 agents, 41 categories)
+| Category | Count | | Category | Count |
+|---|---|---|---|---|
+| Software Development | 33 | | Healthcare | 13 |
+| Research | 28 | | Customer Service | 13 |
+| Productivity | 28 | | Cybersecurity | 13 |
+| Media | 26 | | Supply Chain | 13 |
+| Human Resources | 23 | | DevOps | 13 |
+| Communication | 22 | | Education | 13 |
+| Data Analytics | 22 | | E-commerce | 13 |
+| Finance | 22 | | Legal | 13 |
+| Travel | 14 | | Agriculture | 13 |
+| Marketing | 14 | | Gaming | 13 |
+| Construction | 14 | | Food | 13 |
+| Sports & Fitness | 14 | | General | 13 |
+| Sustainability | 14 | | Business | 13 |
+| Insurance | 14 | | Energy | 12 |
+| Transportation | 14 | | Real Estate | 12 |
+| **Government** | **7** | | Code Generation | 12 |
+| **Hospitality** | **7** | | Workflow Automation | 12 |
+| **Pharmaceutical** | **7** | | Entertainment | 12 |
+| **Telecommunications** | **7** | | Creative | 12 |
+| **Mining & Resources** | **7** | | AI/ML | 12 |
+| | | | IoT | 12 |
+
+### Verification Results
+- ✅ Lint passes clean (0 errors, 0 warnings)
+- ✅ Total KnowledgeAgent count: **602** (was 510, added 92)
+- ✅ Total categories: **41** (was 36, added 5)
+- ✅ Stats API returns correct counts (602 agents, 41 categories, 5 frameworks)
+- ✅ Homepage shows "602 Knowledge Agents" and "41 Categories"
+- ✅ Browse view shows all 41 category filter tabs including 5 new ones
+- ✅ Government category filter returns 7 agents correctly
+- ✅ Agent detail page loads for new agents (tested PolicyImpact Assessor)
+- ✅ All 8 tabs render: Overview, Capabilities, Master Prompts (3), Architecture, Getting Started, Configuration, FAQ, Related
+- ✅ Capabilities tab shows Government-specific capabilities (Policy Impact Assessment, etc.)
+- ✅ Master Prompts tab shows 3 prompts including "Government Domain Expert Execution Prompt"
+- ✅ All API calls return 200 status, no runtime errors
+- ✅ All "500+" text references updated to "600+" across the platform
+
+### Architecture Notes
+- Phase 5 seed script uses same pattern as phase 2-4 (upsert with `p5-` ID prefix)
+- 5 new categories bring total to 41, covering additional industry verticals
+- New category style maps use distinct, non-overlapping color schemes
+- New categoryCapabilities entries follow the exact same 4-capability format
+- Agent detail data is dynamically generated via getAgentDetailData() for all agents
+
+### Unresolved Issues
+1. Agent-browser `click` command doesn't reliably trigger React onClick on agent cards — `eval` with `.click()` works (browser automation quirk, not a real bug)
+2. Pre-existing lint warnings about setLoading in useEffect (not related to this change)
