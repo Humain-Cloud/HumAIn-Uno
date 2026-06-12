@@ -31,7 +31,7 @@ export function PlatformStatsSection({ stats, onSignIn, onNavigate }: PlatformSt
             Discover & Build AI Agents
           </h1>
           <p className="text-white/80 text-lg mb-6 max-w-xl">
-            Browse 600+ curated agent projects, create your own, and organize them into collections.
+            Browse 700+ curated agent projects, create your own, and organize them into collections.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button
@@ -66,7 +66,7 @@ export function PlatformStatsSection({ stats, onSignIn, onNavigate }: PlatformSt
           {[
             {
               title: 'Browse Agents',
-              desc: 'Explore 600+ curated AI agents from top frameworks',
+              desc: 'Explore 700+ curated AI agents from top frameworks',
               icon: Compass,
               color: 'from-emerald-500 to-teal-600',
               iconBg: 'bg-emerald-100 dark:bg-emerald-900/30',

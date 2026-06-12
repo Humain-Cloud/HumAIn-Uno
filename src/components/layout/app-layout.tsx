@@ -194,7 +194,7 @@ function Navbar() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
             <Input
               ref={searchInputRef}
-              placeholder="Search 600+ agents..."
+              placeholder="Search 700+ agents..."
               className="pl-9 h-9 text-sm bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 rounded-full focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 dark:focus:border-emerald-600 input-focus"
               value={searchQuery}
               onChange={(e) => {
@@ -642,7 +642,7 @@ function Footer() {
           {/* Copyright and frameworks */}
           <div className="flex flex-col items-center sm:items-end gap-2">
             <p className="text-xs text-muted-foreground">
-              © 2025 Humain-Uno. Powered by 600+ AI Agents Knowledge Base
+              © 2025 Humain-Uno. Powered by 700+ AI Agents Knowledge Base
             </p>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer transition-colors">LangGraph</span>

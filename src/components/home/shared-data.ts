@@ -91,7 +91,7 @@ export const howItWorks = [
     step: 2,
     icon: Sparkles,
     title: 'Get Smart Suggestions',
-    description: 'Our AI scans 600+ proven agents to recommend the best starting point and framework.',
+    description: 'Our AI scans 700+ proven agents to recommend the best starting point and framework.',
     color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
   },
   {

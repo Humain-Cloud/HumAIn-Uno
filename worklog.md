@@ -1159,3 +1159,98 @@ User requested: "Do we actually have 600+ (let alone 1000+; because we will buil
 ### Unresolved Issues
 1. Agent-browser `click` command doesn't reliably trigger React onClick on agent cards — `eval` with `.click()` works (browser automation quirk, not a real bug)
 2. Pre-existing lint warnings about setLoading in useEffect (not related to this change)
+
+---
+
+## Session 15 — Scale Platform to 700+ AI Agents (602→700)
+
+### Task
+User requested: "Do we actually have 700+ (let alone 1000+; because we will build it step-by-step) AI agents inside our full platform? Spread the new ones in the categories which are currently empty or create a new category if needed. I hope each ones are perfectly curated for their specialized use-case."
+
+### Problem Analysis
+- Database had 602 KnowledgeAgent records across 41 categories — below the 700+ target
+- 5 categories had only 7 agents each (Government, Hospitality, Pharmaceutical, Telecommunications, Mining & Resources)
+- 8 categories had only 12 agents each
+- Opportunity to add new industry categories
+
+### Changes Made
+
+1. **NEW: `/home/z/my-project/scripts/seed-agents-phase6.ts`** — Comprehensive Phase 6 seed script with 98 inline agent definitions
+
+   **5 New Categories Seeded (via upsert):**
+   - Aerospace (slug: aerospace, icon: rocket) — 7 agents
+   - Veterinary (slug: veterinary, icon: stethoscope) — 7 agents
+   - Philanthropy (slug: philanthropy, icon: heart-handshake) — 7 agents
+   - Logistics (slug: logistics, icon: container) — 7 agents
+   - Public Safety (slug: public-safety, icon: siren) — 7 agents
+
+   **98 New Agents Distribution:**
+   - *5 New categories (35 agents)*: Aerospace 7, Veterinary 7, Philanthropy 7, Logistics 7, Public Safety 7
+   - *5 Smallest categories boosted from 7→14 (35 agents)*: Government +7, Hospitality +7, Pharmaceutical +7, Telecommunications +7, Mining & Resources +7
+   - *13 categories boosted from 12→14 (26 agents)*: Energy, Real Estate, Code Generation, Workflow Automation, Entertainment, Creative, AI/ML, IoT, General, Food, Business, Customer Service, Gaming
+   - *2 categories boosted from 13→14 (2 agents)*: Supply Chain +1, DevOps +1
+
+2. **MODIFIED: `/src/app/page.tsx`**
+   - Added 5 new icon imports: Rocket, Stethoscope, HeartHandshake, Container, Siren
+   - Added 5 new categoryStyleMap entries: Aerospace, Veterinary, Philanthropy, Logistics, Public Safety
+   - Updated all "600+" text references to "700+"
+
+3. **MODIFIED: `/src/app/layout.tsx`**
+   - Updated meta description and OpenGraph description from "600+" to "700+"
+
+4. **MODIFIED: `/src/lib/agent-detail-data.ts`**
+   - Added 5 new categoryCapabilities entries with 4 capabilities each:
+     - Aerospace: Orbital Mechanics & Trajectory Planning, Satellite Health Monitoring, Mission Planning & Scheduling, Aerostructural Analysis
+     - Veterinary: Diagnostic Imaging Analysis, Treatment Protocol Advisory, Herd Health Management, Zoonotic Risk Assessment
+     - Philanthropy: Grant Proposal Evaluation, Donor Engagement Strategy, Impact Measurement & Reporting, Foundation Compliance & Governance
+     - Logistics: Freight Rate Optimization, Cross-Dock Scheduling, Last-Mile Route Optimization, Warehouse Layout Optimization
+     - Public Safety: Emergency Response Coordination, Crime Pattern Analysis, Disaster Preparedness Planning, Fire Risk Assessment
+
+5. **MODIFIED: `/src/components/detail-view.tsx`**
+   - Added 5 new icon imports: Rocket, Stethoscope, HeartHandshake, Container, Siren
+   - Added 5 new icons to getCapIcon map
+
+6. **MODIFIED: 8 component files** — Updated all "600+" to "700+":
+   - store.ts, platform-stats-section.tsx, cta-section.tsx, hero-section.tsx, shared-data.ts, hub-header.tsx, app-layout.tsx, settings-view.tsx
+
+### Final Distribution (700 agents, 46 categories)
+| Category | Count | | Category | Count |
+|---|---|---|---|---|
+| Software Development | 33 | | Supply Chain | 14 |
+| Research | 28 | | DevOps | 14 |
+| Productivity | 28 | | Energy | 14 |
+| Media | 26 | | Real Estate | 14 |
+| Human Resources | 23 | | Code Generation | 14 |
+| Communication | 22 | | Workflow Automation | 14 |
+| Data Analytics | 22 | | Entertainment | 14 |
+| Finance | 22 | | Creative | 14 |
+| Travel | 14 | | AI/ML | 14 |
+| Marketing | 14 | | IoT | 14 |
+| Construction | 14 | | General | 14 |
+| Sports & Fitness | 14 | | Food | 14 |
+| Sustainability | 14 | | Business | 14 |
+| Insurance | 14 | | Customer Service | 14 |
+| Transportation | 14 | | Gaming | 14 |
+| Government | 14 | | **Aerospace** | **7** |
+| Hospitality | 14 | | **Veterinary** | **7** |
+| Pharmaceutical | 14 | | **Philanthropy** | **7** |
+| Telecommunications | 14 | | **Logistics** | **7** |
+| Mining & Resources | 14 | | **Public Safety** | **7** |
+| Agriculture | 13 | | Legal | 13 |
+| Healthcare | 13 | | Cybersecurity | 13 |
+| E-commerce | 13 | | Education | 13 |
+
+### Verification Results
+- ✅ Lint passes clean (0 errors, 0 warnings)
+- ✅ Total KnowledgeAgent count: **700** (was 602, added 98)
+- ✅ Total categories: **46** (was 41, added 5)
+- ✅ Stats API returns correct counts (700 agents, 46 categories, 5 frameworks)
+- ✅ Homepage shows "700 Knowledge Agents" and "46 Categories"
+- ✅ Browse view shows all 46 category filter tabs including 5 new ones
+- ✅ Aerospace category filter returns 7 agents correctly
+- ✅ Agent detail page loads for new agents (tested AeroStructural Analyzer)
+- ✅ All 8 tabs render: Overview, Capabilities, Master Prompts (3), Architecture, Getting Started, Configuration, FAQ, Related
+- ✅ Capabilities tab shows Aerospace-specific capabilities (Orbital Mechanics, Satellite Health, etc.)
+- ✅ Master Prompts tab shows 3 prompts including "Aerospace Domain Expert Execution Prompt"
+- ✅ All API calls return 200 status, no runtime errors
+- ✅ All "600+" text references updated to "700+" across the platform
