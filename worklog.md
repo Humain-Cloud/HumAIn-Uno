@@ -954,3 +954,97 @@ User requested: Verify we have 400+ agents, and if not, add new agents across em
 1. 8 categories still at 8 agents (Business, Creative, Entertainment, IoT, Legal, Real Estate, Supply Chain, Workflow Automation) — could be boosted to 10 in a future phase
 2. 5 new categories have 6-7 agents — could use a few more each
 3. Dev server stability issues persist from previous sessions
+
+---
+Task ID: 3
+Agent: Z.ai Code
+Task: Create seed-agents-phase4.ts to add 110 new KnowledgeAgent records, boosting category counts (400→510)
+Work Log:
+- Read worklog.md for project context (Sessions 2-13)
+- Read existing seed-agents-phase2.ts to understand exact format (upsert pattern, helpers, ID prefixing)
+- Queried database for current state: 400 agents across 36 categories
+- Retrieved all 400 existing agent names to avoid duplicates
+- Created /home/z/my-project/scripts/seed-agents-phase4.ts with 110 new agents across 4 boost tiers:
+  - A) 5 smallest categories boosted to 10 (17 agents): Construction +3, Insurance +3, Sports & Fitness +3, Sustainability +4, Transportation +4
+  - B) 8 mid-tier categories boosted from 8 to 12 (32 agents): Business, Creative, Entertainment, IoT, Legal, Real Estate, Supply Chain, Workflow Automation (+4 each)
+  - C) 13 tier-10 categories boosted to 12 (26 agents): AI/ML, Agriculture, Code Generation, Customer Service, Cybersecurity, DevOps, E-commerce, Education, Energy, Food, Gaming, General, Healthcare (+2 each)
+  - D) Top categories boosted further (35 agents): Software Development +5, Productivity +5, Research +5, Media +4, HR +4, Communication +4, Data Analytics +4, Finance +4
+- All agent names verified unique against existing database
+- All IDs prefixed with `p4-`
+- Used upsert pattern for idempotent seeding
+- Round-robin framework/LLM assignment via nextFw()/nextLlm()
+- Approximately 1 in 5 agents marked as featured: true
+- Difficulties varied across beginner/intermediate/advanced
+- Ran script successfully: 110 agents seeded, 0 failures
+- Verified: Total 510 agents, 36 categories, all category counts match targets
+Stage Summary:
+- Created /home/z/my-project/scripts/seed-agents-phase4.ts (110 new agents)
+- Database: 400 → 510 KnowledgeAgent records
+- All 36 categories properly distributed (10-31 agents each)
+- Top categories: Software Development 31, Productivity 26, Research 26
+- Mid categories: AI/ML 12, Agriculture 12, all 8→12 boosted categories at 12
+- Smallest categories: Construction 10, Insurance 10, Sports & Fitness 10, Sustainability 10, Transportation 10
+
+---
+
+## Session 14 — Scale to 500+ Agents
+
+### Task
+User requested: Verify we have 500+ agents, and if not, add new agents across underrepresented categories until we reach 500+.
+
+### Starting State
+- 400 agents across 36 categories
+- 5 categories below 10 agents (Construction: 7, Insurance: 7, Sports & Fitness: 7, Sustainability: 6, Transportation: 6)
+- 8 categories at exactly 8 agents
+- 13 categories at exactly 10 agents
+
+### Changes Made
+
+1. **NEW: `/scripts/seed-agents-phase4.ts`** — 110 new curated agents
+   - 5 smallest categories boosted to 10 (+17 agents): Construction +3, Insurance +3, Sports & Fitness +3, Sustainability +4, Transportation +4
+   - 8 mid-tier categories boosted from 8→12 (+32 agents): Business, Creative, Entertainment, IoT, Legal, Real Estate, Supply Chain, Workflow Automation
+   - 13 tier-10 categories boosted to 12 (+26 agents): AI/ML, Agriculture, Code Generation, Customer Service, Cybersecurity, DevOps, E-commerce, Education, Energy, Food, Gaming, General, Healthcare
+   - 8 top categories boosted further (+35 agents): Software Dev +5→31, Productivity +5→26, Research +5→26, Media +4→24, HR +4→21, Communication +4→20, Data Analytics +4→20, Finance +4→20
+   - All IDs prefixed with `p4-`, uses upsert for idempotent seeding
+
+2. **MODIFIED: `/src/app/page.tsx`** — Updated all "400+" references to "500+"
+   - Hero badge, description, CTA text, Knowledge Hub subtitle, footer
+
+3. **MODIFIED: `/src/app/layout.tsx`** — Updated meta descriptions from "400+" to "500+"
+
+### Final Distribution (510 agents, 36 categories)
+| Category | Count | | Category | Count |
+|---|---|---|---|---|
+| Software Development | 31 | | Education | 12 |
+| Productivity | 26 | | Energy | 12 |
+| Research | 26 | | Entertainment | 12 |
+| Media | 24 | | Food | 12 |
+| Human Resources | 21 | | Gaming | 12 |
+| Communication | 20 | | General | 12 |
+| Data Analytics | 20 | | Healthcare | 12 |
+| Finance | 20 | | IoT | 12 |
+| AI/ML | 12 | | Legal | 12 |
+| Agriculture | 12 | | Real Estate | 12 |
+| Business | 12 | | Supply Chain | 12 |
+| Code Generation | 12 | | Workflow Automation | 12 |
+| Creative | 12 | | Construction | 10 |
+| Customer Service | 12 | | Insurance | 10 |
+| Cybersecurity | 12 | | Marketing | 10 |
+| DevOps | 12 | | Sports & Fitness | 10 |
+| E-commerce | 12 | | Sustainability | 10 |
+| | | | Transportation | 10 |
+| | | | Travel | 10 |
+
+### Verification Results
+- ✅ Total agents: **510** (was 400, exceeds 500+ target)
+- ✅ Total categories: **36** (unchanged, all well-populated)
+- ✅ Lint passes clean (0 errors)
+- ✅ Home page shows "510 Knowledge Agents" and "36 Categories"
+- ✅ All "400+" text updated to "500+" throughout platform
+- ✅ Browse view: "Showing 1 – 24 of 510 agents" with full pagination
+- ✅ Category filters work correctly (tested Sustainability: 10, Software Dev: 31)
+- ✅ Agent detail pages work for new agents (tested CircularSupply Agent)
+- ✅ Master Prompts render with category-specific content
+- ✅ No runtime errors in dev server log
+- ✅ All API endpoints returning 200 status
+- ✅ Every category has minimum 10 agents

@@ -690,14 +690,14 @@ function HomeView() {
         </div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28 lg:py-36 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-emerald-100 text-sm mb-8">
-            ✨ Powered by 400+ curated AI agent projects
+            ✨ Powered by 500+ curated AI agent projects
           </div>
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight tracking-tight">
             Discover & Build<br />
             <span className="bg-gradient-to-r from-emerald-200 via-teal-200 to-cyan-200 bg-clip-text text-transparent">AI Agents</span>
           </h1>
           <p className="text-lg sm:text-xl text-emerald-100/90 max-w-2xl mx-auto mb-10">
-            Explore 400+ curated AI agents across 5 frameworks. Find the perfect starting point, remix with your own twist, or build from scratch.
+            Explore 500+ curated AI agents across 5 frameworks. Find the perfect starting point, remix with your own twist, or build from scratch.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
@@ -821,7 +821,7 @@ function HomeView() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Ready to Build?</h2>
           <p className="text-emerald-100 text-lg mb-8 max-w-xl mx-auto">
-            Start creating your AI agent today with our powerful tools and 400+ templates.
+            Start creating your AI agent today with our powerful tools and 500+ templates.
           </p>
           <button
             onClick={() => handleNav('hub')}
@@ -1181,7 +1181,7 @@ function KnowledgeHubView() {
           <span className="absolute -bottom-1 left-0 h-1 w-24 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full" />
         </h1>
         <p className="text-muted-foreground mt-3">
-          Browse 400+ curated AI agent projects from the open-source community. Filter by framework, search by name, and discover your next project.
+          Browse 500+ curated AI agent projects from the open-source community. Filter by framework, search by name, and discover your next project.
         </p>
       </div>
 
@@ -1390,7 +1390,7 @@ export default function HomePage() {
               </div>
               <span className="font-bold text-sm">Humain<span className="text-emerald-600">-Uno</span></span>
             </div>
-            <p className="text-xs text-muted-foreground">© 2025 Humain-Uno. Powered by 400+ AI Agents Knowledge Base</p>
+            <p className="text-xs text-muted-foreground">© 2025 Humain-Uno. Powered by 500+ AI Agents Knowledge Base</p>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="hover:text-emerald-600 cursor-pointer">LangGraph</span>
               <span>·</span>
