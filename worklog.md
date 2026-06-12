@@ -429,3 +429,64 @@ User requested: Verify how many agents we actually have, scale up to 200+ by add
 ### Known Issues
 1. **Dev server instability** — Server crashes when receiving too many concurrent requests (e.g., browser opening multiple connections simultaneously). Requires sequential API warmup before browser access.
 2. This is a pre-existing issue from Session 2 and is related to the large page.tsx + detail-view.tsx compilation size
+
+---
+
+## Session 12 — Scale to 800+ Agents & GitHub Integration
+
+### Tasks
+1. Connect project to GitHub repo: https://github.com/Humain-Cloud/HumAIn-Uno.git
+2. Scale from 205 agents (database had been reset) to 800+ agents
+3. Add 3 new categories: Forestry, Maritime, Space Commerce
+4. Update all UI references from 200+/500+ to 800+
+
+### Changes Made
+
+**1. GitHub Integration**
+- Added remote: `https://github.com/Humain-Cloud/HumAIn-Uno.git`
+- Pushed full project (2 commits: initial + scale update)
+- Created `scripts/git-push.sh` for easy future pushes
+- Updated `.gitignore` to exclude QA screenshots, downloads, agent-ctx
+
+**2. Database Recovery & Scaling (205 → 808 agents)**
+- Previous Phase 2-6 seed scripts were lost (database reset to 205 agents, 25 categories)
+- Created 4 new seed scripts:
+  - `seed-scale-1.ts`: 288 agents across 24 new categories (Code Generation, Workflow Automation, Entertainment, Creative, AI/ML, IoT, Construction, Sports & Fitness, Sustainability, Insurance, Transportation, Government, Hospitality, Pharmaceutical, Telecommunications, Mining & Resources, Aerospace, Veterinary, Philanthropy, Logistics, Public Safety, Forestry, Maritime, Space Commerce)
+  - `seed-scale-2.ts`: 249 agents boosting all 25 existing categories
+  - `seed-scale-3.ts`: 57 agents further boosting categories
+  - `seed-scale-4.ts`: 9 agents to reach 808 total
+- Each agent has unique name, detailed description, category-appropriate tools, tags, framework, LLM, difficulty level
+
+**3. UI References Updated (18 locations)**
+- `page.tsx`: 5 × "200+" → "800+"
+- `layout.tsx`: 2 × "200+" → "800+"
+- `store.ts`: 1 × "500+" → "800+"
+- `hero-section.tsx`: 2 × "500+" → "800+"
+- `cta-section.tsx`: 1 × "500+" → "800+"
+- `hub-header.tsx`: 1 × "500+" → "800+"
+- `app-layout.tsx`: 2 × "500+" → "800+"
+- `shared-data.ts`: 1 × "500+" → "800+"
+- `platform-stats-section.tsx`: 2 × "500+" → "800+"
+- `settings-view.tsx`: 1 × "500+" → "800+"
+
+### Final Distribution (808 agents, 49 categories)
+- All 49 categories have agents (minimum 7, maximum 33)
+- 3 brand new categories: Forestry (12), Maritime (12), Space Commerce (12)
+- Framework distribution balanced across LangGraph, CrewAI, AutoGen, Agno, LlamaIndex
+- LLM distribution balanced across GPT-4o, GPT-4, Claude 3.5 Sonnet, Claude 3 Opus, Llama 3.1, Gemini Pro
+
+### Verification Results
+- ✅ Total agents: 808 (exceeds 800+ target)
+- ✅ Total categories: 49 (was 25, added 24 new)
+- ✅ All APIs returning 200 with correct data
+- ✅ Lint passes clean (0 errors)
+- ✅ Homepage shows "808 Knowledge Agents, 49 Categories, 5 Frameworks"
+- ✅ Browse section works with all 49 category filters
+- ✅ Knowledge Hub shows agents with framework tabs
+- ✅ Agent-browser confirmed working on all views
+- ✅ Pushed to GitHub successfully
+
+### Unresolved Issues
+1. New categories (Forestry, Maritime, Space Commerce) use fallback palette in categoryStyleMap — no dedicated color entries yet
+2. New categories don't have dedicated categoryCapabilities entries in agent-detail-data.ts
+3. Missing icon imports in detail-view.tsx for any new capability icons
