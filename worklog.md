@@ -490,3 +490,92 @@ User requested: Verify how many agents we actually have, scale up to 200+ by add
 1. New categories (Forestry, Maritime, Space Commerce) use fallback palette in categoryStyleMap — no dedicated color entries yet
 2. New categories don't have dedicated categoryCapabilities entries in agent-detail-data.ts
 3. Missing icon imports in detail-view.tsx for any new capability icons
+
+---
+
+## Session 13 — Add Proper Pagination Platform-Wide
+
+### Task
+User requested: "Please add proper pagination wherever and however required on the full platform."
+
+### Problem Analysis
+- The backend API routes (`/api/knowledge` and `/api/knowledge/search`) already supported pagination with `{data, total, page, pageSize, hasMore}` response format
+- However, both the BrowseView and KnowledgeHubView only fetched page 1 with a fixed pageSize
+- No pagination UI controls existed — users could only see 24 agents out of 808 total
+- No page size selector, no page navigation, no "showing X-Y of Z" indicator
+- Filters and search didn't reset pagination to page 1
+- The types file already had `PaginatedResponse<T>` defined but wasn't being used
+
+### Changes Made
+
+**1. Created Reusable `AgentPagination` Component** (in page.tsx)
+- Props: `currentPage`, `totalPages`, `total`, `pageSize`, `onPageChange`, `onPageSizeChange`
+- Features:
+  - "Showing X–Y of Z agents" text indicator
+  - Page size selector (12/24/48 per page) using shadcn/ui Select component
+  - Page number navigation with smart ellipsis (1 ... 4 5 6 ... 34)
+  - Previous/Next buttons with disabled states
+  - Responsive layout (stacks on mobile, row on desktop)
+  - Uses shadcn/ui Pagination primitives
+- Hides automatically when total ≤ pageSize
+
+**2. Created Reusable `AgentCard` Component** (in page.tsx)
+- Consistent card styling across both BrowseView and KnowledgeHubView
+- Features: hover gradient overlay, framework badge, description with line-clamp, tags, difficulty badge, category badge
+- Hover effects: emerald border, shadow lift, name color change
+
+**3. Rewrote `BrowseView` with Full Pagination**
+- State: `page`, `itemsPerPage`, `total`, `localSearch`, `localCategory`, `selectedFramework`, `selectedDifficulty`, `sortBy`, `showFilters`
+- Debounced search (300ms) with clear button
+- Active filter tags with individual remove buttons
+- Sort dropdown (Name A-Z, Name Z-A, Newest, Recently Added)
+- Expandable filters panel (Framework, Difficulty)
+- Category pills with agent count badges
+- Page resets when any filter changes
+- `AgentPagination` at bottom with page size selector
+- Empty state with "Clear All Filters" button
+- Proper loading skeletons
+
+**4. Rewrote `KnowledgeHubView` with Full Pagination**
+- State: `page`, `itemsPerPage`, `total`, `searchQuery`, `selectedFramework`, `selectedCategory`
+- Search input with clear button
+- Framework dropdown selector + quick filter badges
+- Category dropdown selector
+- Active filter tags with remove buttons
+- Page resets when any filter changes
+- `AgentPagination` at bottom with page size selector
+- Empty state with "Clear All Filters" button
+
+**5. Fixed Critical Bug**
+- `total` and `setTotal` were used in BrowseView but never declared with `useState(0)` — this caused a `ReferenceError` crash
+- Added `const [total, setTotal] = useState(0)` to BrowseView
+
+**6. Fixed Lint Errors**
+- Removed `useCallback` wrapper functions that called `setPage(1)` (violated `react-hooks/set-state-in-effect` rule)
+- Replaced with inline handlers in JSX that call both the setter and `setPage(1)`
+- Removed `setLoading(true)` from effect bodies (replaced with fetchRef-based cancellation)
+- All lint now passes clean
+
+**7. Added Framework/Difficulty/Sort Constants**
+- `FRAMEWORKS`: LangGraph, CrewAI, AutoGen, Agno, LlamaIndex
+- `DIFFICULTIES`: beginner, intermediate, advanced
+- `SORT_OPTIONS`: Name A-Z, Name Z-A, Newest, Recently Added
+
+**8. Updated `next.config.ts`**
+- Added `'127.0.0.1'` to `allowedDevOrigins` to prevent cross-origin blocking
+
+### API Verification Results
+- ✅ Page 1 (pageSize=24): total=808, data=24, hasMore=true
+- ✅ Page 2 (pageSize=24): total=808, data=24, hasMore=true
+- ✅ Last page (page=34, pageSize=24): total=808, data=16, hasMore=false
+- ✅ Category filter (healthcare): total=20, hasMore=false
+- ✅ Framework filter (LangGraph): total=163, hasMore=true
+- ✅ Search ("data"): total=175, hasMore=true
+- ✅ Knowledge Hub (page=1, pageSize=24): total=808, data=24, hasMore=true
+- ✅ All 49 categories return from API
+- ✅ Lint passes clean (0 errors)
+
+### Unresolved Issues
+1. Dev server crashes when agent-browser connects (memory/resource issue in sandbox) — pre-compilation with curl works, then browser access works briefly
+2. Browser testing limited due to server stability — verified via curl API calls instead
+3. The `settings.itemsPerPage` in SettingsView still uses the old select dropdown — should connect to the new pagination page size

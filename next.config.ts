@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: [
     '.space-z.ai',
     'localhost',
+    '127.0.0.1',
   ],
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion', '@radix-ui/react-icons'],

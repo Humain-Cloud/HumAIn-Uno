@@ -1,10 +1,26 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useAppStore, type ViewType } from '@/lib/store'
 import { api } from '@/lib/api-client'
 import type { KnowledgeAgent, Category, Stats } from '@/lib/types'
 import DetailView from '@/components/detail-view'
+import {
+  Pagination as PaginationNav,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from '@/components/ui/pagination'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Search,
   Database,
@@ -48,6 +64,13 @@ import {
   CheckCircle2,
   FolderOpen,
   ChevronRight,
+  ChevronLeft,
+  ChevronRight as ChevronRightIcon,
+  LayoutGrid,
+  List,
+  SlidersHorizontal,
+  X,
+  Loader2,
 } from 'lucide-react'
 
 // ─── Icons (inline SVGs to avoid importing all of lucide-react) ───
@@ -376,6 +399,162 @@ function getCategoryStyle(name: string, index: number): CategoryStyle {
   return fallbackPalette[Math.abs(hash) % fallbackPalette.length]!
 }
 
+// ─── Pagination Component ───
+
+const FRAMEWORKS = ['LangGraph', 'CrewAI', 'AutoGen', 'Agno', 'LlamaIndex'] as const
+const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'] as const
+const SORT_OPTIONS = [
+  { value: 'az', label: 'Name A-Z' },
+  { value: 'za', label: 'Name Z-A' },
+  { value: 'newest', label: 'Newest' },
+  { value: 'recently-added', label: 'Recently Added' },
+] as const
+
+interface AgentPaginationProps {
+  currentPage: number
+  totalPages: number
+  total: number
+  pageSize: number
+  onPageChange: (page: number) => void
+  onPageSizeChange?: (size: number) => void
+}
+
+function AgentPagination({ currentPage, totalPages, total, pageSize, onPageChange, onPageSizeChange }: AgentPaginationProps) {
+  if (totalPages <= 1 && total <= pageSize) return null
+
+  const start = (currentPage - 1) * pageSize + 1
+  const end = Math.min(currentPage * pageSize, total)
+
+  // Generate page numbers to show
+  const getVisiblePages = (): (number | 'ellipsis')[] => {
+    const pages: (number | 'ellipsis')[] = []
+    const maxVisible = 7
+
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i)
+    } else {
+      pages.push(1)
+
+      if (currentPage > 3) pages.push('ellipsis')
+
+      const startPage = Math.max(2, currentPage - 1)
+      const endPage = Math.min(totalPages - 1, currentPage + 1)
+
+      for (let i = startPage; i <= endPage; i++) pages.push(i)
+
+      if (currentPage < totalPages - 2) pages.push('ellipsis')
+
+      pages.push(totalPages)
+    }
+    return pages
+  }
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t border-gray-200 dark:border-gray-800">
+      {/* Results info + page size selector */}
+      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <span>
+          Showing <span className="font-medium text-foreground">{start}</span>–<span className="font-medium text-foreground">{end}</span> of <span className="font-medium text-foreground">{total}</span> agents
+        </span>
+        {onPageSizeChange && (
+          <Select value={String(pageSize)} onValueChange={(v) => onPageSizeChange(Number(v))}>
+            <SelectTrigger className="w-[100px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="12">12 / page</SelectItem>
+              <SelectItem value="24">24 / page</SelectItem>
+              <SelectItem value="48">48 / page</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      {/* Page navigation */}
+      <PaginationNav>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+              className={currentPage <= 1 ? 'pointer-events-none opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+            />
+          </PaginationItem>
+          {getVisiblePages().map((page, i) =>
+            page === 'ellipsis' ? (
+              <PaginationItem key={`ellipsis-${i}`}>
+                <PaginationEllipsis />
+              </PaginationItem>
+            ) : (
+              <PaginationItem key={page}>
+                <PaginationLink
+                  isActive={page === currentPage}
+                  onClick={() => onPageChange(page)}
+                  className="cursor-pointer"
+                >
+                  {page}
+                </PaginationLink>
+              </PaginationItem>
+            )
+          )}
+          <PaginationItem>
+            <PaginationNext
+              onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+              className={currentPage >= totalPages ? 'pointer-events-none opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </PaginationNav>
+    </div>
+  )
+}
+
+// ─── Agent Card Component ───
+
+function AgentCard({ agent, onClick }: { agent: KnowledgeAgent; onClick: () => void }) {
+  return (
+    <div
+      onClick={onClick}
+      className="group bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/5 transition-all cursor-pointer relative overflow-hidden"
+    >
+      {/* Subtle gradient overlay on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/0 to-teal-50/0 group-hover:from-emerald-50/50 group-hover:to-teal-50/30 dark:group-hover:from-emerald-950/10 dark:group-hover:to-teal-950/5 transition-all duration-300" />
+
+      <div className="relative">
+        <div className="flex items-start justify-between mb-3">
+          <h3 className="text-base font-semibold leading-tight pr-2 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">{agent.name}</h3>
+          {agent.framework && (
+            <span className="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
+              {agent.framework}
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{agent.description}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {agent.tags.slice(0, 3).map((tag) => (
+            <span key={tag} className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{tag}</span>
+          ))}
+          {agent.difficulty && (
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              agent.difficulty === 'beginner'
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                : agent.difficulty === 'advanced'
+                  ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+            }`}>
+              {agent.difficulty}
+            </span>
+          )}
+          {agent.category && (
+            <span className="text-xs bg-gray-50 dark:bg-gray-800/50 text-muted-foreground px-2 py-0.5 rounded-full">
+              {agent.category}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Categories Grid Component ───
 
 function CategoriesGrid({ categories, loading, onNavigate }: { categories: Category[]; loading: boolean; onNavigate: (view: ViewType) => void }) {
@@ -672,85 +851,244 @@ function HomeView() {
 // ─── Browse View ───
 
 function BrowseView() {
-  const { searchQuery, setSearchQuery, selectedCategory, setSelectedCategory, setCurrentView, setSelectedAgentId } = useAppStore()
+  const { searchQuery, setSearchQuery, selectedCategory, setCurrentView, setSelectedAgentId, settings } = useAppStore()
   const [agents, setAgents] = useState<KnowledgeAgent[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [localSearch, setLocalSearch] = useState(searchQuery)
+  const [page, setPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(settings.itemsPerPage || 24)
+  const [total, setTotal] = useState(0)
+  const [localCategory, setLocalCategory] = useState<string | null>(null)
+  const [selectedFramework, setSelectedFramework] = useState<string | null>(null)
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null)
+  const [sortBy, setSortBy] = useState<string>('az')
+  const [showFilters, setShowFilters] = useState(false)
 
+  // Effective category = local override or store value
+  const activeCategory = localCategory !== null ? localCategory : selectedCategory
+
+  // Debounced search
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null)
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery)
+
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    searchTimeout.current = setTimeout(() => { setDebouncedSearch(localSearch); setPage(1) }, 300)
+    return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current) }
+  }, [localSearch])
+
+  // Load categories
   useEffect(() => {
     api.categories.list().then((data: any) => {
       setCategories(Array.isArray(data) ? data : [])
     }).catch(console.error)
   }, [])
 
+  // Load agents with pagination
+  const fetchRef = useRef(0)
   useEffect(() => {
-    let cancelled = false
-    const params: any = { page: 1, pageSize: 24 }
-    if (localSearch) params.q = localSearch
-    if (selectedCategory) params.category = selectedCategory
+    const fetchId = ++fetchRef.current
+    const params: any = { page, pageSize: itemsPerPage }
+    if (debouncedSearch) params.q = debouncedSearch
+    if (activeCategory) params.category = activeCategory
+    if (selectedFramework) params.framework = selectedFramework
 
     api.knowledge.search(params)
       .then((data: any) => {
-        if (!cancelled) setAgents(data?.data || data || [])
+        if (fetchId !== fetchRef.current) return
+        let results = (data?.data || data || []) as KnowledgeAgent[]
+        // Client-side difficulty filter (not supported by API)
+        if (selectedDifficulty) {
+          results = results.filter((a: KnowledgeAgent) => a.difficulty === selectedDifficulty)
+        }
+        // Client-side sort
+        if (sortBy === 'az') results.sort((a: KnowledgeAgent, b: KnowledgeAgent) => a.name.localeCompare(b.name))
+        else if (sortBy === 'za') results.sort((a: KnowledgeAgent, b: KnowledgeAgent) => b.name.localeCompare(a.name))
+        setAgents(results)
+        setTotal(data?.total || results.length)
+        setLoading(false)
       })
-      .catch(console.error)
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [localSearch, selectedCategory])
+      .catch((err) => {
+        if (fetchId !== fetchRef.current) return
+        console.error(err)
+        setLoading(false)
+      })
+  }, [debouncedSearch, activeCategory, selectedFramework, selectedDifficulty, sortBy, page, itemsPerPage])
+
+  const totalPages = Math.ceil(total / itemsPerPage)
+  const hasActiveFilters = activeCategory || selectedFramework || selectedDifficulty || debouncedSearch
+
+  const handleClearFilters = () => {
+    setLocalSearch('')
+    setSearchQuery('')
+    setLocalCategory(null)
+    setSelectedFramework(null)
+    setSelectedDifficulty(null)
+    setSortBy('az')
+    setPage(1)
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <h1 className="text-3xl font-bold mb-6">
-        Browse Agents
-        <span className="absolute -bottom-1 left-0 h-1 w-24 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full" />
-      </h1>
-
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.34-4.34" /></svg>
-          <input
-            type="text"
-            placeholder="Search agents..."
-            value={localSearch}
-            onChange={(e) => {
-              setLocalSearch(e.target.value)
-              setSearchQuery(e.target.value)
-            }}
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
-          />
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold mb-1">Browse Agents</h1>
+          <p className="text-muted-foreground text-sm">
+            {loading ? 'Loading...' : `${total} agent${total !== 1 ? 's' : ''} found`}
+            {hasActiveFilters && ' with current filters'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[140px] h-9 text-sm">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`h-9 px-3 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors border ${showFilters ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-muted-foreground hover:text-foreground'}`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span className="hidden sm:inline">Filters</span>
+          </button>
         </div>
       </div>
+
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Search agents by name, description, or tags..."
+          value={localSearch}
+          onChange={(e) => {
+            setLocalSearch(e.target.value)
+            setSearchQuery(e.target.value)
+          }}
+          className="w-full pl-10 pr-10 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 text-sm"
+        />
+        {localSearch && (
+          <button
+            onClick={() => { setLocalSearch(''); setSearchQuery('') }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Filter Bar (expandable) */}
+      {showFilters && (
+        <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Filters</span>
+            {hasActiveFilters && (
+              <button onClick={handleClearFilters} className="text-xs text-emerald-600 hover:underline flex items-center gap-1">
+                <X className="h-3 w-3" /> Clear all
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {/* Framework filter */}
+            <Select value={selectedFramework || '_all'} onValueChange={(v) => { setSelectedFramework(v === '_all' ? null : v); setPage(1) }}>
+              <SelectTrigger className="w-[150px] h-8 text-xs">
+                <SelectValue placeholder="Framework" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All Frameworks</SelectItem>
+                {FRAMEWORKS.map(fw => (
+                  <SelectItem key={fw} value={fw}>{fw}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* Difficulty filter */}
+            <Select value={selectedDifficulty || '_all'} onValueChange={(v) => { setSelectedDifficulty(v === '_all' ? null : v); setPage(1) }}>
+              <SelectTrigger className="w-[150px] h-8 text-xs">
+                <SelectValue placeholder="Difficulty" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All Levels</SelectItem>
+                {DIFFICULTIES.map(d => (
+                  <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
 
       {/* Category Tabs */}
       <div className="flex flex-wrap gap-2 mb-6">
         <button
-          onClick={() => setSelectedCategory(null)}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${!selectedCategory ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:text-foreground'}`}
+          onClick={() => { setLocalCategory(null); setPage(1) }}
+          className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${!activeCategory ? 'bg-emerald-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:text-foreground'}`}
         >
           All
         </button>
         {categories.map((cat, i) => {
           const style = getCategoryStyle(cat.name, i)
           const CatIcon = style.icon
+          const isActive = activeCategory === cat.slug
           return (
             <button
               key={cat.id}
-              onClick={() => setSelectedCategory(cat.slug)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${selectedCategory === cat.slug ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:text-foreground'}`}
+              onClick={() => { setLocalCategory(isActive ? null : cat.slug); setPage(1) }}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${isActive ? 'bg-emerald-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:text-foreground'}`}
             >
-              <CatIcon className="h-3.5 w-3.5" />
+              <CatIcon className="h-3 w-3" />
               {cat.name}
+              {cat.agentCount !== undefined && (
+                <span className={`text-[10px] ${isActive ? 'text-emerald-100' : 'text-muted-foreground/60'}`}>
+                  {cat.agentCount}
+                </span>
+              )}
             </button>
           )
         })}
       </div>
 
+      {/* Active filters indicator */}
+      {hasActiveFilters && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 text-xs text-muted-foreground">
+          <span>Active:</span>
+          {debouncedSearch && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full">
+              &ldquo;{debouncedSearch}&rdquo;
+              <button onClick={() => { setLocalSearch(''); setSearchQuery('') }}><X className="h-3 w-3" /></button>
+            </span>
+          )}
+          {activeCategory && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-full">
+              {categories.find(c => c.slug === activeCategory)?.name || activeCategory}
+              <button onClick={() => { setLocalCategory(null); setPage(1) }}><X className="h-3 w-3" /></button>
+            </span>
+          )}
+          {selectedFramework && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 rounded-full">
+              {selectedFramework}
+              <button onClick={() => { setSelectedFramework(null); setPage(1) }}><X className="h-3 w-3" /></button>
+            </span>
+          )}
+          {selectedDifficulty && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-full capitalize rounded-full">
+              {selectedDifficulty}
+              <button onClick={() => { setSelectedDifficulty(null); setPage(1) }}><X className="h-3 w-3" /></button>
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Agent Grid */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map(i => (
+          {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 animate-pulse">
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3" />
               <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2" />
@@ -759,47 +1097,45 @@ function BrowseView() {
           ))}
         </div>
       ) : agents.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-muted-foreground text-lg">No agents found.</p>
-          <p className="text-muted-foreground text-sm mt-2">Try adjusting your search or filters.</p>
+        <div className="text-center py-20">
+          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+            <Search className="h-7 w-7 text-muted-foreground" />
+          </div>
+          <p className="text-lg font-medium text-foreground mb-1">No agents found</p>
+          <p className="text-muted-foreground text-sm mb-4">Try adjusting your search or filters</p>
+          {hasActiveFilters && (
+            <button onClick={handleClearFilters} className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors">
+              Clear All Filters
+            </button>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {agents.map((rawAgent) => {
-            const agent = parseAgent(rawAgent)
-            return (
-              <div
-                key={agent.id}
-                onClick={() => {
-                  setSelectedAgentId(agent.id)
-                  setCurrentView('detail')
-                  window.scrollTo(0, 0)
-                }}
-                className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-emerald-500/50 hover:shadow-md transition-all cursor-pointer"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-lg font-semibold">{agent.name}</h3>
-                  {agent.framework && (
-                    <span className="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full shrink-0">
-                      {agent.framework}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{agent.description}</p>
-                <div className="flex flex-wrap gap-1">
-                  {agent.tags.slice(0, 3).map((tag) => (
-                    <span key={tag} className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{tag}</span>
-                  ))}
-                  {agent.difficulty && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${agent.difficulty === 'beginner' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : agent.difficulty === 'advanced' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
-                      {agent.difficulty}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {agents.map((rawAgent) => {
+              const agent = parseAgent(rawAgent)
+              return (
+                <AgentCard
+                  key={agent.id}
+                  agent={agent}
+                  onClick={() => {
+                    setSelectedAgentId(agent.id)
+                    setCurrentView('detail')
+                    window.scrollTo(0, 0)
+                  }}
+                />
+              )
+            })}
+          </div>
+          <AgentPagination
+            currentPage={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={itemsPerPage}
+            onPageChange={(p) => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+            onPageSizeChange={(s) => { setItemsPerPage(s); setPage(1) }}
+          />
+        </>
       )}
     </div>
   )
@@ -876,59 +1212,205 @@ function SettingsView() {
 // ─── Knowledge Hub View ───
 
 function KnowledgeHubView() {
-  const { setCurrentView, setSelectedAgentId } = useAppStore()
+  const { setCurrentView, setSelectedAgentId, settings } = useAppStore()
   const [agents, setAgents] = useState<KnowledgeAgent[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(settings.itemsPerPage || 24)
+  const [total, setTotal] = useState(0)
+  const [selectedFramework, setSelectedFramework] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [searchQuery, setSearchQueryLocal] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null)
 
+  // Debounce search
   useEffect(() => {
-    api.knowledge.list({ page: 1, pageSize: 24 })
-      .then((data: any) => setAgents((data?.data || data || []).map(parseAgent)))
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    searchTimeout.current = setTimeout(() => { setDebouncedSearch(searchQuery); setPage(1) }, 300)
+    return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current) }
+  }, [searchQuery])
+
+  // Load categories
+  useEffect(() => {
+    api.categories.list().then((data: any) => {
+      setCategories(Array.isArray(data) ? data : [])
+    }).catch(console.error)
   }, [])
 
-  const frameworks = [...new Set(agents.map(a => a.framework).filter(Boolean))]
+  // Load agents with pagination
+  const fetchRef = useRef(0)
+  useEffect(() => {
+    const fetchId = ++fetchRef.current
+    const params: any = { page, pageSize: itemsPerPage }
+    if (debouncedSearch) params.q = debouncedSearch
+    if (selectedFramework) params.framework = selectedFramework
+    if (selectedCategory) params.category = selectedCategory
+
+    api.knowledge.list(params)
+      .then((data: any) => {
+        if (fetchId !== fetchRef.current) return
+        setAgents((data?.data || data || []).map(parseAgent))
+        setTotal(data?.total || 0)
+        setLoading(false)
+      })
+      .catch((err) => {
+        if (fetchId !== fetchRef.current) return
+        console.error(err)
+        setLoading(false)
+      })
+  }, [debouncedSearch, selectedFramework, selectedCategory, page, itemsPerPage])
+
+  const totalPages = Math.ceil(total / itemsPerPage)
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <h1 className="text-3xl font-bold mb-2">Knowledge Hub</h1>
-      <p className="text-muted-foreground mb-8">Browse 800+ curated AI agent projects from the open-source community</p>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold mb-1">Knowledge Hub</h1>
+          <p className="text-muted-foreground text-sm">
+            {loading ? 'Loading...' : `${total} curated AI agent projects`}
+            {(selectedFramework || selectedCategory || debouncedSearch) && ' matching filters'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={selectedFramework || '_all'} onValueChange={(v) => { setSelectedFramework(v === '_all' ? null : v); setPage(1) }}>
+            <SelectTrigger className="w-[160px] h-9 text-sm">
+              <SelectValue placeholder="Framework" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">All Frameworks</SelectItem>
+              {FRAMEWORKS.map(fw => (
+                <SelectItem key={fw} value={fw}>{fw}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={selectedCategory || '_all'} onValueChange={(v) => { setSelectedCategory(v === '_all' ? null : v); setPage(1) }}>
+            <SelectTrigger className="w-[160px] h-9 text-sm">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">All Categories</SelectItem>
+              {categories.map(cat => (
+                <SelectItem key={cat.id} value={cat.slug}>{cat.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
-      {frameworks.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {frameworks.map(fw => (
-            <span key={fw} className="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full text-sm font-medium">
-              {fw}
+      {/* Search */}
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Search the knowledge base..."
+          value={searchQuery}
+          onChange={(e) => { setSearchQueryLocal(e.target.value); setPage(1) }}
+          className="w-full pl-10 pr-10 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 text-sm"
+        />
+        {searchQuery && (
+          <button onClick={() => { setSearchQueryLocal(''); setPage(1) }} className="absolute right-3 top-1/2 -translate-y-1/2">
+            <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+          </button>
+        )}
+      </div>
+
+      {/* Active filters */}
+      {(selectedFramework || selectedCategory) && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 text-xs text-muted-foreground">
+          <span>Filtering by:</span>
+          {selectedFramework && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 rounded-full">
+              {selectedFramework}
+              <button onClick={() => { setSelectedFramework(null); setPage(1) }}><X className="h-3 w-3" /></button>
             </span>
-          ))}
+          )}
+          {selectedCategory && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-full">
+              {categories.find(c => c.slug === selectedCategory)?.name || selectedCategory}
+              <button onClick={() => { setSelectedCategory(null); setPage(1) }}><X className="h-3 w-3" /></button>
+            </span>
+          )}
+          <button
+            onClick={() => { setSelectedFramework(null); setSelectedCategory(null); setSearchQueryLocal(''); setPage(1) }}
+            className="text-emerald-600 hover:underline"
+          >
+            Clear all
+          </button>
         </div>
       )}
 
+      {/* Framework quick filters as badges */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <button
+          onClick={() => { setSelectedFramework(null); setPage(1) }}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${!selectedFramework ? 'bg-emerald-600 text-white' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/50'}`}
+        >
+          All Frameworks
+        </button>
+        {FRAMEWORKS.map(fw => (
+          <button
+            key={fw}
+            onClick={() => { setSelectedFramework(selectedFramework === fw ? null : fw); setPage(1) }}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${selectedFramework === fw ? 'bg-emerald-600 text-white' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/50'}`}
+          >
+            {fw}
+          </button>
+        ))}
+      </div>
+
+      {/* Agent Grid */}
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="h-8 w-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {agents.map((agent) => (
-            <div
-              key={agent.id}
-              onClick={() => {
-                setSelectedAgentId(agent.id)
-                setCurrentView('detail')
-                window.scrollTo(0, 0)
-              }}
-              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-emerald-500/50 hover:shadow-md transition-all cursor-pointer"
-            >
-              <h3 className="text-lg font-semibold mb-2">{agent.name}</h3>
-              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{agent.description}</p>
-              <div className="flex flex-wrap gap-1">
-                {agent.framework && <span className="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full">{agent.framework}</span>}
-                {agent.difficulty && <span className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full capitalize">{agent.difficulty}</span>}
-              </div>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 animate-pulse">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3" />
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2" />
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
             </div>
           ))}
         </div>
+      ) : agents.length === 0 ? (
+        <div className="text-center py-20">
+          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+            <BookOpen className="h-7 w-7 text-muted-foreground" />
+          </div>
+          <p className="text-lg font-medium text-foreground mb-1">No agents found</p>
+          <p className="text-muted-foreground text-sm mb-4">Try adjusting your search or filters</p>
+          <button
+            onClick={() => { setSelectedFramework(null); setSelectedCategory(null); setSearchQueryLocal(''); setPage(1) }}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
+          >
+            Clear All Filters
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {agents.map((agent) => (
+              <AgentCard
+                key={agent.id}
+                agent={agent}
+                onClick={() => {
+                  setSelectedAgentId(agent.id)
+                  setCurrentView('detail')
+                  window.scrollTo(0, 0)
+                }}
+              />
+            ))}
+          </div>
+          <AgentPagination
+            currentPage={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={itemsPerPage}
+            onPageChange={(p) => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+            onPageSizeChange={(s) => { setItemsPerPage(s); setPage(1) }}
+          />
+        </>
       )}
     </div>
   )
