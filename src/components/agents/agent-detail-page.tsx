@@ -5,6 +5,8 @@ import { useRouter, useParams } from 'next/navigation'
 import { useAppStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
 import type { KnowledgeAgent } from '@/lib/types'
+import { getAgentDetailData } from '@/lib/agent-detail-data'
+import type { AgentDetailData } from '@/lib/agent-detail-data'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -46,9 +48,31 @@ import {
   CircleDot,
   CircleCheck,
   Diamond,
+  Copy,
+  ChevronDown,
+  Globe,
+  Mail,
+  GitBranch,
+  Palette,
+  MessageSquare,
+  Heart,
+  FileCode,
+  Layers,
+  Search,
+  Scale,
+  Sprout,
+  Briefcase,
+  ShoppingBag,
+  GraduationCap,
+  Plane,
+  Music,
+  Gamepad2,
+  Cpu,
+  Wrench,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from '@/hooks/use-toast'
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 
 // Framework color map
 const fwColors: Record<string, { bg: string; text: string; badge: string; border: string; gradient: string }> = {
@@ -66,6 +90,14 @@ const diffColors: Record<string, string> = {
   beginner: 'text-green-600 dark:text-green-400',
   intermediate: 'text-amber-600 dark:text-amber-400',
   advanced: 'text-rose-600 dark:text-rose-400',
+}
+
+// Icon mapping helper — maps icon string names from detail data to actual Lucide components
+const iconMap: Record<string, React.ElementType> = {
+  BookOpen, Brain, BarChart3, GitBranch, Zap, Workflow, MessageSquare, Heart,
+  Mail, Globe, User, Palette, Code2, CheckCircle2, FileCode, Layers, Shield,
+  Search, Scale, Database, Sprout, Briefcase, ShoppingBag, GraduationCap,
+  Plane, Music, Gamepad2, Cpu, Wrench, Settings,
 }
 
 // Flowchart step type
@@ -365,9 +397,12 @@ export function AgentDetailPage() {
     ]
   }, [agent])
 
+  // Compute enriched detail data
+  const detailData = useMemo(() => agent ? getAgentDetailData(agent) : null, [agent])
+
   const isBookmarked = agentId ? bookmarkedAgentIds.includes(agentId) : false
   const userRating = agentId ? ratings[agentId] : undefined
-  const fwStyle = getFwStyle(agent?.framework)
+  const fwStyle = getFwStyle(agent?.framework ?? null)
 
   if (loading) {
     return (
@@ -507,6 +542,24 @@ export function AgentDetailPage() {
           <TabsTrigger value="architecture">
             <Workflow className="h-4 w-4 mr-1" /> Architecture
           </TabsTrigger>
+          <TabsTrigger value="master-prompts">
+            <Sparkles className="h-4 w-4 mr-1" /> Master Prompts
+          </TabsTrigger>
+          <TabsTrigger value="skills">
+            <Zap className="h-4 w-4 mr-1" /> Skills
+          </TabsTrigger>
+          <TabsTrigger value="use-cases">
+            <Target className="h-4 w-4 mr-1" /> Use Cases
+          </TabsTrigger>
+          <TabsTrigger value="setup">
+            <Rocket className="h-4 w-4 mr-1" /> Setup
+          </TabsTrigger>
+          <TabsTrigger value="config">
+            <Settings className="h-4 w-4 mr-1" /> Config
+          </TabsTrigger>
+          <TabsTrigger value="faq">
+            <MessageCircle className="h-4 w-4 mr-1" /> FAQ
+          </TabsTrigger>
           {agent.codeSnippet && (
             <TabsTrigger value="code">
               <Code2 className="h-4 w-4 mr-1" /> Code
@@ -586,6 +639,79 @@ export function AgentDetailPage() {
                         <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
                       ))}
                     </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Enriched Capabilities from detail data */}
+              {detailData && detailData.capabilities.length > 0 && (
+                <Card className="rounded-xl">
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Brain className="h-4 w-4" /> Deep Capabilities
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {detailData.capabilities.map((cap) => {
+                        const IconComponent = iconMap[cap.icon] || Zap
+                        return (
+                          <motion.div
+                            key={cap.title}
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="p-3 rounded-lg bg-muted/50 border hover:shadow-sm transition-shadow"
+                          >
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <div className={`h-7 w-7 rounded-md bg-gradient-to-br ${fwStyle.gradient} flex items-center justify-center shrink-0`}>
+                                <IconComponent className="h-3.5 w-3.5 text-white" />
+                              </div>
+                              <p className="text-sm font-medium">{cap.title}</p>
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-2">{cap.description}</p>
+                          </motion.div>
+                        )
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Use Cases Preview */}
+              {detailData && detailData.useCases.length > 0 && (
+                <Card className="rounded-xl">
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Target className="h-4 w-4" /> Use Cases Preview
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {detailData.useCases.slice(0, 2).map((uc) => (
+                      <div key={uc.title} className="p-3 rounded-lg border bg-muted/30">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-medium">{uc.title}</p>
+                          <Badge variant="outline" className="text-[10px]">{uc.industry}</Badge>
+                          <Badge className={`text-[10px] border-0 ${
+                            uc.complexity === 'simple' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                            uc.complexity === 'moderate' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
+                            'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+                          }`}>
+                            {uc.complexity}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{uc.description}</p>
+                      </div>
+                    ))}
+                    {detailData.useCases.length > 2 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-emerald-600 hover:text-emerald-700"
+                        onClick={() => setActiveTab('use-cases')}
+                      >
+                        View all {detailData.useCases.length} use cases →
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -815,6 +941,367 @@ export function AgentDetailPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Master Prompts Tab */}
+        <TabsContent value="master-prompts">
+          {detailData && detailData.masterPrompts.length > 0 ? (
+            <div className="space-y-6">
+              {detailData.masterPrompts.map((mp, idx) => (
+                <motion.div
+                  key={mp.title}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.08, duration: 0.3 }}
+                >
+                  <Card className="rounded-xl overflow-hidden">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-emerald-500" /> {mp.title}
+                        </CardTitle>
+                        <Badge className={`text-xs ${fwStyle.badge}`}>{mp.category}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="relative group">
+                        <pre className="bg-gray-950 text-gray-100 rounded-lg p-4 overflow-x-auto text-xs sm:text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
+                          <code>{mp.prompt}</code>
+                        </pre>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="absolute top-2 right-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 border-gray-700 text-gray-300 hover:text-white hover:bg-gray-700"
+                          onClick={async () => {
+                            await navigator.clipboard.writeText(mp.prompt)
+                            toast({ title: 'Prompt copied!', description: 'Master prompt has been copied to clipboard.' })
+                          }}
+                        >
+                          <Copy className="h-3 w-3 mr-1" /> Copy
+                        </Button>
+                      </div>
+                      {mp.tips.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Tips & Customization</p>
+                          <div className="space-y-1.5">
+                            {mp.tips.map((tip, i) => (
+                              <div key={i} className="flex items-start gap-2 text-xs">
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                <span className="text-muted-foreground">{tip}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <Card className="rounded-xl">
+              <CardContent className="py-12 text-center">
+                <Sparkles className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">No master prompts available for this agent.</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Skills Tab */}
+        <TabsContent value="skills">
+          {detailData ? (
+            <div className="space-y-6">
+              {/* Capabilities */}
+              {detailData.capabilities.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+                    <Zap className="h-4 w-4" /> Capabilities
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {detailData.capabilities.map((cap, idx) => {
+                      const IconComponent = iconMap[cap.icon] || Zap
+                      return (
+                        <motion.div
+                          key={cap.title}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.06, duration: 0.3 }}
+                        >
+                          <Card className="rounded-xl h-full hover:shadow-md transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="flex items-start gap-3">
+                                <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${fwStyle.gradient} flex items-center justify-center shrink-0 shadow-sm`}>
+                                  <IconComponent className="h-4 w-4 text-white" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-semibold mb-1">{cap.title}</p>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">{cap.description}</p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Best Practices */}
+              {detailData.bestPractices.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" /> Best Practices
+                  </h3>
+                  <div className="space-y-3">
+                    {detailData.bestPractices.map((bp, idx) => (
+                      <motion.div
+                        key={bp.title}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.06, duration: 0.3 }}
+                      >
+                        <Card className="rounded-xl">
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="h-7 w-7 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0 mt-0.5">
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold mb-1">{bp.title}</p>
+                                <p className="text-xs text-muted-foreground leading-relaxed">{bp.description}</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Limitations */}
+              {detailData.limitations.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+                    <Shield className="h-4 w-4" /> Limitations
+                  </h3>
+                  <div className="space-y-3">
+                    {detailData.limitations.map((lim, idx) => (
+                      <motion.div
+                        key={lim.title}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.06, duration: 0.3 }}
+                      >
+                        <Card className="rounded-xl border-amber-200 dark:border-amber-800">
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="h-7 w-7 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0 mt-0.5">
+                                <Shield className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold mb-1">{lim.title}</p>
+                                <p className="text-xs text-muted-foreground leading-relaxed">{lim.description}</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Card className="rounded-xl">
+              <CardContent className="py-12 text-center">
+                <Zap className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">No skills data available for this agent.</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Use Cases Tab */}
+        <TabsContent value="use-cases">
+          {detailData && detailData.useCases.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {detailData.useCases.map((uc, idx) => (
+                <motion.div
+                  key={uc.title}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.08, duration: 0.3 }}
+                >
+                  <Card className="rounded-xl h-full hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <Badge variant="outline" className="text-[10px]">{uc.industry}</Badge>
+                        <Badge className={`text-[10px] border-0 ${
+                          uc.complexity === 'simple' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                          uc.complexity === 'moderate' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
+                          'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+                        }`}>
+                          {uc.complexity}
+                        </Badge>
+                      </div>
+                      <h4 className="text-sm font-semibold mb-1.5">{uc.title}</h4>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{uc.description}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <Card className="rounded-xl">
+              <CardContent className="py-12 text-center">
+                <Target className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">No use cases available for this agent.</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Setup Tab */}
+        <TabsContent value="setup">
+          {detailData && detailData.gettingStarted.length > 0 ? (
+            <div className="space-y-0">
+              {detailData.gettingStarted.map((step, idx) => (
+                <motion.div
+                  key={step.step}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.1, duration: 0.3 }}
+                  className="relative"
+                >
+                  <div className="flex gap-4 pb-6">
+                    {/* Step number + vertical line */}
+                    <div className="flex flex-col items-center">
+                      <div className={`h-9 w-9 rounded-full bg-gradient-to-br ${fwStyle.gradient} flex items-center justify-center shrink-0 shadow-sm text-white font-bold text-sm`}>
+                        {step.step}
+                      </div>
+                      {idx < detailData.gettingStarted.length - 1 && (
+                        <div className="w-[2px] flex-1 bg-gray-200 dark:bg-gray-700 mt-2" />
+                      )}
+                    </div>
+                    {/* Step content */}
+                    <div className="flex-1 min-w-0 pb-2">
+                      <h4 className="text-sm font-semibold mb-1">{step.title}</h4>
+                      <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{step.description}</p>
+                      {step.code && (
+                        <div className="relative group">
+                          <pre className="bg-gray-950 text-gray-100 rounded-lg p-3 overflow-x-auto text-xs whitespace-pre-wrap">
+                            <code>{step.code}</code>
+                          </pre>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="absolute top-1.5 right-1.5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 border-gray-700 text-gray-300 hover:text-white hover:bg-gray-700"
+                            onClick={async () => {
+                              await navigator.clipboard.writeText(step.code || '')
+                              toast({ title: 'Copied!', description: 'Code snippet copied to clipboard.' })
+                            }}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <Card className="rounded-xl">
+              <CardContent className="py-12 text-center">
+                <Rocket className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">No setup guide available for this agent.</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Config Tab */}
+        <TabsContent value="config">
+          {detailData && detailData.configuration.length > 0 ? (
+            <Card className="rounded-xl">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Settings className="h-4 w-4" /> Configuration Options
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left">
+                        <th className="pb-2 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Key</th>
+                        <th className="pb-2 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Type</th>
+                        <th className="pb-2 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Default</th>
+                        <th className="pb-2 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Description</th>
+                        <th className="pb-2 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Required</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detailData.configuration.map((cfg) => (
+                        <tr key={cfg.key} className="border-b last:border-b-0">
+                          <td className="py-3 pr-4"><code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{cfg.key}</code></td>
+                          <td className="py-3 pr-4"><Badge variant="outline" className="text-[10px] font-mono">{cfg.type}</Badge></td>
+                          <td className="py-3 pr-4"><code className="text-xs text-muted-foreground">{cfg.default}</code></td>
+                          <td className="py-3 pr-4 text-xs text-muted-foreground max-w-xs">{cfg.description}</td>
+                          <td className="py-3">
+                            {cfg.required ? (
+                              <Badge className="text-[10px] bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 border-0">Required</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-[10px]">Optional</Badge>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="rounded-xl">
+              <CardContent className="py-12 text-center">
+                <Settings className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">No configuration options available for this agent.</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* FAQ Tab */}
+        <TabsContent value="faq">
+          {detailData && detailData.faq.length > 0 ? (
+            <Card className="rounded-xl">
+              <CardContent className="p-4 sm:p-6">
+                <Accordion type="single" collapsible className="w-full">
+                  {detailData.faq.map((item, idx) => (
+                    <AccordionItem key={idx} value={`faq-${idx}`}>
+                      <AccordionTrigger className="text-sm font-medium text-left hover:no-underline">
+                        {item.question}
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{item.answer}</p>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="rounded-xl">
+              <CardContent className="py-12 text-center">
+                <MessageCircle className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">No FAQ available for this agent.</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Code Tab */}

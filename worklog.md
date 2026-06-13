@@ -308,3 +308,90 @@ Stage Summary:
 - All pages include: hero header, breadcrumb nav, sticky TOC sidebar, mobile TOC drawer, back-to-top button, footer
 - All pages cross-link to each other
 - No new lint errors introduced
+
+---
+
+## Task 2: Enhance AI Agent Detail Page with New Tabs and Enriched Data
+
+**Agent:** main
+**Date:** 2026-03-04
+**File Modified:** `src/components/agents/agent-detail-page.tsx`
+
+### Changes Made:
+
+1. **Added imports:**
+   - `getAgentDetailData` and `AgentDetailData` from `@/lib/agent-detail-data`
+   - Additional Lucide icons: `Copy`, `ChevronDown`, `Globe`, `Mail`, `GitBranch`, `Palette`, `MessageSquare`, `Heart`, `FileCode`, `Layers`, `Search`, `Scale`, `Sprout`, `Briefcase`, `ShoppingBag`, `GraduationCap`, `Plane`, `Music`, `Gamepad2`, `Cpu`, `Wrench`
+   - Accordion components from `@/components/ui/accordion`
+
+2. **Added icon mapping helper** (`iconMap`) — Maps icon string names from detail data to actual Lucide icon components for dynamic icon rendering in capability cards.
+
+3. **Added `detailData` useMemo** — Computes enriched data via `getAgentDetailData(agent)` when agent is available, with proper null handling.
+
+4. **Added 6 new tab triggers** after Architecture:
+   - Master Prompts (Sparkles icon)
+   - Skills (Zap icon)
+   - Use Cases (Target icon)
+   - Setup (Rocket icon)
+   - Config (Settings icon)
+   - FAQ (MessageCircle icon)
+
+5. **Enhanced Overview tab** with:
+   - "Deep Capabilities" card showing enriched capabilities from `detailData.capabilities` with mapped icons, titles, and descriptions
+   - "Use Cases Preview" card showing first 2 use cases with industry/complexity badges and a "View all" link to the Use Cases tab
+
+6. **Added 6 new TabsContent sections:**
+   - **Master Prompts Tab:** Renders each prompt in a card with title, category badge, full prompt text in a code block with copy button, and tips list with check icons
+   - **Skills Tab:** Shows capabilities as rich cards with icon mapping, best practices section with emerald check icons, and limitations section with amber shield icons
+   - **Use Cases Tab:** Grid layout of use case cards with industry badge and color-coded complexity badges (green/amber/red)
+   - **Setup Tab:** Step-by-step numbered guide with vertical timeline, step circles, titles, descriptions, and code snippets with copy buttons
+   - **Config Tab:** Table-like layout with key, type, default, description, and required/optional badges
+   - **FAQ Tab:** Accordion-based expandable items using shadcn/ui Accordion component
+
+7. **Fixed pre-existing TypeScript error:** Changed `agent?.framework` to `agent?.framework ?? null` to satisfy `getFwStyle` parameter type.
+
+### Preserved:
+- All existing functionality (flowchart architecture, code tab, readme tab, dependencies tab, bookmarks, ratings, etc.)
+- Existing styling patterns (fwColors, fwStyle, rounded-xl cards, gradient buttons)
+- Responsive design with sm: breakpoints
+- Framer Motion animations for new content
+
+### Verification:
+- ESLint: No errors in modified file
+- TypeScript: No compilation errors in modified file
+- Dev server: Running without errors
+
+---
+
+## Session: 2026-03-04 (Phase 5 - Full-Scale Agent Content Enhancement)
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Generate full-scale, curated, and individualized-specialized content for all AI agents listed under Browse and Knowledge Hub
+
+Work Log:
+- Analyzed existing codebase: `agent-detail-data.ts` already generates comprehensive content (Master Prompts, Capabilities, Architecture, Configuration, Getting Started, FAQ, Best Practices, Limitations, Use Cases) via `getAgentDetailData()`, but `agent-detail-page.tsx` was NOT using it
+- Identified the gap: agent detail page only showed basic info (description, tools, tags, sidebar) with a custom flowchart, missing all the rich content from the data enrichment module
+- Wired `getAgentDetailData()` into agent-detail-page.tsx via `useMemo`
+- Added 6 new tabs: Master Prompts, Skills, Use Cases, Setup, Config, FAQ
+- Enhanced Overview tab with Deep Capabilities and Use Cases Preview sections
+- Each new tab displays full-length, industry-grade content:
+  - Master Prompts: Full system initialization prompts and task execution prompts with copy buttons and tips
+  - Skills: Capabilities grid with dynamic icon mapping, Best Practices, Limitations
+  - Use Cases: Cards with industry badges and color-coded complexity indicators
+  - Setup: Step-by-step installation and configuration guide with code snippets
+  - Config: Table of all configuration options with types, defaults, required flags
+  - FAQ: Accordion-based expandable Q&A with 7 questions per agent
+- Verified all tabs render correctly via agent-browser
+- Confirmed no dev server errors or TypeScript compilation issues
+- Created cron job (ID: 202743) for 15-minute webDevReview cycle
+
+Stage Summary:
+- Agent detail pages now show full-scale, curated content for each of the 808 agents
+- Content is dynamically generated based on agent's category, framework, tools, and models
+- Each agent now has: Master Legendary Prompts, Skills & Capabilities, Use Cases, Setup Guide, Configuration Options, FAQ
+- The existing architecture flowchart, code, README, and dependencies tabs are preserved
+- Legal pages (Privacy Policy, Terms of Service, License) were already industry-grade - no changes needed
+- Footer links already pointed to correct legal routes
+- Cron job created for ongoing development review every 15 minutes
