@@ -58,9 +58,12 @@ import {
   Building,
   CheckCircle2,
   Sparkles,
+  LogIn,
+  Compass,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { OnboardingData } from '@/lib/supabase/types'
+import { Button } from '@/components/ui/button'
 
 // ─── Step Configuration ──────────────────────────────────────────────────────
 
@@ -813,13 +816,52 @@ export default function OnboardingPage() {
 
   // ─── Loading state while checking auth ──────────────────────────────────────
 
-  if (!authChecked) {
+  if (!authChecked || authLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="h-10 w-10 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-muted-foreground">Loading onboarding...</p>
         </div>
+      </div>
+    )
+  }
+
+  // ─── Unauthenticated redirect ──────────────────────────────────────────────
+  if (!authUser && authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+          className="max-w-md w-full text-center"
+        >
+          <div className="mb-6">
+            <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mx-auto shadow-lg shadow-emerald-200 dark:shadow-emerald-900/40">
+              <Shield className="h-10 w-10 text-white" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Sign In Required</h1>
+          <p className="text-muted-foreground mb-6">
+            Please sign in to start the onboarding process and set up your personalized experience.
+          </p>
+          <div className="flex flex-col gap-3">
+            <Button
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md rounded-xl h-11"
+              onClick={() => router.push('/auth/signin?redirect=/onboarding')}
+            >
+              <LogIn className="h-4 w-4 mr-2" /> Sign In to Continue
+            </Button>
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => router.push('/')}
+            >
+              <Compass className="h-4 w-4 mr-2" /> Go Home
+            </Button>
+          </div>
+        </motion.div>
       </div>
     )
   }

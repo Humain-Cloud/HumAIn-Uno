@@ -61,7 +61,7 @@ import {
   Compass,
   Library,
   Trash2,
-  Pencil,
+  Pencil as PencilIcon,
   Check,
   X,
   ChevronDown,
@@ -927,9 +927,16 @@ export default function DashboardPage() {
                   <Button
                     variant="outline"
                     className="rounded-xl"
+                    onClick={() => router.push('/profile')}
+                  >
+                    <PencilIcon className="h-4 w-4 mr-2" /> Edit Profile
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="rounded-xl"
                     onClick={() => router.push('/onboarding')}
                   >
-                    <Sparkles className="h-4 w-4 mr-2" /> Edit Profile
+                    <Sparkles className="h-4 w-4 mr-2" /> Setup Wizard
                   </Button>
                   <Button
                     variant="outline"

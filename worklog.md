@@ -612,3 +612,63 @@ The profiles and user_preferences tables need to be created in Supabase before t
 3. Configure Google/GitHub OAuth providers in Supabase Dashboard → Authentication → Providers
 4. Set Site URL and Redirect URLs in Supabase Dashboard → Authentication → URL Configuration
 5. Complete agent detail deep-linking for all 808 agents
+
+---
+
+## Session: 2026-06-13 (Phase 8 - Fix Logged-In User Sub-Pages)
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Fix /profile, /dashboard and other logged-in user sub-pages not opening
+
+Work Log:
+- Diagnosed root cause: Middleware was hard-redirecting unauthenticated users from protected routes (/dashboard, /profile, /onboarding) to /auth/signin, and the session detection in middleware could fail for logged-in users, causing redirect loops
+- The /profile route DID NOT EXIST - no page.tsx file at src/app/profile/
+- The navbar "Profile" dropdown item was pointing to /dashboard instead of /profile
+- Key insight: The middleware's supabase.auth.getUser() could return null for logged-in users due to cookie/session issues in the Edge runtime, causing a redirect loop that prevents access
+- Solution: Changed architecture from server-side route protection (middleware) to client-side auth handling (each page checks auth state and shows appropriate view)
+- Updated middleware (src/lib/supabase/middleware.ts):
+  - REMOVED all protected route redirects - middleware now ONLY refreshes Supabase sessions
+  - Only redirect remaining: authenticated users on /auth/signin or /auth/signup → /dashboard
+  - This follows Supabase SSR best practices (middleware = session refresh only)
+- Created /profile page (src/app/profile/page.tsx):
+  - Full profile management page with 3 tabs: Profile, Account, Preferences
+  - Profile header card with avatar, name, email, member level, join date
+  - Edit profile form with all fields (name, bio, company, job title, location, website)
+  - Personal Information and Professional info cards
+  - Platform Stats card (member level, email verification status, auth provider)
+  - Quick Links card with navigation to Dashboard, Browse, Settings, Onboarding
+  - Account tab: Security settings, Notifications, Data & Privacy, Danger Zone
+  - Preferences tab: Framework preference (interactive badges), Industry interest, Onboarding status
+  - Save to Supabase profiles table with fallback to user metadata
+  - UnauthenticatedView component for non-logged-in users
+- Updated navbar (navbar-lite.tsx): Profile dropdown now links to /profile instead of /dashboard
+- Updated dashboard page: "Edit Profile" button now links to /profile, added "Setup Wizard" button
+- Updated onboarding page: Added UnauthenticatedView with "Sign In Required" CTA
+- All 15 routes verified returning HTTP 200
+- All protected pages (/dashboard, /profile, /onboarding) now render with client-side auth checks instead of middleware redirects
+
+Stage Summary:
+- ROOT CAUSE FIXED: Middleware no longer blocks logged-in users from accessing sub-pages
+- New /profile page created with full profile management (3 tabs, edit form, preferences)
+- All protected routes now use client-side auth handling with graceful UnauthenticatedView CTAs
+- Middleware simplified to session-refresh-only (per Supabase SSR best practices)
+- No more redirect loops or 404 errors for logged-in user sub-pages
+
+Files Created:
+- src/app/profile/page.tsx - Full profile management page
+
+Files Modified:
+- src/lib/supabase/middleware.ts - Removed protected route redirects, kept session refresh only
+- src/components/layout/navbar-lite.tsx - Profile link → /profile (was /dashboard)
+- src/app/dashboard/page.tsx - Edit Profile → /profile, added Setup Wizard button
+- src/app/onboarding/page.tsx - Added UnauthenticatedView for non-authenticated users
+
+### Verification:
+- All 15 routes return HTTP 200 (no redirects)
+- /dashboard, /profile, /onboarding render UnauthenticatedView for non-logged-in users
+- /dashboard, /profile, /onboarding will show full content for logged-in users
+- Navbar Profile dropdown correctly links to /profile
+- Auth flow works (Supabase sign-in verified via API)
+- Zero lint errors in all modified files

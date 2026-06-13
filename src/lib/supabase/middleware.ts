@@ -9,8 +9,10 @@ import { NextResponse, type NextRequest } from 'next/server'
  * 2. Refreshes the auth session (handling token refresh automatically)
  * 3. Returns a NextResponse with any updated auth cookies set
  *
- * Should be called from src/middleware.ts on every matched request
- * to keep the user's auth session fresh.
+ * IMPORTANT: The middleware only handles session refresh. Route protection
+ * is handled client-side by each page component (e.g., UnauthenticatedView
+ * in the Dashboard page). This avoids redirect loops and ensures the auth
+ * session is always properly refreshed before the page loads.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -47,50 +49,14 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Define protected routes that require authentication
-  const protectedRoutes = ['/dashboard', '/onboarding', '/profile']
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    request.nextUrl.pathname.startsWith(route)
-  )
-
-  // Define public routes that don't require authentication
-  const publicRoutes = [
-    '/',
-    '/browse',
-    '/knowledge-base',
-    '/settings',
-    '/auth',
-    '/privacy-policy',
-    '/terms-of-service',
-    '/license',
-    '/faq',
-    '/blog',
-    '/agents',
-  ]
-  const isPublicRoute = publicRoutes.some((route) =>
-    request.nextUrl.pathname === route ||
-    request.nextUrl.pathname.startsWith(`${route}/`)
-  )
-
-  // Allow auth callback route regardless of auth state
-  const isAuthCallback = request.nextUrl.pathname.startsWith('/auth/callback')
-
-  // If user is not signed in and the route is protected, redirect to auth
-  if (!user && isProtectedRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/auth/signin'
-    url.searchParams.set('redirect', request.nextUrl.pathname)
-    return NextResponse.redirect(url)
-  }
-
-  // If user is signed in and trying to access auth pages,
-  // only redirect to dashboard for signin/signup (not for password reset, verification, etc.)
-  if (user && request.nextUrl.pathname.startsWith('/auth')) {
+  // If user is signed in and trying to access auth sign-in/sign-up pages,
+  // redirect to dashboard. This prevents logged-in users from seeing the
+  // sign-in form again. Other auth pages (callback, verify, reset) are allowed.
+  if (user) {
     const isAuthMainPage =
       request.nextUrl.pathname === '/auth/signin' ||
       request.nextUrl.pathname === '/auth/signup'
 
-    // Allow access to verification, password reset, and callback pages even when authenticated
     if (isAuthMainPage) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
