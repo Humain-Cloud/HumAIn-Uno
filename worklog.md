@@ -181,3 +181,103 @@ Stage Summary:
 - Navbar upgraded with active state, search, dark mode, mobile menu
 - Footer upgraded to industry-grade 4-section layout with social icons and framework badges
 - All pages verified working via agent-browser
+
+---
+
+## Session: 2026-06-13 (Phase 4 - Legal Pages, Agent Detail Sub-Pages, Flowchart Architecture)
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Create legal sub-pages, agent detail sub-pages with flowchart-based architecture, and wire navigation
+
+Work Log:
+- Analyzed uploaded flowchart image (2.png) using VLM to understand the Agent Architecture Lifecycle flow
+- Flowchart describes 17-step process: Start → Set Standards → Gather Knowledge → Choose Domain → Validate → Define Skills → Train → Achieve Success → Develop Architecture → (5 parallel: Monitor, Deploy, Security, Performance, Testing) → Ready → Fully Operational
+- Created 3 industry-grade legal sub-pages (via subagent):
+  - /privacy-policy: 711 lines, 12 sections (AI data processing, GDPR/CCPA rights, framework-specific processing, encryption)
+  - /terms-of-service: 756 lines, 17 sections (rate limiting, AI disclaimers, MIT license terms, API usage)
+  - /license: 782 lines, 9 sections + FAQ (MIT License text, framework license cards, agent licensing, copy-to-clipboard)
+- Updated footer links in footer-lite.tsx and app-layout.tsx to point to /privacy-policy, /terms-of-service, /license
+- Created /agents/[id] dynamic route page at src/app/agents/[id]/page.tsx
+- Built comprehensive agent-detail-page.tsx component with:
+  - Hero section with agent name, description, framework/category/difficulty badges
+  - Breadcrumb navigation (Home → Browse → Agent Name)
+  - Reading progress bar
+  - Framework color-coded styling
+  - 5 tabs: Overview, Architecture, Code, README, Dependencies
+  - Bookmark, Share, Get Code action buttons
+  - Rating system
+  - Agent metadata sidebar
+- Built Architecture Lifecycle tab with flowchart-based visualization:
+  - 16 hyper-specialized flowchart steps dynamically generated from agent data
+  - Each step personalized with agent's domain, framework, tools, models, difficulty
+  - Color-coded step types: start (green), process (blue), decision (amber), parallel (orange), status (purple), end (violet)
+  - Decision nodes show YES/NO branching
+  - Each step includes 3-4 detailed bullet points specific to the agent
+  - Architecture step fans out to 5 parallel nodes (Monitor, Deploy, Security, Performance, Testing)
+  - Final summary card with gradient background
+- Updated agent card click handlers to navigate to /agents/[id]:
+  - agent-card.tsx: Grid, list, compact view cards now use router.push()
+  - agent-grid.tsx: CompactRow uses router.push()
+  - agent-grid-section.tsx (hub): View Full Details button uses router.push()
+- Verified all pages via agent-browser:
+  - Agent detail page loads with full content
+  - Architecture tab shows hyper-specialized flowchart (e.g., "911Dispatch Optimizer - Public Safety - LlamaIndex")
+  - Privacy Policy page with TOC, breadcrumbs, GDPR badge
+  - Terms of Service and License pages verified (HTTP 200)
+
+Stage Summary:
+- 3 legal sub-pages created with industry-grade content (2,249 lines total)
+- /agents/[id] dynamic route created with full agent detail page
+- Architecture Lifecycle tab implements flowchart with 16 hyper-specialized steps per agent
+- Agent card clicks now navigate to dedicated /agents/[id] sub-pages
+- Footer legal links updated to point to actual pages
+- All routes verified working via agent-browser
+
+## Session: 2026-03-04 (Phase 4 - Legal Sub-Pages)
+
+---
+Task ID: 2-a
+Agent: Main Agent
+Task: Create 3 full-scale, curated, industry-grade legal sub-pages for Humain-Uno
+
+Work Log:
+- Created Privacy Policy page at `/privacy-policy` (711 lines) with 12 comprehensive sections covering personal info, usage data, cookies, AI interaction data, knowledge base data, third-party services, data security, user rights, international transfers, cookies/tracking, children's privacy, changes to policy, and contact info
+- Created Terms of Service page at `/terms-of-service` (756 lines) with 17 comprehensive sections covering acceptance, service description, user accounts, agent content/IP, user-generated content, open source licensing, acceptable use, API usage, rate limiting, warranty disclaimer, limitation of liability, indemnification, termination, governing law, dispute resolution, modifications, and contact
+- Created MIT License page at `/license` (782 lines) with 9 comprehensive sections covering full license text, what it allows/requires/doesn't provide, application to Humain-Uno, third-party framework licenses (LangGraph, CrewAI, AutoGen, Agno, LlamaIndex), agent-specific licensing, contributing under MIT, and FAQ
+- Each page features:
+  - Professional header with emerald/teal gradient accent
+  - Table of contents sidebar (desktop) with smooth scroll and active section tracking
+  - Mobile TOC floating button with drawer
+  - Rich, detailed, industry-grade content (no placeholder text)
+  - Responsive design (mobile hamburger menu, sticky nav)
+  - Breadcrumb navigation
+  - Last updated date badges
+  - Related legal documents footer section
+  - Back-to-top button
+  - Framer Motion animations for section reveals
+  - Dark mode support via Tailwind dark: prefix
+- Created metadata layout files for each route with SEO titles/descriptions
+- Updated footer component legal links to point to correct paths (/privacy-policy, /terms-of-service, /license)
+- Fixed ESLint errors for setState in useEffect
+- All 3 pages verified returning HTTP 200
+
+Stage Summary:
+- 3 new legal routes: /privacy-policy, /terms-of-service, /license
+- Total content: 2,249 lines of comprehensive legal content
+- Each page is a standalone 'use client' component with inline content
+- All pages feature professional design with TOC sidebar, responsive layout, animations
+- Footer links updated to point to new legal pages
+- Zero lint errors in legal page files
+
+Files Created:
+- `src/app/privacy-policy/page.tsx` - Privacy Policy (711 lines)
+- `src/app/privacy-policy/layout.tsx` - Privacy Policy metadata
+- `src/app/terms-of-service/page.tsx` - Terms of Service (756 lines)
+- `src/app/terms-of-service/layout.tsx` - Terms of Service metadata
+- `src/app/license/page.tsx` - MIT License (782 lines)
+- `src/app/license/layout.tsx` - MIT License metadata
+
+Files Modified:
+- `src/components/layout/footer.tsx` - Updated legal links to new paths

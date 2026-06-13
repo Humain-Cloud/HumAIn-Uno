@@ -552,9 +552,9 @@ function Footer() {
     legal: {
       title: 'Legal',
       links: [
-        { label: 'Privacy Policy', icon: Shield, href: '#' },
-        { label: 'Terms of Service', icon: Scale, href: '#' },
-        { label: 'License', icon: FileText, href: '#' },
+        { label: 'Privacy Policy', icon: Shield, href: '/privacy-policy' },
+        { label: 'Terms of Service', icon: Scale, href: '/terms-of-service' },
+        { label: 'License', icon: FileText, href: '/license' },
         { label: 'Contact', icon: Mail, href: '#' },
       ],
     },

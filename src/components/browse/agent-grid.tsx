@@ -2,6 +2,7 @@
 
 import type { KnowledgeAgent } from '@/lib/types'
 import { useAppStore } from '@/lib/store'
+import { useRouter } from 'next/navigation'
 import { AgentCard } from '@/components/agents/agent-card'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -27,6 +28,7 @@ import React from 'react'
 
 // Compact view row component
 function CompactRow({ agent, index }: { agent: KnowledgeAgent; index: number }) {
+  const router = useRouter()
   const fwColor = agent.framework
     ? { langgraph: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', crewai: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300', autogen: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300', agno: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300', llamaindex: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300' }[agent.framework.toLowerCase()] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
     : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
@@ -41,7 +43,7 @@ function CompactRow({ agent, index }: { agent: KnowledgeAgent; index: number }) 
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.02, duration: 0.2 }}
       className="cursor-pointer hover:bg-muted/50 transition-colors border-b"
-      onClick={() => useAppStore.getState().navigateToAgent(agent.id)}
+      onClick={() => router.push(`/agents/${agent.id}`)}
     >
       <TableCell className="font-medium text-sm py-2.5">{agent.name}</TableCell>
       <TableCell className="py-2.5">

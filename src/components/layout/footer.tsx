@@ -113,12 +113,12 @@ const trustBadges = [
 
 // Legal links
 const legalLinks = [
-  { label: 'Privacy Policy', href: '/privacy' },
-  { label: 'Terms of Service', href: '/terms' },
+  { label: 'Privacy Policy', href: '/privacy-policy' },
+  { label: 'Terms of Service', href: '/terms-of-service' },
+  { label: 'License (MIT)', href: '/license' },
   { label: 'Cookie Policy', href: '/cookies' },
   { label: 'Acceptable Use', href: '/acceptable-use' },
   { label: 'DPA', href: '/dpa' },
-  { label: 'SLA', href: '/sla' },
   { label: 'Security', href: '/security' },
   { label: 'Responsible AI', href: '/responsible-ai' },
 ]
@@ -263,7 +263,7 @@ export function Footer() {
               )}
               <p className="text-[11px] text-gray-500 mt-2 text-center sm:text-left">
                 No spam, ever. Unsubscribe at any time.{' '}
-                <Link href="/privacy" className="underline underline-offset-2 hover:text-gray-300 transition-colors">
+                <Link href="/privacy-policy" className="underline underline-offset-2 hover:text-gray-300 transition-colors">
                   Privacy Policy
                 </Link>
               </p>

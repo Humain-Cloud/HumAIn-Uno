@@ -35,9 +35,9 @@ const footerSections = [
   {
     title: 'Legal',
     links: [
-      { label: 'Privacy Policy', icon: Shield, href: '#' },
-      { label: 'Terms of Service', icon: Scale, href: '#' },
-      { label: 'License (MIT)', icon: FileText, href: '#' },
+      { label: 'Privacy Policy', icon: Shield, href: '/privacy-policy' },
+      { label: 'Terms of Service', icon: Scale, href: '/terms-of-service' },
+      { label: 'License (MIT)', icon: FileText, href: '/license' },
       { label: 'Contact', icon: Mail, href: '#' },
     ],
   },

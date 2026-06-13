@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -120,6 +121,7 @@ function StarRating({ agentId, agentName, userRating, onRate }: {
 }
 
 export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProps) {
+  const router = useRouter()
   const {
     navigateToAgent,
     compareAgentIds,
@@ -190,7 +192,7 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
       >
         <Card
           className="cursor-pointer hover:shadow-md transition-all duration-300 border-l-4 border-l-emerald-500 dark:border-l-emerald-400 group"
-          onClick={() => navigateToAgent(agent.id)}
+          onClick={() => router.push(`/agents/${agent.id}`)}
         >
           <CardContent className="p-4 flex items-center gap-4">
             {/* Compare checkbox */}
@@ -286,7 +288,7 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
     >
       <Card
         className="cursor-pointer hover:shadow-lg transition-all duration-300 h-full flex flex-col hover:-translate-y-1 will-change-transform overflow-hidden relative hover:bg-white/90 dark:hover:bg-gray-900/90 hover:backdrop-blur-sm group"
-        onClick={() => navigateToAgent(agent.id)}
+        onClick={() => router.push(`/agents/${agent.id}`)}
       >
         {/* Gradient top border based on framework color */}
         <div className={`h-[2px] bg-gradient-to-r ${fwBorder}`} />
@@ -411,7 +413,7 @@ export function AgentCard({ agent, index = 0, viewMode = 'grid' }: AgentCardProp
           <Button
             size="sm"
             className="h-7 text-xs bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-sm shadow-emerald-200 dark:shadow-emerald-900/30 hover:shadow-md hover:shadow-emerald-200 dark:hover:shadow-emerald-900/40 transition-all duration-200 rounded-lg font-medium"
-            onClick={(e) => { e.stopPropagation(); navigateToAgent(agent.id) }}
+            onClick={(e) => { e.stopPropagation(); router.push(`/agents/${agent.id}`) }}
           >
             <Eye className="h-3 w-3 mr-1" /> View
           </Button>
@@ -428,7 +430,7 @@ interface UserAgentCardProps {
 }
 
 export function UserAgentCard({ agent, index = 0, viewMode = 'grid' }: UserAgentCardProps) {
-  const { navigateToAgent } = useAppStore()
+  const router = useRouter()
 
   const fwColor = frameworkColors[(agent.framework || '').toLowerCase()] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
   const diffColor = difficultyColors[(agent.difficulty || '').toLowerCase()] || 'text-gray-500'
@@ -448,7 +450,7 @@ export function UserAgentCard({ agent, index = 0, viewMode = 'grid' }: UserAgent
       >
         <Card
           className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => navigateToAgent(agent.id)}
+          onClick={() => router.push(`/agents/${agent.id}`)}
         >
           <CardContent className="p-4 flex items-center gap-4">
             <div className="flex-1 min-w-0">
@@ -485,7 +487,7 @@ export function UserAgentCard({ agent, index = 0, viewMode = 'grid' }: UserAgent
     >
       <Card
         className="cursor-pointer hover:shadow-lg transition-all duration-200 h-full flex flex-col"
-        onClick={() => navigateToAgent(agent.id)}
+        onClick={() => router.push(`/agents/${agent.id}`)}
       >
         <CardContent className="p-4 flex-1">
           <div className="flex items-start justify-between mb-2">
@@ -512,7 +514,7 @@ export function UserAgentCard({ agent, index = 0, viewMode = 'grid' }: UserAgent
           <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
             <Star className="h-3 w-3" /> {agent.stars || 0}
           </span>
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); navigateToAgent(agent.id) }}>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); router.push(`/agents/${agent.id}`) }}>
             <Eye className="h-3 w-3 mr-1" /> View
           </Button>
         </CardFooter>

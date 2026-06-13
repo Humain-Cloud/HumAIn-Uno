@@ -2,6 +2,7 @@
 
 import type { KnowledgeAgent } from '@/lib/types'
 import { useAppStore } from '@/lib/store'
+import { useRouter } from 'next/navigation'
 import { AgentCard } from '@/components/agents/agent-card'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -61,6 +62,7 @@ export function AgentGridSection({
   previewAgent,
   setPreviewAgent,
 }: AgentGridSectionProps) {
+  const router = useRouter()
   const { setSelectedAgentId, setCurrentView } = useAppStore()
 
   return (
@@ -298,10 +300,8 @@ export function AgentGridSection({
                 <Button
                   className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-lg"
                   onClick={() => {
-                    setSelectedAgentId(previewAgent.id)
-                    setCurrentView('detail')
+                    router.push(`/agents/${previewAgent.id}`)
                     setPreviewAgent(null)
-                    window.scrollTo(0, 0)
                   }}
                   aria-label={`View full details for ${previewAgent.name}`}
                 >
