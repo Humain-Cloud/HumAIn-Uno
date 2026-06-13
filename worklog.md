@@ -395,3 +395,121 @@ Stage Summary:
 - Legal pages (Privacy Policy, Terms of Service, License) were already industry-grade - no changes needed
 - Footer links already pointed to correct legal routes
 - Cron job created for ongoing development review every 15 minutes
+
+---
+
+## Session: 2026-03-05 (Phase 6 - Supabase Auth & User Onboarding)
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Set up full-scale User-Onboarding and User-Authentication with Supabase integration
+
+Work Log:
+- Analyzed existing auth setup: NextAuth v4 with CredentialsProvider (demo login only), simple auth-modal dialog
+- Decided to replace NextAuth with Supabase Auth for industry-grade authentication
+- Installed @supabase/supabase-js and @supabase/ssr packages
+- Created Supabase client utilities:
+  - src/lib/supabase/client.ts - Browser client using createBrowserClient
+  - src/lib/supabase/server.ts - Server client with async cookies() handling (Next.js 16)
+  - src/lib/supabase/middleware.ts - Middleware helper for session refresh and route protection
+  - src/lib/supabase/types.ts - TypeScript interfaces for UserProfile, UserPreferences, OnboardingData
+- Created Next.js middleware (src/middleware.ts) for session management:
+  - Refreshes Supabase auth tokens on every request
+  - Protects /dashboard, /onboarding, /profile routes (redirects to /auth/signin)
+  - Redirects authenticated users away from /auth/* pages
+- Built comprehensive auth pages:
+  - /auth/signin - Sign In with email/password, Google/GitHub OAuth, Magic Link, password visibility toggle
+  - /auth/signup - Sign Up with email/password, full name, Terms checkbox, password strength indicator
+  - /auth/forgot-password - Forgot Password with email input and success state
+  - /auth/reset-password - Reset Password with hash fragment detection, password strength indicator
+  - /auth/verify-email - Email Verification with 60s countdown timer, auto-polling, resend button
+  - /auth/callback - Server-side OAuth/magic link callback handler
+  - /auth/layout.tsx - Shared auth layout with gradient background, logo, sticky footer
+- Built 5-step User Onboarding flow (/onboarding):
+  - Step 1: Welcome & Profile (name, company, job title, location)
+  - Step 2: Experience Level (Beginner/Intermediate/Advanced visual cards)
+  - Step 3: Framework Preferences (5 frameworks with color-coded cards)
+  - Step 4: Industry Interests (20 industry pills with icons)
+  - Step 5: Use Cases & Finish (8 use cases with summary)
+  - Progress bar, Back/Next/Skip navigation, Save progress to Supabase
+  - Completion overlay with redirect to /dashboard
+- Created AuthProvider context (src/components/auth/auth-provider.tsx):
+  - Provides user, profile, session, loading, signOut, refreshProfile
+  - Subscribes to Supabase onAuthStateChange events
+  - Fetches user profile from Supabase profiles table
+  - Replaces NextAuth SessionProvider
+- Updated providers.tsx: Replaced SessionProvider with AuthProvider
+- Updated navbar (navbar-lite.tsx) with full auth awareness:
+  - Not authenticated: Sign In + Sign Up buttons
+  - Authenticated: Avatar dropdown with Dashboard, Profile, Settings, Sign Out
+  - Notification bell for authenticated users
+  - Dashboard nav item dynamically added when authenticated
+  - Mobile menu with auth options
+- Built comprehensive Dashboard page (/dashboard):
+  - Time-based greeting, user avatar, member since date
+  - 4 quick stats cards (Agents Created, Bookmarked, Collections, Member Level)
+  - 5 tabs: Overview, My Agents, Collections, Profile, Activity
+  - Profile tab with editable form and account settings
+  - Unauthenticated state with sign-in CTA
+- Created onboarding API route (/api/onboarding) for saving progress
+- Created Supabase SQL setup script (supabase-setup.sql) with:
+  - profiles table with RLS policies
+  - user_preferences table with RLS policies
+  - Auto-create profile trigger on auth.users insert
+  - Auto-create preferences trigger on profiles insert
+  - Avatar storage bucket with policies
+  - Updated_at triggers
+  - Indexes
+- Fixed Suspense boundary issues for useSearchParams() in auth pages
+- Fixed onboarding page to use useAuth() instead of NextAuth useSession
+- Updated dynamic-layout.tsx to skip navbar/footer on /auth/* routes
+- All 8 routes verified via agent-browser (200 OK, content renders correctly)
+- Protected routes correctly redirect to /auth/signin with redirect param
+
+Stage Summary:
+- Full Supabase Auth integration replacing NextAuth for authentication
+- 7 auth-related pages created (signin, signup, forgot-password, reset-password, verify-email, callback, auth layout)
+- 5-step onboarding wizard with progress saving
+- Dashboard page with 5 tabs and full profile management
+- AuthProvider context replacing NextAuth SessionProvider
+- Navbar updated with full auth state awareness (avatar dropdown, sign in/out)
+- Middleware for session refresh and route protection
+- SQL setup script for Supabase database tables
+- All pages verified working via agent-browser
+
+Files Created:
+- src/lib/supabase/client.ts - Browser Supabase client
+- src/lib/supabase/server.ts - Server Supabase client
+- src/lib/supabase/middleware.ts - Middleware helper
+- src/lib/supabase/types.ts - TypeScript types
+- src/middleware.ts - Next.js middleware
+- src/app/auth/signin/page.tsx - Sign In page
+- src/app/auth/signup/page.tsx - Sign Up page
+- src/app/auth/forgot-password/page.tsx - Forgot Password page
+- src/app/auth/reset-password/page.tsx - Reset Password page
+- src/app/auth/verify-email/page.tsx - Verify Email page
+- src/app/auth/callback/route.ts - OAuth callback handler
+- src/app/auth/layout.tsx - Auth layout
+- src/app/onboarding/page.tsx - Onboarding wizard
+- src/app/dashboard/page.tsx - User Dashboard
+- src/components/auth/auth-provider.tsx - Auth context provider
+- src/components/auth/onboarding-step.tsx - Reusable onboarding step
+- src/app/api/onboarding/route.ts - Onboarding API
+- supabase-setup.sql - Database setup script
+
+Files Modified:
+- src/app/providers.tsx - Replaced SessionProvider with AuthProvider
+- src/components/layout/navbar-lite.tsx - Added auth state awareness
+- src/components/layout/dynamic-layout.tsx - Skip navbar/footer on auth pages
+- .env - Added Supabase env vars (placeholders)
+
+### What the user needs to provide for Supabase integration:
+1. Create a Supabase project at https://supabase.com
+2. Get from Supabase Dashboard → Settings → API:
+   - Project URL → set as NEXT_PUBLIC_SUPABASE_URL in .env
+   - Anon/Public key → set as NEXT_PUBLIC_SUPABASE_ANON_KEY in .env
+   - Service role key → set as SUPABASE_SERVICE_ROLE_KEY in .env
+3. Run supabase-setup.sql in Supabase SQL Editor
+4. Configure OAuth providers (Google, GitHub) in Supabase Dashboard → Authentication → Providers
+5. Set Site URL and Redirect URLs in Supabase Dashboard → Authentication → URL Configuration

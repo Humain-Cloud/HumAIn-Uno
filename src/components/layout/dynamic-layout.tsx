@@ -1,5 +1,6 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import dynamic from 'next/dynamic'
 
 const Navbar = dynamic(() => import("@/components/layout/navbar-lite").then(m => ({ default: m.Navbar })), {
@@ -13,6 +14,14 @@ const Footer = dynamic(() => import("@/components/layout/footer-lite").then(m =>
 });
 
 export function DynamicLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const isAuthPage = pathname.startsWith('/auth')
+
+  // Auth pages have their own layout with header/footer
+  if (isAuthPage) {
+    return <>{children}</>
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <div className="h-[1px] bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
