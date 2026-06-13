@@ -281,3 +281,30 @@ Files Created:
 
 Files Modified:
 - `src/components/layout/footer.tsx` - Updated legal links to new paths
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix legal sub-pages (Privacy Policy, Terms of Service, License) content not displaying fully
+
+Work Log:
+- Reviewed all three existing legal pages and their layouts
+- Discovered that footer already had proper routes (/privacy-policy, /terms-of-service, /license)
+- Used agent-browser to test pages - found critical bug: all content sections were hidden with display:none
+- Root cause: Framer Motion v12.26.2 treats `{...fadeInUp}` spread pattern as applying `hidden` state which sets display:none
+- Fix: Replaced all `{...fadeInUp} viewport={{ once: true }}` with `initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}`
+- Applied fix to 41 instances across 3 files:
+  - privacy-policy/page.tsx: 13 instances fixed
+  - terms-of-service/page.tsx: 18 instances fixed
+  - license/page.tsx: 10 instances fixed
+- Verified all pages render correctly via agent-browser after fix
+- Confirmed footer links already point to correct routes
+
+Stage Summary:
+- Critical rendering bug fixed - all content now visible on all 3 legal pages
+- Privacy Policy: 12 full sections visible (711 lines of code)
+- Terms of Service: 17 full sections visible (756 lines of code)
+- License (MIT): 9 full sections visible (782 lines of code)
+- All pages include: hero header, breadcrumb nav, sticky TOC sidebar, mobile TOC drawer, back-to-top button, footer
+- All pages cross-link to each other
+- No new lint errors introduced

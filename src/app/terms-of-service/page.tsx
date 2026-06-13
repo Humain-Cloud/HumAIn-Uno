@@ -278,7 +278,7 @@ export default function TermsOfServicePage() {
           {/* Content */}
           <main className="flex-1 min-w-0 max-w-4xl">
             {/* Important Notice */}
-            <motion.div {...fadeInUp} viewport={{ once: true }} className="mb-10">
+            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-10">
               <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-3">
@@ -295,7 +295,7 @@ export default function TermsOfServicePage() {
             </motion.div>
 
             {/* Section 1: Acceptance of Terms */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="acceptance-of-terms" icon={Gavel}>1. Acceptance of Terms</SectionTitle>
               <Paragraph>
                 By creating an account, accessing, or using the Humain-Uno Service, you confirm that you are at least 16 years of age and have the legal capacity to enter into these Terms. If you are using the Service on behalf of an organization, you represent and warrant that you have the authority to bind that organization to these Terms.
@@ -311,7 +311,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 2: Description of Service */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="description-of-service" icon={Zap}>2. Description of Service</SectionTitle>
               <Paragraph>
                 Humain-Uno provides an AI Agent Marketplace platform that enables users to discover, explore, configure, deploy, and share AI agents. Our Service includes the following core features:
@@ -331,7 +331,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 3: User Accounts & Authentication */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="user-accounts" icon={Key}>3. User Accounts & Authentication</SectionTitle>
 
               <SubSection>3.1 Account Creation</SubSection>
@@ -360,7 +360,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 4: Agent Content & IP */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="agent-content-ip" icon={BookOpen}>4. Agent Content & Intellectual Property</SectionTitle>
 
               <SubSection>4.1 Humain-Uno Intellectual Property</SubSection>
@@ -382,7 +382,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 5: User-Generated Content License */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="user-content-license" icon={FileText}>5. User-Generated Content License</SectionTitle>
               <Paragraph>
                 Our Service allows you to create, submit, post, display, transmit, or distribute content, including but not limited to agent code, configurations, prompts, documentation, reviews, and comments (&quot;User Content&quot;). You retain all rights in, and are solely responsible for, the User Content you post to the Service.
@@ -401,7 +401,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 6: Open Source Licensing */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="open-source-licensing" icon={Scale}>6. Open Source Licensing (MIT License)</SectionTitle>
               <Paragraph>
                 All agent code published on the Humain-Uno marketplace is licensed under the MIT License unless explicitly stated otherwise by the agent author. The MIT License is one of the most permissive open-source licenses and allows for broad use, modification, and distribution:
@@ -426,7 +426,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 7: Acceptable Use Policy */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="acceptable-use" icon={Ban}>7. Acceptable Use Policy</SectionTitle>
               <Paragraph>
                 You agree not to use the Service for any purpose that is unlawful or prohibited by these Terms. The following activities are strictly prohibited:
@@ -463,7 +463,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 8: API Usage Terms */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="api-usage" icon={Zap}>8. API Usage Terms</SectionTitle>
               <Paragraph>
                 Access to the Humain-Uno API is provided subject to the following terms and conditions:
@@ -479,7 +479,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 9: Rate Limiting */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="rate-limiting" icon={Clock}>9. Rate Limiting & Fair Use</SectionTitle>
               <Paragraph>
                 To ensure the stability and availability of our Service for all users, we implement rate limiting on API requests and certain high-resource operations:
@@ -532,7 +532,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 10: Disclaimer of Warranties */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="warranty-disclaimer" icon={AlertTriangle}>10. Disclaimer of Warranties</SectionTitle>
 
               <Card className="border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 mb-6">
@@ -564,7 +564,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 11: Limitation of Liability */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="limitation-of-liability" icon={Shield}>11. Limitation of Liability</SectionTitle>
               <Paragraph>
                 TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL HUMAIN-UNO, ITS AFFILIATES, DIRECTORS, EMPLOYEES, AGENTS, OR LICENSORS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO:
@@ -585,7 +585,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 12: Indemnification */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="indemnification" icon={Handshake}>12. Indemnification</SectionTitle>
               <Paragraph>
                 You agree to defend, indemnify, and hold harmless Humain-Uno, its affiliates, officers, directors, employees, agents, and licensors from and against any and all claims, damages, obligations, losses, liabilities, costs, or debt arising from:
@@ -606,7 +606,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 13: Termination */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="termination" icon={Ban}>13. Termination</SectionTitle>
               <Paragraph>
                 We may terminate or suspend your account and access to the Service immediately, without prior notice or liability, for any reason, including but not limited to a breach of these Terms, with or without notice.
@@ -631,7 +631,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 14: Governing Law */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="governing-law" icon={Building}>14. Governing Law</SectionTitle>
               <Paragraph>
                 These Terms shall be governed by and construed in accordance with the laws of the State of California, United States, without regard to its conflict of law provisions. You agree that any legal suit, action, or proceeding arising out of or related to these Terms or the Service shall be instituted exclusively in the federal courts of the United States or the courts of the State of California, in each case located in San Francisco County, California.
@@ -644,7 +644,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 15: Dispute Resolution */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="dispute-resolution" icon={Gavel}>15. Dispute Resolution</SectionTitle>
 
               <SubSection>15.1 Informal Resolution</SubSection>
@@ -666,7 +666,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 16: Modifications */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="modifications" icon={RefreshCw}>16. Modifications to These Terms</SectionTitle>
               <Paragraph>
                 We reserve the right to modify or replace these Terms at any time at our sole discretion. If a revision is material, we will provide at least 30 days&apos; notice prior to any new terms taking effect by posting the updated Terms on our website and sending an email notification to your registered email address. What constitutes a material change will be determined at our sole discretion, in good faith, and using common sense and reasonable judgment.
@@ -679,7 +679,7 @@ export default function TermsOfServicePage() {
             <Separator className="mb-12" />
 
             {/* Section 17: Contact */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="contact" icon={Mail}>17. Contact</SectionTitle>
               <Paragraph>
                 If you have any questions about these Terms of Service, please contact us:

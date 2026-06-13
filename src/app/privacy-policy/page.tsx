@@ -270,7 +270,7 @@ export default function PrivacyPolicyPage() {
           {/* Content */}
           <main className="flex-1 min-w-0 max-w-4xl">
             {/* Intro */}
-            <motion.div {...fadeInUp} viewport={{ once: true }} className="mb-10">
+            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-10">
               <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-3">
@@ -286,7 +286,7 @@ export default function PrivacyPolicyPage() {
             </motion.div>
 
             {/* Section 1: Information We Collect */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="information-we-collect" icon={Database}>1. Information We Collect</SectionTitle>
               <Paragraph>
                 We collect several types of information to provide, maintain, and improve our AI Agent Marketplace, ensure security, and deliver a personalized experience. The information we collect falls into the following categories:
@@ -346,7 +346,7 @@ export default function PrivacyPolicyPage() {
             <Separator className="mb-12" />
 
             {/* Section 2: How We Use Information */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="how-we-use" icon={Eye}>2. How We Use Your Information</SectionTitle>
               <Paragraph>
                 We use the information we collect for a variety of purposes to provide, improve, and secure our Service:
@@ -366,7 +366,7 @@ export default function PrivacyPolicyPage() {
             <Separator className="mb-12" />
 
             {/* Section 3: AI Agent Data Processing */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="ai-data-processing" icon={Server}>3. AI Agent Data Processing</SectionTitle>
               <Paragraph>
                 Humain-Uno operates an AI Agent Marketplace where users can discover, configure, deploy, and share AI agents built on various frameworks. The processing of data in this context involves specific considerations that are important for you to understand:
@@ -405,7 +405,7 @@ export default function PrivacyPolicyPage() {
             <Separator className="mb-12" />
 
             {/* Section 4: Knowledge Base Data */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="knowledge-base-data" icon={Database}>4. Knowledge Base Data</SectionTitle>
               <Paragraph>
                 Humain-Uno maintains a curated knowledge base of over 800 AI agent projects across 49 categories and 5 frameworks. This section describes how we handle the data within our knowledge base and the processes we use to ensure its accuracy and quality:
@@ -436,7 +436,7 @@ export default function PrivacyPolicyPage() {
             <Separator className="mb-12" />
 
             {/* Section 5: Third-Party Services */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="third-party-services" icon={Globe}>5. Third-Party Services</SectionTitle>
               <Paragraph>
                 We integrate with and rely on several third-party services to operate our platform. Each third-party service has its own privacy practices, and we encourage you to review their policies. Key third-party integrations include:
@@ -477,7 +477,7 @@ export default function PrivacyPolicyPage() {
             <Separator className="mb-12" />
 
             {/* Section 6: Data Security */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="data-security" icon={Lock}>6. Data Security & Encryption</SectionTitle>
               <Paragraph>
                 We implement industry-standard security measures to protect your personal information and AI interaction data. Our security practices are regularly audited and updated to address emerging threats:
@@ -509,7 +509,7 @@ export default function PrivacyPolicyPage() {
             <Separator className="mb-12" />
 
             {/* Section 7: User Rights */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="user-rights" icon={CheckCircle2}>7. Your Rights</SectionTitle>
               <Paragraph>
                 Depending on your jurisdiction, you may have certain rights regarding your personal information. We are committed to honoring these rights and providing clear mechanisms for you to exercise them:
@@ -551,7 +551,7 @@ export default function PrivacyPolicyPage() {
             <Separator className="mb-12" />
 
             {/* Section 8: International Data Transfers */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="international-transfers" icon={Globe}>8. International Data Transfers</SectionTitle>
               <Paragraph>
                 Humain-Uno operates globally, and your information may be transferred to and processed in countries other than your country of residence. These countries may have data protection laws that differ from your jurisdiction. When we transfer your data internationally, we ensure appropriate safeguards are in place:
@@ -568,7 +568,7 @@ export default function PrivacyPolicyPage() {
             <Separator className="mb-12" />
 
             {/* Section 9: Cookies & Tracking */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="cookies-tracking" icon={Cookie}>9. Cookies & Tracking Technologies</SectionTitle>
               <Paragraph>
                 Our use of cookies and tracking technologies is designed to be transparent and respectful of your privacy choices. You can manage your cookie preferences at any time through our cookie consent tool, accessible from the footer of our website or from your account settings.
@@ -593,7 +593,7 @@ export default function PrivacyPolicyPage() {
             <Separator className="mb-12" />
 
             {/* Section 10: Children's Privacy */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="childrens-privacy" icon={Users}>10. Children&apos;s Privacy</SectionTitle>
               <Paragraph>
                 Our Service is not directed at individuals under the age of 16. We do not knowingly collect personal information from children under 16 years of age. If you are a parent or guardian and become aware that your child has provided us with personal information, please contact us immediately at <a href="mailto:privacy@humain-uno.com" className="text-emerald-600 dark:text-emerald-400 hover:underline">privacy@humain-uno.com</a>. We will take steps to promptly delete such information from our systems and confirm the deletion in writing.
@@ -606,7 +606,7 @@ export default function PrivacyPolicyPage() {
             <Separator className="mb-12" />
 
             {/* Section 11: Changes to Policy */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="changes-to-policy" icon={FileText}>11. Changes to This Privacy Policy</SectionTitle>
               <Paragraph>
                 We may update this Privacy Policy from time to time to reflect changes in our practices, technologies, legal requirements, or other factors. When we make material changes to this Privacy Policy, we will:
@@ -626,7 +626,7 @@ export default function PrivacyPolicyPage() {
             <Separator className="mb-12" />
 
             {/* Section 12: Contact Information */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="contact-information" icon={Mail}>12. Contact Information</SectionTitle>
               <Paragraph>
                 If you have any questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us through the following channels:

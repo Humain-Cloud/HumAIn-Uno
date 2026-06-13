@@ -324,7 +324,7 @@ SOFTWARE.`)
           {/* Content */}
           <main className="flex-1 min-w-0 max-w-4xl">
             {/* Intro */}
-            <motion.div {...fadeInUp} viewport={{ once: true }} className="mb-10">
+            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-10">
               <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-3">
@@ -340,7 +340,7 @@ SOFTWARE.`)
             </motion.div>
 
             {/* Section 1: Full MIT License Text */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="full-mit-license" icon={FileText}>1. Full MIT License Text</SectionTitle>
               <Paragraph>
                 The following is the complete text of the MIT License, as approved by the Open Source Initiative (OSI). This is the license under which all default agent code on the Humain-Uno marketplace is published:
@@ -391,7 +391,7 @@ SOFTWARE.`}
             <Separator className="mb-12" />
 
             {/* Section 2: What the MIT License Allows */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="what-it-allows" icon={CheckCircle2}>2. What the MIT License Allows</SectionTitle>
               <Paragraph>
                 The MIT License is one of the most permissive open-source licenses available. It grants broad rights to users and developers, making it ideal for fostering collaboration and innovation. Here is what the MIT License allows you to do:
@@ -424,7 +424,7 @@ SOFTWARE.`}
             <Separator className="mb-12" />
 
             {/* Section 3: What the MIT License Requires */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="what-it-requires" icon={AlertTriangle}>3. What the MIT License Requires</SectionTitle>
               <Paragraph>
                 While the MIT License is extremely permissive, it does impose a small number of important requirements that you must follow when using MIT-licensed software:
@@ -472,7 +472,7 @@ SOFTWARE.`}
             <Separator className="mb-12" />
 
             {/* Section 4: What It Does NOT Provide */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="what-it-does-not" icon={XCircle}>4. What the MIT License Does NOT Provide</SectionTitle>
               <Paragraph>
                 Understanding the limitations of the MIT License is equally important. The following are explicitly disclaimed and not provided under the MIT License:
@@ -507,7 +507,7 @@ SOFTWARE.`}
             <Separator className="mb-12" />
 
             {/* Section 5: How This Applies to Humain-Uno */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="applies-to-humain-uno" icon={Scale}>5. How This Applies to Humain-Uno</SectionTitle>
               <Paragraph>
                 The MIT License applies to the Humain-Uno ecosystem in several distinct ways. Understanding these distinctions is important for both users and contributors:
@@ -537,7 +537,7 @@ SOFTWARE.`}
             <Separator className="mb-12" />
 
             {/* Section 6: Third-Party Framework Licenses */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="third-party-licenses" icon={Code}>6. Third-Party Framework Licenses</SectionTitle>
               <Paragraph>
                 The Humain-Uno marketplace supports agents built on several major AI frameworks. Each framework has its own open-source license, which may impose additional requirements beyond the MIT License that applies to agent code. Here is a summary of the licenses for each supported framework:
@@ -628,7 +628,7 @@ SOFTWARE.`}
             <Separator className="mb-12" />
 
             {/* Section 7: Agent-Specific Licensing */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="agent-licensing" icon={GitBranch}>7. Agent-Specific Licensing</SectionTitle>
               <Paragraph>
                 While the MIT License is the default for agent code on the Humain-Uno marketplace, we understand that some projects may require different licensing terms. Here is how agent-specific licensing works:
@@ -664,7 +664,7 @@ SOFTWARE.`}
             <Separator className="mb-12" />
 
             {/* Section 8: Contributing Under MIT */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="contributing" icon={Users}>8. Contributing Under MIT</SectionTitle>
               <Paragraph>
                 We welcome contributions to the Humain-Uno agent ecosystem. By contributing agent code to the marketplace, you agree to the following terms:
@@ -694,7 +694,7 @@ SOFTWARE.`}
             <Separator className="mb-12" />
 
             {/* Section 9: FAQ */}
-            <motion.section {...fadeInUp} viewport={{ once: true }} className="mb-12">
+            <motion.section initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-12">
               <SectionTitle id="faq" icon={HelpCircle}>9. Frequently Asked Questions</SectionTitle>
 
               <div className="space-y-3">
