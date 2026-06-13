@@ -1,16 +1,17 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
-import { useSession } from 'next-auth/react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/components/auth/auth-provider'
 import { useAppStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
-import { useRequireAuth } from '@/components/auth/auth-modal'
+import type { UserProfile } from '@/lib/supabase/types'
 import { UserAgentCard } from '@/components/agents/agent-card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Loader2, Bot, Trash2, LayoutDashboard, FolderOpen, Settings } from 'lucide-react'
+import { Loader2, Bot, Trash2, LayoutDashboard, FolderOpen, Settings, RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 // Split section components
@@ -24,10 +25,11 @@ import { SettingsSection } from '@/components/dashboard/settings-section'
 import { EmptyAgentsState } from '@/components/dashboard/empty-states'
 
 export function DashboardView() {
-  const { session, status, isAuthenticated } = useRequireAuth()
+  const router = useRouter()
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth()
+  const isAuthenticated = !!user
+
   const {
-    setCurrentView,
-    setSelectedAgentId,
     setShowAuthModal,
     collections,
     createCollection,
@@ -39,26 +41,36 @@ export function DashboardView() {
     recentlyViewedAgentIds,
     clearRecentlyViewed,
   } = useAppStore()
+
   const [activeTab, setActiveTab] = useState('overview')
   const [myAgents, setMyAgents] = useState<any[]>([])
   const [recentKB, setRecentKB] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const [agentsLoading, setAgentsLoading] = useState(true)
   const [privacyFilter, setPrivacyFilter] = useState<'all' | 'public' | 'private' | 'unlisted'>('all')
   const [bookmarkedAgents, setBookmarkedAgents] = useState<any[]>([])
   const [recentlyViewedAgents, setRecentlyViewedAgents] = useState<any[]>([])
   const [recentlyViewedLoading, setRecentlyViewedLoading] = useState(false)
+  const [profileRefreshing, setProfileRefreshing] = useState(false)
 
   // Navigation helper
-  const handleNavigate = (view: string) => {
-    setCurrentView(view as any)
-    setSelectedAgentId(null)
-  }
+  const handleNavigate = useCallback((view: string) => {
+    const viewToRoute: Record<string, string> = {
+      home: '/',
+      hub: '/knowledge-base',
+      browse: '/browse',
+      dashboard: '/dashboard',
+      settings: '/settings',
+      wizard: '/create',
+      admin: '/admin',
+    }
+    const route = viewToRoute[view] || '/'
+    router.push(route)
+  }, [router])
 
-  const handleSelectAgent = (id: string) => {
-    setSelectedAgentId(id)
-    setCurrentView('detail')
-  }
+  const handleSelectAgent = useCallback((id: string) => {
+    router.push(`/agents/${id}`)
+  }, [router])
 
   // Load public data (stats + recent KB agents)
   useEffect(() => {
@@ -79,24 +91,21 @@ export function DashboardView() {
 
   // Load user agents when authenticated
   useEffect(() => {
-    if (status !== 'authenticated' || !session) return
+    if (!isAuthenticated || !user) return
 
     async function load() {
-      setLoading(true)
+      setAgentsLoading(true)
       try {
-        const userId = (session as any)?.id
-        if (userId) {
-          const data: any = await api.agents.list({ creatorId: userId, pageSize: 50 })
-          setMyAgents(data?.data || data || [])
-        }
+        const data: any = await api.agents.list({ creatorId: user.id, pageSize: 50 })
+        setMyAgents(data?.data || data || [])
       } catch (err) {
         console.error('Failed to load agents:', err)
       } finally {
-        setLoading(false)
+        setAgentsLoading(false)
       }
     }
     load()
-  }, [status, session])
+  }, [isAuthenticated, user])
 
   // Load bookmarked agents
   useEffect(() => {
@@ -158,6 +167,26 @@ export function DashboardView() {
     }
   }
 
+  const handleRefreshProfile = async () => {
+    setProfileRefreshing(true)
+    try {
+      await refreshProfile()
+    } finally {
+      setProfileRefreshing(false)
+    }
+  }
+
+  // Build a user info object compatible with sub-components
+  const userInfo = useMemo(() => ({
+    user: user ? {
+      id: user.id,
+      name: profile?.full_name || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+      email: user.email ?? '',
+      avatar_url: profile?.avatar_url || user.user_metadata?.avatar_url || null,
+    } : null,
+    profile,
+  }), [user, profile])
+
   const filteredAgents = useMemo(() => {
     if (privacyFilter === 'all') return myAgents
     return myAgents.filter(a => a.privacy?.toLowerCase() === privacyFilter)
@@ -167,13 +196,14 @@ export function DashboardView() {
   const privateCount = myAgents.filter(a => a.privacy === 'PRIVATE').length
 
   // ===========================
-  // LOADING STATE
+  // AUTH LOADING STATE
   // ===========================
-  if (status === 'loading') {
+  if (authLoading) {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+          <p className="text-sm text-muted-foreground">Loading your dashboard...</p>
         </div>
       </div>
     )
@@ -224,7 +254,7 @@ export function DashboardView() {
       />
 
       <UserStatsSection
-        session={session}
+        userInfo={userInfo}
         myAgentsCount={myAgents.length}
         publicCount={publicCount}
         bookmarkedCount={bookmarkedAgentIds.length}
@@ -304,7 +334,7 @@ export function DashboardView() {
                 ))}
               </div>
 
-              {loading ? (
+              {agentsLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <Skeleton key={i} className="h-40 rounded-xl" />
@@ -370,7 +400,19 @@ export function DashboardView() {
         {/* SETTINGS TAB */}
         <AnimatePresence mode="wait">
           {activeTab === 'settings' && (
-            <SettingsSection session={session} />
+            <motion.div
+              key="settings"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <SettingsSection
+                userInfo={userInfo}
+                onRefreshProfile={handleRefreshProfile}
+                profileRefreshing={profileRefreshing}
+              />
+            </motion.div>
           )}
         </AnimatePresence>
       </Tabs>

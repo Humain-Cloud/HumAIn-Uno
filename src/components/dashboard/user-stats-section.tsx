@@ -4,11 +4,22 @@ import { Bot, Globe, Heart, FolderOpen, PlusCircle, Compass, Library, Sparkles }
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { motion } from 'framer-motion'
+import type { UserProfile } from '@/lib/supabase/types'
+
+interface UserInfo {
+  user: {
+    id: string
+    name: string
+    email: string
+    avatar_url: string | null
+  } | null
+  profile: UserProfile | null
+}
 
 interface UserStatsSectionProps {
-  session: any
+  userInfo: UserInfo
   myAgentsCount: number
   publicCount: number
   bookmarkedCount: number
@@ -16,7 +27,11 @@ interface UserStatsSectionProps {
   onNavigate: (view: string) => void
 }
 
-export function UserStatsSection({ session, myAgentsCount, publicCount, bookmarkedCount, collectionsCount, onNavigate }: UserStatsSectionProps) {
+export function UserStatsSection({ userInfo, myAgentsCount, publicCount, bookmarkedCount, collectionsCount, onNavigate }: UserStatsSectionProps) {
+  const displayName = userInfo.user?.name || 'Developer'
+  const firstName = displayName.split(' ')[0]
+  const avatarUrl = userInfo.user?.avatar_url || userInfo.profile?.avatar_url
+
   return (
     <>
       {/* Welcome Banner */}
@@ -28,8 +43,11 @@ export function UserStatsSection({ session, myAgentsCount, publicCount, bookmark
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
         <div className="relative z-10 flex items-center gap-4">
           <Avatar className="h-14 w-14 border-2 border-white/30 shadow-lg">
+            {avatarUrl ? (
+              <AvatarImage src={avatarUrl} alt={displayName} />
+            ) : null}
             <AvatarFallback className="bg-white/20 text-white text-lg font-bold">
-              {(session?.user?.name || 'U').charAt(0).toUpperCase()}
+              {displayName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
@@ -39,7 +57,7 @@ export function UserStatsSection({ session, myAgentsCount, publicCount, bookmark
               </Badge>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold">
-              Welcome back, {session?.user?.name?.split(' ')[0] || 'Developer'}!
+              Welcome back, {firstName}!
             </h1>
             <p className="text-white/70 text-sm mt-1">
               {myAgentsCount > 0

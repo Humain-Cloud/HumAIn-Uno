@@ -747,3 +747,64 @@ Files Modified:
 Files Created:
 - src/app/api/setup-supabase/route.ts - Supabase setup API route (GET + POST)
 - src/app/dashboard/page.tsx - Complete rebuild with modular components, diagnostic banner, 6 tabs
+
+---
+
+## Session: 2026-06-14 (Phase 10 - Fix /dashboard ERR_TOO_MANY_REDIRECTS)
+
+---
+Task ID: 10
+Agent: Main Agent
+Task: Fix /dashboard page that doesn't open for logged-in users (ERR_TOO_MANY_REDIRECTS)
+
+Work Log:
+- Analyzed uploaded screenshot showing ERR_TOO_MANY_REDIRECTS error on /dashboard
+- Diagnosed root causes:
+  1. **No /dashboard page route existed** - `src/app/dashboard/page.tsx` was missing, so navigating to /dashboard hit no page
+  2. **Middleware redirected logged-in users from /auth/signin to /dashboard** - but /dashboard didn't exist as a route, creating redirect loops
+  3. **Auth callback redirected to /dashboard** - same dead-end
+  4. **DashboardView used next-auth** - imported `useSession` from `next-auth/react` and destructured wrong properties from `useRequireAuth()` (returned `user`/`loading`, not `session`/`status`)
+- Created /dashboard page route (src/app/dashboard/page.tsx):
+  - Follows same pattern as /browse and /settings pages
+  - Dynamic import of DashboardView with ssr: false
+  - Syncs Zustand store's currentView on mount
+  - Loading spinner while DashboardView loads
+- Completely rewrote DashboardView (src/components/views/dashboard-view.tsx):
+  - Replaced next-auth useSession with Supabase useAuth() from auth-provider
+  - Proper destructuring: { user, profile, loading: authLoading, refreshProfile } instead of wrong { session, status, isAuthenticated }
+  - Built `userInfo` memoized object compatible with sub-components (replaces session prop)
+  - Proper router.push() navigation instead of Zustand setCurrentView
+  - Authenticated view: Welcome banner, stats, tabs (Overview, My Agents, Collections, Settings)
+  - Non-authenticated view: Recently viewed, platform stats, recent agents, sign-in CTA
+- Updated UserStatsSection (src/components/dashboard/user-stats-section.tsx):
+  - Replaced `session: any` prop with `userInfo: UserInfo` typed prop
+  - Accesses name via `userInfo.user?.name`, avatar via `userInfo.user?.avatar_url`
+  - Supports both Supabase profile and auth metadata as avatar sources
+- Updated SettingsSection (src/components/dashboard/settings-section.tsx):
+  - Complete rewrite with full-scale profile management
+  - Replaced `session: any` prop with `userInfo: UserInfo` typed prop
+  - Editable profile fields: Display Name, Bio, Company, Job Title, Location, Website
+  - Save to Supabase profiles table with upsert, fallback to auth user metadata
+  - Added notification preferences section (email notifications, agent updates, weekly digest)
+  - Added account actions (sign out, export data)
+  - Added danger zone (delete account)
+  - Profile refresh button
+  - Success/error feedback on save
+- Verified via agent-browser: /dashboard loads with 200, no redirect loops, no console errors
+- Verified via dev logs: All /dashboard requests return 200, no error entries
+
+Stage Summary:
+- ROOT CAUSE FIXED: /dashboard route page was missing, now created
+- DashboardView fully migrated from next-auth to Supabase auth
+- Sub-components (UserStatsSection, SettingsSection) updated with typed Supabase user data
+- Settings section now has full profile editing with save to Supabase
+- No more ERR_TOO_MANY_REDIRECTS errors
+- No more incorrect auth state detection (was using wrong destructuring)
+
+Files Created:
+- src/app/dashboard/page.tsx - Dashboard route page
+
+Files Modified:
+- src/components/views/dashboard-view.tsx - Complete rewrite using Supabase auth
+- src/components/dashboard/user-stats-section.tsx - Updated for Supabase userInfo
+- src/components/dashboard/settings-section.tsx - Complete rewrite with profile editing
