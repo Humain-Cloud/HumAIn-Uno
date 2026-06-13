@@ -52,3 +52,15 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# QA screenshots
+qa-*.png
+
+# Download folder
+/download/
+
+# Agent context (internal)
+/agent-ctx/
+
+# Dev server PID
+.zscripts/dev.pid

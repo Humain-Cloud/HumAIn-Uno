@@ -58,37 +58,8 @@ import {
   Gamepad2,
   Scale,
   Cpu,
-  Newspaper,
-  Users,
-  ChefHat,
-  Bolt,
-  Truck,
-  Building,
-  HardHat,
-  Trophy,
-  Leaf,
-  ShieldCheck,
-  Ship,
-  Activity,
-  Dumbbell,
-  Calculator,
-  FileCheck,
-  Recycle,
-  Award,
-  Route,
-  Package,
-  Fuel,
-  Landmark,
-  Hotel,
-  Pill,
-  Radio,
-  Mountain,
-  Rocket,
-  Stethoscope,
-  HeartHandshake,
-  Container,
-  Siren,
 } from 'lucide-react'
+import { parseAgent } from '@/components/shared/agent-ui'
 
 // ─── Framework Color Config ───
 
@@ -106,21 +77,12 @@ function getFrameworkColor(framework: string | null) {
   return frameworkColors[framework] || defaultFrameworkColor
 }
 
-function parseAgent(a: any): KnowledgeAgent {
-  return {
-    ...a,
-    tools: typeof a.tools === 'string' ? JSON.parse(a.tools || '[]') : a.tools || [],
-    models: typeof a.models === 'string' ? JSON.parse(a.models || '[]') : a.models || [],
-    tags: typeof a.tags === 'string' ? JSON.parse(a.tags || '[]') : a.tags || [],
-  }
-}
-
 type DetailTab = 'overview' | 'capabilities' | 'prompts' | 'architecture' | 'setup' | 'config' | 'faq' | 'related'
 
 // ─── Icon mapping for capabilities ───
 function getCapIcon(iconName: string) {
   const map: Record<string, React.ComponentType<{ className?: string }>> = {
-    BookOpen, Brain, BarChart3, GitBranch, Zap, FileCode, Workflow, MessageSquare, Heart, Globe, User, Palette, Layers, Shield, Search, Database, Code2, CheckCircle2, Mail, ShoppingBag, Sprout, GraduationCap, Briefcase, Plane, Music, Gamepad2, Scale, Cpu, Wrench, Newspaper, Users, ChefHat, Bolt, Truck, Building, Clock, FileText, Target, HardHat, Trophy, Leaf, ShieldCheck, Ship, Activity, Dumbbell, Calculator, FileCheck, Recycle, Award, Route, Package, Fuel, Landmark, Hotel, Pill, Radio, Mountain, Rocket, Stethoscope, HeartHandshake, Container, Siren,
+    BookOpen, Brain, BarChart3, GitBranch, Zap, FileCode, Workflow, MessageSquare, Heart, Globe, User, Palette, Layers, Shield, Search, Database, Code2, CheckCircle2, Mail, ShoppingBag, Sprout, GraduationCap, Briefcase, Plane, Music, Gamepad2, Scale, Cpu, Wrench,
   }
   return map[iconName] || Brain
 }

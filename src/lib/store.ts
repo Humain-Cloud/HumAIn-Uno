@@ -386,7 +386,7 @@ export const useAppStore = create<AppState>((set) => ({
           id: 'notif-welcome',
           type: 'system',
           title: 'Welcome to Humain-Uno!',
-          message: 'Explore 700+ curated AI agent projects across 5 frameworks. Start browsing or create your own agent.',
+          message: 'Explore 800+ curated AI agent projects across 5 frameworks. Start browsing or create your own agent.',
           read: false,
           createdAt: new Date().toISOString(),
         },

@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCached, setCache } from '@/lib/cache'
 
-// GET /api/stats - Platform statistics
+// GET /api/stats - Platform statistics (memory-efficient)
 export async function GET() {
   try {
     const cacheKey = 'stats:platform'
     const cached = getCached<any>(cacheKey)
     if (cached) return NextResponse.json(cached)
 
-    // Run all count queries in parallel
+    // Run all count queries in parallel - these are lightweight
     const [
       userAgentCount,
       knowledgeAgentCount,
@@ -22,24 +22,26 @@ export async function GET() {
 
     const totalAgents = userAgentCount + knowledgeAgentCount
 
-    // Get framework distribution from knowledge agents
-    const knowledgeFrameworks = await db.knowledgeAgent.findMany({
-      where: { framework: { not: null } },
-      select: { framework: true },
-    })
+    // Use groupBy for efficient aggregation instead of loading all records
+    const [knowledgeFrameworkGroups, userAgentFrameworkGroups] = await Promise.all([
+      db.knowledgeAgent.groupBy({
+        by: ['framework'],
+        where: { framework: { not: null } },
+        _count: { framework: true },
+      }),
+      db.agent.groupBy({
+        by: ['framework'],
+        where: { framework: { not: null } },
+        _count: { framework: true },
+      }),
+    ])
 
-    // Get framework distribution from user agents
-    const userFrameworks = await db.agent.findMany({
-      where: { framework: { not: null } },
-      select: { framework: true },
-    })
-
-    // Count frameworks (normalize case)
+    // Merge framework counts
     const frameworkMap = new Map<string, number>()
-    for (const { framework } of [...knowledgeFrameworks, ...userFrameworks]) {
-      if (framework) {
-        const normalized = framework.charAt(0).toUpperCase() + framework.slice(1).toLowerCase()
-        frameworkMap.set(normalized, (frameworkMap.get(normalized) || 0) + 1)
+    for (const group of [...knowledgeFrameworkGroups, ...userAgentFrameworkGroups]) {
+      if (group.framework) {
+        const normalized = group.framework.charAt(0).toUpperCase() + group.framework.slice(1).toLowerCase()
+        frameworkMap.set(normalized, (frameworkMap.get(normalized) || 0) + group._count.framework)
       }
     }
 
@@ -48,23 +50,25 @@ export async function GET() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10)
 
-    // Get industry distribution from knowledge agents
-    const knowledgeIndustries = await db.knowledgeAgent.findMany({
-      where: { industry: { not: null } },
-      select: { industry: true },
-    })
+    // Use groupBy for industry aggregation
+    const [knowledgeIndustryGroups, userAgentIndustryGroups] = await Promise.all([
+      db.knowledgeAgent.groupBy({
+        by: ['industry'],
+        where: { industry: { not: null } },
+        _count: { industry: true },
+      }),
+      db.agent.groupBy({
+        by: ['industry'],
+        where: { industry: { not: null } },
+        _count: { industry: true },
+      }),
+    ])
 
-    const userIndustries = await db.agent.findMany({
-      where: { industry: { not: null } },
-      select: { industry: true },
-    })
-
-    // Normalize industry names
     const industryMap = new Map<string, number>()
-    for (const { industry } of [...knowledgeIndustries, ...userIndustries]) {
-      if (industry) {
-        const normalized = industry.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-        industryMap.set(normalized, (industryMap.get(normalized) || 0) + 1)
+    for (const group of [...knowledgeIndustryGroups, ...userAgentIndustryGroups]) {
+      if (group.industry) {
+        const normalized = group.industry.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+        industryMap.set(normalized, (industryMap.get(normalized) || 0) + group._count.industry)
       }
     }
 
@@ -73,21 +77,16 @@ export async function GET() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10)
 
-    // Get difficulty distribution
-    const knowledgeDifficulties = await db.knowledgeAgent.findMany({
+    // Use groupBy for difficulty aggregation
+    const difficultyGroups = await db.knowledgeAgent.groupBy({
+      by: ['difficulty'],
       where: { difficulty: { not: null } },
-      select: { difficulty: true },
+      _count: { difficulty: true },
     })
 
-    const difficultyMap = new Map<string, number>()
-    for (const { difficulty } of knowledgeDifficulties) {
-      if (difficulty) {
-        difficultyMap.set(difficulty, (difficultyMap.get(difficulty) || 0) + 1)
-      }
-    }
-
-    const difficultyDistribution = Array.from(difficultyMap.entries())
-      .map(([name, count]) => ({ name, count }))
+    const difficultyDistribution = difficultyGroups
+      .filter(g => g.difficulty)
+      .map(g => ({ name: g.difficulty!, count: g._count.difficulty }))
       .sort((a, b) => b.count - a.count)
 
     const result = {

@@ -5,29 +5,18 @@ import { getCached, setCache } from '@/lib/cache'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const q = searchParams.get('q') || ''
     const framework = searchParams.get('framework') || ''
     const industry = searchParams.get('industry') || ''
     const category = searchParams.get('category') || ''
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
     const pageSize = Math.min(50, Math.max(1, parseInt(searchParams.get('pageSize') || '20')))
 
-    const cacheKey = `knowledge:list:${q}:${framework}:${industry}:${category}:${page}:${pageSize}`
+    const cacheKey = `knowledge:list:${framework}:${industry}:${category}:${page}:${pageSize}`
     const cached = getCached<any>(cacheKey)
     if (cached) return NextResponse.json(cached)
 
     // Build where conditions
     const where: any = { AND: [] }
-
-    if (q) {
-      where.AND.push({
-        OR: [
-          { name: { contains: q } },
-          { description: { contains: q } },
-          { tags: { contains: q } },
-        ],
-      })
-    }
 
     if (framework) {
       where.AND.push({ framework: { contains: framework } })

@@ -50,7 +50,7 @@ export function HeroSection({ stats, onNavigate }: HeroSectionProps) {
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-emerald-100 text-sm mb-8"
           >
             <Sparkles className="h-4 w-4" aria-hidden="true" />
-            Powered by 700+ curated AI agent projects
+            Powered by 800+ curated AI agent projects
           </motion.div>
 
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-[1.1] tracking-tight">
@@ -60,7 +60,7 @@ export function HeroSection({ stats, onNavigate }: HeroSectionProps) {
             </span>
           </h1>
           <p className="text-lg sm:text-xl text-emerald-100/90 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Explore 700+ curated AI agents across 5 frameworks. Find the perfect starting point, 
+            Explore 800+ curated AI agents across 5 frameworks. Find the perfect starting point, 
             remix with your own twist, or build from scratch with AI assistance.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

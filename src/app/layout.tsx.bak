@@ -1,0 +1,56 @@
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import { Toaster } from "@/components/ui/toaster";
+import { Providers } from "./providers";
+import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Humain-Uno - AI Agent Marketplace",
+  description: "Discover, build, and share AI agents. Explore 800+ curated agents across LangGraph, CrewAI, AutoGen, Agno, and LlamaIndex.",
+  keywords: ["AI Agents", "LangGraph", "CrewAI", "AutoGen", "Agno", "LlamaIndex", "Agent Marketplace"],
+  authors: [{ name: "Humain-Uno Team" }],
+  icons: {
+    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+  },
+  openGraph: {
+    title: "Humain-Uno - AI Agent Marketplace",
+    description: "Discover, build, and share AI agents with 800+ curated templates",
+    type: "website",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+      >
+        <Providers>
+          <div className="min-h-screen flex flex-col">
+            <div className="h-[1px] bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </div>
+          <Toaster />
+        </Providers>
+      </body>
+    </html>
+  );
+}
