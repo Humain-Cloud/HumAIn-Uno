@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -62,7 +62,7 @@ function VerifyEmailForm() {
 
     const checkVerification = async () => {
       try {
-        const supabase = createSupabaseBrowserClient()
+        const supabase = getSupabaseBrowserClient()
         const { data } = await supabase.auth.getSession()
 
         if (data.session?.user?.email_confirmed_at) {
@@ -93,7 +93,7 @@ function VerifyEmailForm() {
     setResendLoading(true)
 
     try {
-      const supabase = createSupabaseBrowserClient()
+      const supabase = getSupabaseBrowserClient()
       const { error: resendError } = await supabase.auth.signUp({
         email,
         password: '', // Supabase will resend verification if user exists

@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
 import { motion } from 'framer-motion'
 import type { UserProfile } from '@/lib/supabase/types'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { useAuth } from '@/components/auth/auth-provider'
 
 interface UserInfo {
@@ -60,7 +60,7 @@ export function SettingsSection({ userInfo, onRefreshProfile, profileRefreshing 
     setSaveError('')
 
     try {
-      const supabase = createSupabaseBrowserClient()
+      const supabase = getSupabaseBrowserClient()
 
       // Update auth user metadata
       const { error: authError } = await supabase.auth.updateUser({

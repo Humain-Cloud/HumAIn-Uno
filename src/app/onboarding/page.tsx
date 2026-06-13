@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/auth-provider'
 import { motion } from 'framer-motion'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { OnboardingStep } from '@/components/auth/onboarding-step'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -298,7 +298,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const supabase = createSupabaseBrowserClient()
+        const supabase = getSupabaseBrowserClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
           setUserEmail(user.email ?? null)

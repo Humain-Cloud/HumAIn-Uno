@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useAppStore } from '@/lib/store'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { LogIn, Loader2, Mail, Lock, Eye, EyeOff, Chrome, Github, Sparkles, AlertCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -29,7 +29,12 @@ function getSupabaseErrorMessage(error: string): string {
 
 export function AuthModal() {
   const { showAuthModal, setShowAuthModal, authCallback, setAuthCallback } = useAppStore()
+  const { supabase: contextSupabase } = useAuth()
   const router = useRouter()
+
+  // Use the shared Supabase client from the auth context.
+  // Falls back to the singleton if context isn't available (shouldn't happen).
+  const supabase = contextSupabase ?? getSupabaseBrowserClient()
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -68,7 +73,6 @@ export function AuthModal() {
     setSuccess('')
 
     try {
-      const supabase = createSupabaseBrowserClient()
       const { error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -111,7 +115,6 @@ export function AuthModal() {
     setSuccess('')
 
     try {
-      const supabase = createSupabaseBrowserClient()
       const { error: authError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -144,7 +147,6 @@ export function AuthModal() {
     setError('')
     setOauthLoading(provider)
     try {
-      const supabase = createSupabaseBrowserClient()
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -172,7 +174,6 @@ export function AuthModal() {
 
     setLoading(true)
     try {
-      const supabase = createSupabaseBrowserClient()
       const { error: authError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {

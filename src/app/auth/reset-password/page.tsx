@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -71,7 +71,7 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const supabase = createSupabaseBrowserClient()
+        const supabase = getSupabaseBrowserClient()
         const { data } = await supabase.auth.getSession()
 
         if (data.session) {
@@ -141,7 +141,7 @@ export default function ResetPasswordPage() {
 
     setLoading(true)
     try {
-      const supabase = createSupabaseBrowserClient()
+      const supabase = getSupabaseBrowserClient()
       const { error: updateError } = await supabase.auth.updateUser({
         password,
       })

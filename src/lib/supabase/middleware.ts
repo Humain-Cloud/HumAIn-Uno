@@ -2,66 +2,74 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * Updates the Supabase auth session in middleware.
+ * Lightweight Supabase auth session refresh middleware.
  *
- * This function:
- * 1. Creates a Supabase server client using the request's cookies
- * 2. Refreshes the auth session (handling token refresh automatically)
- * 3. Returns a NextResponse with any updated auth cookies set
+ * This middleware ONLY refreshes auth tokens when they exist in cookies.
+ * It does NOT call supabase.auth.getUser() on every request when no auth
+ * cookies are present, avoiding unnecessary external HTTP calls to the
+ * Supabase API which could cause performance issues or server crashes.
  *
- * IMPORTANT: The middleware only handles session refresh. Route protection
- * is handled client-side by each page component (e.g., UnauthenticatedView
- * in the Dashboard page). This avoids redirect loops and ensures the auth
- * session is always properly refreshed before the page loads.
+ * Session validation happens client-side via the AuthProvider.
  */
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
+  // Check if there are any Supabase auth cookies present.
+  // If not, there's nothing to refresh — skip entirely.
+  const allCookies = request.cookies.getAll()
+  const hasAuthCookies = allCookies.some((c) => c.name.startsWith('sb-'))
+
+  if (!hasAuthCookies) {
+    return supabaseResponse
+  }
+
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) =>
+              request.cookies.set(name, value)
+            )
+            supabaseResponse = NextResponse.next({
+              request,
+            })
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
+            )
+          },
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
+      }
+    )
+
+    // Refresh the session by calling getUser() — this also refreshes the
+    // access token if it's expired. Wrapped in a timeout for safety.
+    const result = await Promise.race([
+      supabase.auth.getUser(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+    ])
+
+    if (result && 'data' in result && result.data?.user) {
+      // If user is signed in and trying to access auth pages, redirect to dashboard
+      const pathname = request.nextUrl.pathname
+      if (pathname === '/auth/signin' || pathname === '/auth/signup') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
+        return NextResponse.redirect(url)
+      }
     }
-  )
-
-  // IMPORTANT: Avoid writing any logic between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  // If user is signed in and trying to access auth sign-in/sign-up pages,
-  // redirect to dashboard. This prevents logged-in users from seeing the
-  // sign-in form again. Other auth pages (callback, verify, reset) are allowed.
-  if (user) {
-    const isAuthMainPage =
-      request.nextUrl.pathname === '/auth/signin' ||
-      request.nextUrl.pathname === '/auth/signup'
-
-    if (isAuthMainPage) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/dashboard'
-      return NextResponse.redirect(url)
-    }
+  } catch (error) {
+    // Gracefully handle errors — don't block the request
+    console.warn('[Middleware] Auth session refresh failed:',
+      error instanceof Error ? error.message : 'Unknown error')
   }
 
   return supabaseResponse

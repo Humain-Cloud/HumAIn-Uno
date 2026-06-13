@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -59,7 +59,7 @@ export default function ForgotPasswordPage() {
 
     setLoading(true)
     try {
-      const supabase = createSupabaseBrowserClient()
+      const supabase = getSupabaseBrowserClient()
       const { error: authError } = await supabase.auth.resetPasswordForEmail(
         email.trim(),
         {

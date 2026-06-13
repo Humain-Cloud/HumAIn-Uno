@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -134,7 +134,7 @@ export default function SignUpPage() {
 
     setLoading(true)
     try {
-      const supabase = createSupabaseBrowserClient()
+      const supabase = getSupabaseBrowserClient()
       const { error: authError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -165,7 +165,7 @@ export default function SignUpPage() {
     setError('')
     setOauthLoading(provider)
     try {
-      const supabase = createSupabaseBrowserClient()
+      const supabase = getSupabaseBrowserClient()
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {

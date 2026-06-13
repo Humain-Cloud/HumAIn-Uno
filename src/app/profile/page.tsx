@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/auth-provider'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 
 // shadcn/ui
 import { Button } from '@/components/ui/button'
@@ -334,7 +334,7 @@ function SettingsCard({
 export default function ProfilePage() {
   const router = useRouter()
   const { user, profile, loading: authLoading, signOut, refreshProfile } = useAuth()
-  const supabase = createSupabaseBrowserClient()
+  const supabase = getSupabaseBrowserClient()
 
   const [activeTab, setActiveTab] = useState('profile')
   const [editing, setEditing] = useState(false)

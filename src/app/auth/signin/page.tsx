@@ -3,7 +3,7 @@
 import { Suspense, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -95,7 +95,7 @@ function SignInForm() {
 
     setLoading(true)
     try {
-      const supabase = createSupabaseBrowserClient()
+      const supabase = getSupabaseBrowserClient()
       const { error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -119,7 +119,7 @@ function SignInForm() {
     setError('')
     setOauthLoading(provider)
     try {
-      const supabase = createSupabaseBrowserClient()
+      const supabase = getSupabaseBrowserClient()
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -151,7 +151,7 @@ function SignInForm() {
 
     setMagicLinkLoading(true)
     try {
-      const supabase = createSupabaseBrowserClient()
+      const supabase = getSupabaseBrowserClient()
       const { error: authError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
