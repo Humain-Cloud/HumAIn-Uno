@@ -50,8 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Fetch user profile from the `profiles` table
+  // Falls back to auth user metadata if profiles table doesn't exist yet
   const fetchProfile = useCallback(
-    async (userId: string): Promise<UserProfile | null> => {
+    async (userId: string, user?: User | null): Promise<UserProfile | null> => {
       try {
         const supabase = getSupabase()
         const { data, error } = await supabase
@@ -61,11 +62,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .single()
 
         if (error) {
-          console.error('Failed to fetch profile:', error.message)
+          // If the profiles table doesn't exist yet, construct a profile from auth metadata
+          if (error.code === '42P01' || error.message?.includes('not find the table')) {
+            console.info('Profiles table not yet created - using auth metadata as fallback')
+          } else {
+            console.warn('Failed to fetch profile:', error.message)
+          }
+
+          // Fallback: construct profile from auth user metadata
+          if (user) {
+            return {
+              id: user.id,
+              email: user.email ?? '',
+              full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+              avatar_url: user.user_metadata?.avatar_url || null,
+              bio: null,
+              company: null,
+              job_title: null,
+              location: null,
+              website: null,
+              preferred_framework: null,
+              preferred_industry: null,
+              onboarding_completed: false,
+              onboarding_step: 0,
+              created_at: user.created_at,
+              updated_at: new Date().toISOString(),
+            }
+          }
           return null
         }
         return data as UserProfile
       } catch {
+        // Fallback: construct profile from auth user metadata
+        if (user) {
+          return {
+            id: user.id,
+            email: user.email ?? '',
+            full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+            avatar_url: user.user_metadata?.avatar_url || null,
+            bio: null,
+            company: null,
+            job_title: null,
+            location: null,
+            website: null,
+            preferred_framework: null,
+            preferred_industry: null,
+            onboarding_completed: false,
+            onboarding_step: 0,
+            created_at: user.created_at,
+            updated_at: new Date().toISOString(),
+          }
+        }
         return null
       }
     },
@@ -75,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Public refreshProfile so consumers can manually reload
   const refreshProfile = useCallback(async (): Promise<UserProfile | null> => {
     if (!user) return null
-    const updated = await fetchProfile(user.id)
+    const updated = await fetchProfile(user.id, user)
     setProfile(updated)
     return updated
   }, [user, fetchProfile])
@@ -100,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(currentSession?.user ?? null)
 
       if (currentSession?.user) {
-        fetchProfile(currentSession.user.id).then((p) => setProfile(p))
+        fetchProfile(currentSession.user.id, currentSession.user).then((p) => setProfile(p))
       }
       setLoading(false)
     })
@@ -113,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newSession?.user ?? null)
 
       if (newSession?.user) {
-        fetchProfile(newSession.user.id).then((p) => setProfile(p))
+        fetchProfile(newSession.user.id, newSession.user).then((p) => setProfile(p))
       } else {
         setProfile(null)
       }

@@ -72,6 +72,9 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith(`${route}/`)
   )
 
+  // Allow auth callback route regardless of auth state
+  const isAuthCallback = request.nextUrl.pathname.startsWith('/auth/callback')
+
   // If user is not signed in and the route is protected, redirect to auth
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone()
@@ -80,11 +83,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // If user is signed in and trying to access auth pages, redirect to dashboard
+  // If user is signed in and trying to access auth pages,
+  // only redirect to dashboard for signin/signup (not for password reset, verification, etc.)
   if (user && request.nextUrl.pathname.startsWith('/auth')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+    const isAuthMainPage =
+      request.nextUrl.pathname === '/auth/signin' ||
+      request.nextUrl.pathname === '/auth/signup'
+
+    // Allow access to verification, password reset, and callback pages even when authenticated
+    if (isAuthMainPage) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
