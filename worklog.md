@@ -672,3 +672,78 @@ Files Modified:
 - Navbar Profile dropdown correctly links to /profile
 - Auth flow works (Supabase sign-in verified via API)
 - Zero lint errors in all modified files
+
+---
+
+## Session: 2026-03-05 (Phase 9 - Dashboard Hang Bug Fix & Supabase Setup API)
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix dashboard page not opening for logged-in users due to Supabase missing tables + auth provider timeout
+
+Work Log:
+- Diagnosed three issues causing dashboard page to not open:
+  1. Supabase `profiles` table doesn't exist - migration SQL exists but hasn't been run
+  2. Auth provider has no timeout - `getSession()` and `fetchProfile()` hang forever when Supabase is slow/unreachable, leaving `loading=true` indefinitely
+  3. Dashboard page is a 957-line monolith importing many components
+- **Fixed Auth Provider** (src/components/auth/auth-provider.tsx):
+  - Added `withTimeout()` helper that races a promise against a timer and returns a fallback value
+  - Added 5-second timeout to `getSession()` call (`SESSION_TIMEOUT_MS = 5000`)
+  - Added 3-second timeout to `fetchProfile()` call (`PROFILE_TIMEOUT_MS = 3000`)
+  - Added maximum loading time safeguard (`MAX_LOADING_MS = 8000`) - after 8 seconds, `loading` is forced to false regardless of any pending promises
+  - Extracted `buildProfileFallback()` helper for constructing UserProfile from auth metadata
+  - Added `finally(() => clearTimeout(timer))` to prevent memory leaks
+  - Added `cancelled` flag to prevent state updates after unmount
+  - Added try/catch around signOut to prevent errors from propagating
+  - Profile fetch timeout now uses same fallback as missing table (auth metadata)
+- **Created Supabase Setup API Route** (src/app/api/setup-supabase/route.ts):
+  - GET endpoint: Checks if profiles and user_preferences tables exist by querying them with service role key
+  - GET returns: configured status, tablesExist, profilesTableExists, userPreferencesTableExists, sqlContent, dashboardUrl, projectRef
+  - POST endpoint: Tries three strategies to create tables:
+    1. Direct PostgreSQL connection via `pg` (requires SUPABASE_DB_URL env var)
+    2. Supabase Management API (requires SUPABASE_ACCESS_TOKEN env var)
+    3. Supabase RPC call (if `exec_sql` function exists)
+  - Falls back to returning SQL content + instructions for manual execution via Supabase Dashboard SQL Editor
+  - Returns dashboard URL for easy one-click access to SQL editor
+- **Rebuilt Dashboard Page** (src/app/dashboard/page.tsx):
+  - Split from 957-line monolith into modular sub-components:
+    - `UnauthenticatedView` - CTA for non-authenticated users
+    - `DashboardLoading` - Full-page loading skeleton
+    - `StatCard` - Reusable stat card component
+    - `SupabaseDiagnosticBanner` - Diagnostic banner shown when tables are missing (auto-checks, auto-setup button, copy SQL button, open SQL editor link, re-check button)
+    - `OverviewTab` - Activity feed, quick actions, platform stats
+    - `MyAgentsTab` - Agent list with privacy filter, empty state, delete confirmation
+    - `CollectionsTab` - Collection management with create/delete
+    - `BookmarksTab` - Bookmarked agents with remove functionality
+    - `ActivityTab` - Activity timeline + platform insights
+    - `ProfileTab` - Profile info, edit button, sign out
+  - Added 6 tabs: Overview, My Agents, Collections, Bookmarks, Activity, Profile (was 4)
+  - Added `SupabaseDiagnosticBanner` component that:
+    - Auto-checks table status on mount via /api/setup-supabase
+    - Only appears when tables are missing (not intrusive when everything works)
+    - Shows which tables exist/missing with ✓/✗ badges
+    - "Auto-Setup" button tries POST to create tables automatically
+    - "Copy SQL" button copies migration SQL to clipboard
+    - "Open SQL Editor" button opens Supabase Dashboard directly
+    - "Re-check" button to re-verify after manual SQL execution
+    - Shows setup result (success/failure with method)
+  - Improved responsive design: ScrollArea wrapper for tab list on mobile
+  - All callbacks wrapped in useCallback for performance
+  - Proper AnimatePresence and motion transitions
+  - Zero lint errors in all modified files
+
+Stage Summary:
+- Auth provider timeout fix resolves the "dashboard doesn't open" bug permanently
+- Even if Supabase is completely unreachable, the dashboard will render within 8 seconds max
+- Missing profiles table is handled gracefully with auth metadata fallback
+- Users get a clear diagnostic banner when tables are missing, with one-click setup options
+- Dashboard page is now modular with well-organized sub-components
+- API endpoint allows programmatic table creation when credentials are available
+
+Files Modified:
+- src/components/auth/auth-provider.tsx - Added timeout mechanism (withTimeout, MAX_LOADING_MS, SESSION_TIMEOUT_MS, PROFILE_TIMEOUT_MS)
+
+Files Created:
+- src/app/api/setup-supabase/route.ts - Supabase setup API route (GET + POST)
+- src/app/dashboard/page.tsx - Complete rebuild with modular components, diagnostic banner, 6 tabs

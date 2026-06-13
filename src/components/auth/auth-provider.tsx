@@ -14,6 +14,29 @@ import type { User, Session } from '@supabase/supabase-js'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import type { UserProfile } from '@/lib/supabase/types'
 
+// ─────────────────────────────────────────────────
+// Timeout helper – races a promise against a timer
+// and returns `fallback` if the timer wins.
+// ─────────────────────────────────────────────────
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  fallback: T,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => {
+      timer = setTimeout(() => resolve(fallback), ms)
+    }),
+  ]).finally(() => clearTimeout(timer))
+}
+
+// Maximum time the auth provider will stay in "loading" state
+const MAX_LOADING_MS = 8_000
+const SESSION_TIMEOUT_MS = 5_000
+const PROFILE_TIMEOUT_MS = 3_000
+
 interface AuthContextValue {
   user: User | null
   profile: UserProfile | null
@@ -49,74 +72,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return supabaseRef.current
   }, [])
 
-  // Fetch user profile from the `profiles` table
-  // Falls back to auth user metadata if profiles table doesn't exist yet
+  // Build a fallback UserProfile from the auth User object
+  const buildProfileFallback = useCallback(
+    (u: User): UserProfile => ({
+      id: u.id,
+      email: u.email ?? '',
+      full_name: u.user_metadata?.full_name || u.user_metadata?.name || null,
+      avatar_url: u.user_metadata?.avatar_url || null,
+      bio: null,
+      company: null,
+      job_title: null,
+      location: null,
+      website: null,
+      preferred_framework: null,
+      preferred_industry: null,
+      onboarding_completed: false,
+      onboarding_step: 0,
+      created_at: u.created_at,
+      updated_at: new Date().toISOString(),
+    }),
+    [],
+  )
+
+  // Fetch user profile from the `profiles` table.
+  // Falls back to auth user metadata if the table doesn't exist or times out.
   const fetchProfile = useCallback(
-    async (userId: string, user?: User | null): Promise<UserProfile | null> => {
+    async (userId: string, u?: User | null): Promise<UserProfile | null> => {
       try {
         const supabase = getSupabase()
-        const { data, error } = await supabase
+        const profilePromise = supabase
           .from('profiles')
           .select('*')
           .eq('id', userId)
           .single()
 
+        const { data, error } = await withTimeout(
+          profilePromise,
+          PROFILE_TIMEOUT_MS,
+          { data: null, error: { message: 'Profile fetch timed out', code: 'TIMEOUT' } } as any,
+        )
+
         if (error) {
           // If the profiles table doesn't exist yet, construct a profile from auth metadata
-          if (error.code === '42P01' || error.message?.includes('not find the table')) {
-            console.info('Profiles table not yet created - using auth metadata as fallback')
+          if (
+            error.code === '42P01' ||
+            error.message?.includes('not find the table') ||
+            error.code === 'TIMEOUT'
+          ) {
+            console.info(
+              error.code === 'TIMEOUT'
+                ? 'Profile fetch timed out – using auth metadata as fallback'
+                : 'Profiles table not yet created – using auth metadata as fallback',
+            )
           } else {
             console.warn('Failed to fetch profile:', error.message)
           }
 
           // Fallback: construct profile from auth user metadata
-          if (user) {
-            return {
-              id: user.id,
-              email: user.email ?? '',
-              full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
-              avatar_url: user.user_metadata?.avatar_url || null,
-              bio: null,
-              company: null,
-              job_title: null,
-              location: null,
-              website: null,
-              preferred_framework: null,
-              preferred_industry: null,
-              onboarding_completed: false,
-              onboarding_step: 0,
-              created_at: user.created_at,
-              updated_at: new Date().toISOString(),
-            }
-          }
+          if (u) return buildProfileFallback(u)
           return null
         }
         return data as UserProfile
       } catch {
         // Fallback: construct profile from auth user metadata
-        if (user) {
-          return {
-            id: user.id,
-            email: user.email ?? '',
-            full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
-            avatar_url: user.user_metadata?.avatar_url || null,
-            bio: null,
-            company: null,
-            job_title: null,
-            location: null,
-            website: null,
-            preferred_framework: null,
-            preferred_industry: null,
-            onboarding_completed: false,
-            onboarding_step: 0,
-            created_at: user.created_at,
-            updated_at: new Date().toISOString(),
-          }
-        }
+        if (u) return buildProfileFallback(u)
         return null
       }
     },
-    [getSupabase]
+    [getSupabase, buildProfileFallback],
   )
 
   // Public refreshProfile so consumers can manually reload
@@ -129,8 +152,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign out handler
   const signOut = useCallback(async () => {
-    const supabase = getSupabase()
-    await supabase.auth.signOut()
+    try {
+      const supabase = getSupabase()
+      await supabase.auth.signOut()
+    } catch {
+      // Ignore sign-out errors (e.g. network failure)
+    }
     setUser(null)
     setProfile(null)
     setSession(null)
@@ -139,36 +166,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Subscribe to auth state changes on mount
   useEffect(() => {
+    let cancelled = false
     const supabase = getSupabase()
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession)
-      setUser(currentSession?.user ?? null)
-
-      if (currentSession?.user) {
-        fetchProfile(currentSession.user.id, currentSession.user).then((p) => setProfile(p))
+    // ── Maximum-loading safeguard ──
+    // No matter what happens, after MAX_LOADING_MS we flip loading to false
+    // so the UI never gets stuck on the loading skeleton forever.
+    const maxLoadingTimer = setTimeout(() => {
+      if (!cancelled) {
+        console.warn('Auth provider: max loading time reached – forcing loading=false')
+        setLoading(false)
       }
-      setLoading(false)
-    })
+    }, MAX_LOADING_MS)
 
-    // Listen for auth state changes
+    // ── Get initial session (with timeout) ──
+    const sessionPromise = supabase.auth.getSession()
+
+    withTimeout(
+      sessionPromise,
+      SESSION_TIMEOUT_MS,
+      { data: { session: null }, error: null } as any,
+    )
+      .then(({ data: { session: currentSession } }) => {
+        if (cancelled) return
+
+        setSession(currentSession)
+        setUser(currentSession?.user ?? null)
+
+        if (currentSession?.user) {
+          fetchProfile(currentSession.user.id, currentSession.user).then((p) => {
+            if (!cancelled) setProfile(p)
+          })
+        }
+
+        setLoading(false)
+        clearTimeout(maxLoadingTimer)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoading(false)
+          clearTimeout(maxLoadingTimer)
+        }
+      })
+
+    // ── Listen for auth state changes ──
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (cancelled) return
+
       setSession(newSession)
       setUser(newSession?.user ?? null)
 
       if (newSession?.user) {
-        fetchProfile(newSession.user.id, newSession.user).then((p) => setProfile(p))
+        fetchProfile(newSession.user.id, newSession.user).then((p) => {
+          if (!cancelled) setProfile(p)
+        })
       } else {
         setProfile(null)
       }
 
       setLoading(false)
+      clearTimeout(maxLoadingTimer)
     })
 
     return () => {
+      cancelled = true
+      clearTimeout(maxLoadingTimer)
       subscription.unsubscribe()
     }
   }, [getSupabase, fetchProfile])
