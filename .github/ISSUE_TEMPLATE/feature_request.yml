@@ -1,0 +1,127 @@
+name: 💡 Feature Request
+description: Suggest a new feature or enhancement for Humain-Uno
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a feature! Your input helps make Humain-Uno better for everyone.
+
+        **Before submitting:** Please search existing issues and discussions to see if this feature has already been requested.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? What limitation are you currently facing?
+      placeholder: |
+        I frequently need to compare LLM models across different use cases, but I can only compare them side-by-side on pricing and context window. I can't easily see which models are best for my specific use case (e.g., coding assistants for enterprise).
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your ideal solution. How would this feature work from a user's perspective?
+      placeholder: |
+        Add a "Use Case Ranking" view to the LLM Model Finder that lets me:
+        1. Select a use case from a dropdown (e.g., "Coding", "Creative Writing", "Analysis")
+        2. See models ranked by their Arena score for that specific category
+        3. Filter by budget range, open-source status, and other criteria
+        4. View a comparison table with all relevant KPIs for the top models
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative solutions or workarounds? How does your proposed solution compare?
+      placeholder: |
+        - I currently manually look up each model's Arena score for different categories, which is time-consuming.
+        - I've tried using the existing "Recommend" feature, but it doesn't give me a ranked view across all models for a specific use case.
+        - Another option would be to export the model data as CSV and analyze it externally, but that breaks the workflow.
+
+  - type: dropdown
+    id: feature-category
+    attributes:
+      label: Feature Category
+      description: Which area of the application does this feature relate to?
+      options:
+        - "Discovery & Search"
+        - "Agent Creation & Management"
+        - "LLM Model Finder"
+        - "Comparison & Analytics"
+        - "Social & Community"
+        - "Authentication & Security"
+        - "Dashboard & Settings"
+        - "API & Integrations"
+        - "Performance & Scalability"
+        - "Accessibility"
+        - "Design & UI/UX"
+        - "Documentation"
+        - "Developer Experience"
+        - "Other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - "🔴 Must-have — I can't use the product effectively without this"
+        - "🟠 High — Would significantly improve my workflow"
+        - "🟡 Medium — Nice to have, would be a quality-of-life improvement"
+        - "🟢 Low — Minor enhancement or convenience feature"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: willingness
+    attributes:
+      label: Would you be willing to contribute this feature?
+      description: Are you interested in implementing this feature yourself?
+      options:
+        - "Yes, I'd like to implement this feature"
+        - "Yes, with some guidance from maintainers"
+        - "Maybe, I'd need to learn more first"
+        - "No, I'm just suggesting the idea"
+    validations:
+      required: true
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups / Examples
+      description: Share any mockups, wireframes, screenshots of similar features in other tools, or links to inspiration.
+      placeholder: |
+        - Similar to how Arena.ai shows category-specific leaderboards
+        - The comparison table could look like the existing side-by-side compare view
+        - [Link to similar feature in another tool]
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other information that might be helpful. How many users would benefit? Is this time-sensitive?
+      placeholder: "This feature would be especially useful for enterprise users evaluating models for production deployments. It would save hours of manual research."
+
+  - type: checkboxes
+    id: pre-submission
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm the following before submitting
+      options:
+        - label: I have searched existing issues and discussions and confirmed this is not a duplicate
+          required: true
+        - label: I have clearly described the problem this feature would solve
+          required: true
+        - label: I have considered alternative solutions
+          required: true
+        - label: This is not a bug report (bugs should use the Bug Report template)
+          required: true

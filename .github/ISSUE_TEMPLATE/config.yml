@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Ask a Question
+    url: https://github.com/Humain-Cloud/HumAIn-Uno/discussions
+    about: Ask questions, share ideas, and connect with the Humain-Uno community through GitHub Discussions.
+  - name: 📖 Read the Documentation
+    url: https://github.com/Humain-Cloud/HumAIn-Uno#readme
+    about: Check the README and contributing guidelines before opening an issue.
+  - name: 🛡️ Report a Security Vulnerability
+    url: https://github.com/Humain-Cloud/HumAIn-Uno/security/advisories
+    about: Please report security vulnerabilities privately through GitHub Security Advisories. Do NOT use public issues for security reports.

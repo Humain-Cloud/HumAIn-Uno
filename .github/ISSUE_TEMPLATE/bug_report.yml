@@ -1,0 +1,149 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior in Humain-Uno
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report a bug! Please fill out the sections below to help us reproduce and fix the issue.
+
+        **Before submitting:** Please search existing issues to avoid duplicates.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: "When I click on the 'Fork Agent' button, nothing happens and the page becomes unresponsive."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed steps to reproduce the behavior. The more specific you are, the faster we can fix it.
+      placeholder: |
+        1. Navigate to the Agent Detail page for any agent
+        2. Click the 'Fork Agent' button in the action bar
+        3. Observe that the loading spinner appears indefinitely
+        4. Notice the browser console shows an error
+      render: bash
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: "Clicking 'Fork Agent' should create a fork of the agent and redirect me to the forked agent's detail page."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: A clear and concise description of what actually happened.
+      placeholder: "The button shows a loading spinner that never resolves. The fork is not created and the page becomes unresponsive."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How severely does this bug impact your ability to use Humain-Uno?
+      options:
+        - "🔴 Critical — Completely blocks usage / Data loss / Security issue"
+        - "🟠 High — Major feature broken, no workaround"
+        - "🟡 Medium — Feature partially broken, workaround available"
+        - "🟢 Low — Minor issue, cosmetic, or edge case"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Component
+      description: Which part of the application is affected?
+      options:
+        - "Home Page"
+        - "Browse / Knowledge Hub"
+        - "Agent Detail Page"
+        - "Agent Creation Wizard"
+        - "LLM Model Finder"
+        - "User Dashboard"
+        - "Authentication / Sign-in"
+        - "Search"
+        - "Notifications"
+        - "Collections"
+        - "Settings"
+        - "API / Backend"
+        - "Database / Prisma"
+        - "Supabase / Auth"
+        - "AI Chat Assistant"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots / Screen Recordings
+      description: If applicable, add screenshots or screen recordings to help explain the bug. You can drag and drop files here.
+      placeholder: "Drag and drop screenshots or GIFs here."
+
+  - type: textarea
+    id: error-logs
+    attributes:
+      label: Error Logs / Console Output
+      description: Paste any relevant error messages, stack traces, or browser console output. Please redact any sensitive information (API keys, tokens, personal data).
+      placeholder: |
+        Browser console:
+        Error: Failed to fork agent: Request failed with status 500
+            at forkAgent (api-client.ts:142)
+
+        Server log:
+        [ERROR] PrismaClientKnownRequestError: Invalid prisma.agent.create() invocation
+      render: bash
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Information
+      description: Please provide details about your environment when the bug occurred.
+      placeholder: |
+        - OS: macOS 15.2
+        - Browser: Chrome 131.0
+        - Device: Desktop
+        - Humain-Uno Version: 0.2.0
+        - Node.js/Bun version: Bun 1.1.38
+      render: bash
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other context about the bug. Were you logged in? Was it a specific agent or model? Any unusual conditions?
+      placeholder: "This only seems to happen with agents that have been forked before. Original agents fork fine."
+
+  - type: checkboxes
+    id: pre-submission
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm the following before submitting
+      options:
+        - label: I have searched existing issues and confirmed this is not a duplicate
+          required: true
+        - label: I have tested with the latest version of Humain-Uno
+          required: true
+        - label: I have included all the information needed to reproduce this bug
+          required: true
+        - label: This is not a security vulnerability (security issues should be reported privately — see SECURITY.md)
+          required: true
