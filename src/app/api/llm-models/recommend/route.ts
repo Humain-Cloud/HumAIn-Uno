@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
-// Use-case mapping: maps user intents to arena categories + capability requirements
+// Use-case mapping: maps user-facing categories to arena categories + capability requirements
 const USE_CASE_MAP: Record<string, {
   label: string
   description: string
@@ -9,30 +9,58 @@ const USE_CASE_MAP: Record<string, {
   arenaCategories: string[]
   requiredCapabilities: { input?: string[]; output?: string[] }
   priceWeight: 'low' | 'mid' | 'any'
+  extraFilter?: (m: { name: string; useCaseTags: string[] }) => boolean
 }> = {
   'general-chat': {
-    label: 'General Chat & Q&A',
+    label: 'Text & Chat',
     description: 'Everyday conversations, answering questions, explanations',
     icon: '💬',
     arenaCategories: ['text'],
-    requiredCapabilities: { input: ['text'], output: ['text'] },
+    requiredCapabilities: { output: ['text'] },
     priceWeight: 'low',
   },
   'coding': {
-    label: 'Coding & Development',
+    label: 'Coding',
     description: 'Code generation, debugging, code review, architecture',
     icon: '💻',
     arenaCategories: ['code'],
     requiredCapabilities: { input: ['text'], output: ['text'] },
     priceWeight: 'mid',
   },
-  'reasoning': {
-    label: 'Complex Reasoning',
+  'vision': {
+    label: 'Vision',
+    description: 'Image analysis, OCR, visual Q&A, diagram reading',
+    icon: '👁️',
+    arenaCategories: ['vision'],
+    requiredCapabilities: { input: ['image'], output: ['text'] },
+    priceWeight: 'mid',
+  },
+  'image-generation': {
+    label: 'Image Generation',
+    description: 'Creating and editing images from text descriptions',
+    icon: '🎨',
+    arenaCategories: ['text-to-image', 'image-edit'],
+    requiredCapabilities: { output: ['image'] },
+    priceWeight: 'any',
+  },
+  'video': {
+    label: 'Video',
+    description: 'Creating videos from text, images, or other videos',
+    icon: '🎬',
+    arenaCategories: ['text-to-video', 'image-to-video', 'video-to-video'],
+    requiredCapabilities: { output: ['video'] },
+    priceWeight: 'any',
+  },
+  'math-reasoning': {
+    label: 'Math & Reasoning',
     description: 'Math, logic puzzles, scientific analysis, deep thinking',
     icon: '🧠',
     arenaCategories: ['text'],
     requiredCapabilities: { input: ['text'], output: ['text'] },
     priceWeight: 'mid',
+    extraFilter: (m) =>
+      m.name.toLowerCase().includes('thinking') ||
+      m.useCaseTags.includes('high-accuracy'),
   },
   'creative-writing': {
     label: 'Creative Writing',
@@ -41,6 +69,16 @@ const USE_CASE_MAP: Record<string, {
     arenaCategories: ['text'],
     requiredCapabilities: { input: ['text'], output: ['text'] },
     priceWeight: 'low',
+    extraFilter: (m) => m.useCaseTags.includes('chat'),
+  },
+  // Legacy use cases kept for backward compatibility with Find Your Model tab
+  'reasoning': {
+    label: 'Complex Reasoning',
+    description: 'Math, logic puzzles, scientific analysis, deep thinking',
+    icon: '🧠',
+    arenaCategories: ['text'],
+    requiredCapabilities: { input: ['text'], output: ['text'] },
+    priceWeight: 'mid',
   },
   'document-analysis': {
     label: 'Document Analysis',
@@ -50,36 +88,12 @@ const USE_CASE_MAP: Record<string, {
     requiredCapabilities: { input: ['text', 'file'], output: ['text'] },
     priceWeight: 'mid',
   },
-  'vision': {
-    label: 'Image Understanding',
-    description: 'Image analysis, OCR, visual Q&A, diagram reading',
-    icon: '👁️',
-    arenaCategories: ['vision'],
-    requiredCapabilities: { input: ['image'], output: ['text'] },
-    priceWeight: 'mid',
-  },
-  'image-generation': {
-    label: 'Image Generation',
-    description: 'Creating images from text descriptions',
-    icon: '🎨',
-    arenaCategories: ['text-to-image'],
-    requiredCapabilities: { output: ['image'] },
-    priceWeight: 'any',
-  },
   'image-editing': {
     label: 'Image Editing',
     description: 'Modifying existing images, inpainting, style transfer',
     icon: '🖼️',
     arenaCategories: ['image-edit'],
     requiredCapabilities: { input: ['image'], output: ['image'] },
-    priceWeight: 'any',
-  },
-  'video-generation': {
-    label: 'Video Generation',
-    description: 'Creating videos from text or images',
-    icon: '🎬',
-    arenaCategories: ['text-to-video'],
-    requiredCapabilities: { output: ['video'] },
     priceWeight: 'any',
   },
   'web-development': {
@@ -139,6 +153,7 @@ export async function POST(request: NextRequest) {
         const inpCaps: string[] = Object.keys(JSON.parse(m.inputCapabilities || '{}'))
         const outCaps: string[] = Object.keys(JSON.parse(m.outputCapabilities || '{}'))
         const rankings: Record<string, any> = JSON.parse(m.categoryRankings || '{}')
+        const tags: string[] = JSON.parse(m.useCaseTags || '[]')
 
         // Arena category match (most important)
         const arenaMatch = useCaseConfig.arenaCategories.filter(c => cats.includes(c)).length
@@ -170,6 +185,11 @@ export async function POST(request: NextRequest) {
           (budget === 'free' && m.outputPricePerMillion === null) ||
           (m.outputPricePerMillion !== null && m.outputPricePerMillion <= budgetMax)
 
+        // Extra filter (for math-reasoning, creative-writing, etc.)
+        const passesExtraFilter = useCaseConfig.extraFilter
+          ? useCaseConfig.extraFilter({ name: m.name, useCaseTags: tags })
+          : true
+
         // Calculate specific ranking for this use case's arena
         let specificRank: number | null = null
         let specificRating: number | null = null
@@ -196,18 +216,19 @@ export async function POST(request: NextRequest) {
           inputCapabilities: inpCaps,
           outputCapabilities: outCaps,
           arenaCategories: cats,
-          useCaseTags: JSON.parse(m.useCaseTags || '[]'),
+          useCaseTags: tags,
           specificRank,
           specificRating,
           score,
           withinBudget,
+          passesExtraFilter,
         }
       })
-      .filter(m => m.withinBudget && m.score > 10) // Only show relevant models
+      .filter(m => m.withinBudget && m.passesExtraFilter && m.score > 10) // Only show relevant models
       .sort((a, b) => b.score - a.score)
 
     // Take top 20 recommendations
-    const recommendations = scored.slice(0, 20)
+    const recommendations = scored.slice(0, 20).map(({ passesExtraFilter, ...rest }) => rest)
 
     return NextResponse.json({
       useCase: { id: useCase, ...useCaseConfig },
@@ -227,7 +248,9 @@ export async function GET() {
   return NextResponse.json({
     useCases: Object.entries(USE_CASE_MAP).map(([id, v]) => ({
       id,
-      ...v,
+      label: v.label,
+      description: v.description,
+      icon: v.icon,
     })),
   })
 }

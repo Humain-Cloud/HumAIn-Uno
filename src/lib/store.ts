@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type ViewType = 'home' | 'browse' | 'detail' | 'dashboard' | 'wizard' | 'admin' | 'hub' | 'settings' | 'models'
+export type ViewType = 'home' | 'browse' | 'detail' | 'dashboard' | 'wizard' | 'admin' | 'hub' | 'settings' | 'llm-finder' | 'create'
 
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system'

@@ -56,7 +56,8 @@ const baseNavItems = [
 
 const authNavItems = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, route: '/dashboard' },
-  { key: 'models', label: 'LLM Models', icon: Cpu, route: '/models' },
+  { key: 'create', label: 'Create', icon: PlusCircle, route: '/create' },
+  { key: 'llm-finder', label: 'LLM Finder', icon: Cpu, route: '/llm-finder' },
 ]
 
 const settingsNavItem = [
@@ -118,6 +119,8 @@ export function Navbar() {
     if (pathname.startsWith('/browse')) return 'browse'
     if (pathname.startsWith('/settings')) return 'settings'
     if (pathname.startsWith('/dashboard')) return 'dashboard'
+    if (pathname.startsWith('/create')) return 'create'
+    if (pathname.startsWith('/llm-finder')) return 'llm-finder'
     return ''
   }
   const activeKey = getActiveKey()
@@ -222,7 +225,7 @@ export function Navbar() {
           <Button
             size="sm"
             className="hidden sm:flex bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-200 dark:shadow-emerald-900/30 transition-all min-h-[36px]"
-            onClick={() => router.push('/?view=create')}
+            onClick={() => router.push('/create')}
           >
             <PlusCircle className="h-4 w-4 mr-1.5" />
             Create
@@ -368,7 +371,7 @@ export function Navbar() {
                 <Button
                   variant="ghost"
                   className="justify-start h-11 min-h-[44px] text-emerald-600 dark:text-emerald-400"
-                  onClick={() => { router.push('/?view=create'); setMobileOpen(false) }}
+                  onClick={() => { router.push('/create'); setMobileOpen(false) }}
                 >
                   <Sparkles className="h-4 w-4 mr-3" />
                   Create Agent

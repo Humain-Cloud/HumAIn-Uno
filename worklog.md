@@ -304,3 +304,225 @@ A full-scale dedicated section where logged-in users can find the exact LLM mode
 - ✅ Use-case recommendation engine with scoring
 - ✅ Periodic auto-sync from Arena.ai (every 6 hours)
 - ✅ All code pushed to GitHub
+
+---
+
+## Session: 2026-06-16 - LLM Finder Category Filters
+
+### Task ID: 1-llm-filters - Fix LLM Model Explorer Category Filters
+**Status**: COMPLETED
+
+**Problem**: The LLM Model Explorer had arena-category-based filters (text, code, vision, etc.) but users needed user-facing category filters that map to intuitive categories.
+
+**What was changed**:
+
+1. **Route rename: `/models` → `/llm-finder`**
+   - Deleted `src/app/models/page.tsx`
+   - Created `src/app/llm-finder/page.tsx` (new route, same content with updated view type)
+   - Updated `src/components/layout/navbar-lite.tsx`: changed route from `/models` to `/llm-finder`, key from `models` to `llm-finder`
+   - Updated `src/lib/store.ts`: ViewType changed from `'models'` to `'llm-finder'`
+
+2. **Horizontal pill/tab filter bar (ExploreTab)**
+   - Replaced the arena-category dropdown filter with a prominent horizontal scrollable pill bar
+   - 8 category pills: All Models | Text & Chat | Coding | Vision | Image Generation | Video | Math & Reasoning | Creative Writing
+   - Each pill shows the count of models in that category
+   - Active pill highlighted with emerald-600 styling
+   - Category pills are the PRIMARY way users filter models — prominently displayed at the top
+   - Arena category dropdown removed from the filter panel (since pills handle it)
+
+3. **Updated `/api/llm-models` route** — Added `category` query parameter
+   - `CATEGORY_FILTERS` mapping defines filter logic per user-facing category:
+     - `text-chat` → arenaCategories contains "text" AND outputCapabilities has "text"
+     - `coding` → arenaCategories contains "code"
+     - `vision` → arenaCategories contains "vision" AND outputCapabilities does NOT have "image"
+     - `image-generation` → arenaCategories contains "text-to-image" or "image-edit" OR outputCapabilities has "image"
+     - `video` → arenaCategories contains any of "text-to-video", "image-to-video", "video-to-video" OR outputCapabilities has "video"
+     - `math-reasoning` → arenaCategories contains "text" AND (name contains "thinking" OR useCaseTags contains "high-accuracy")
+     - `creative-writing` → arenaCategories contains "text" AND useCaseTags contains "chat"
+   - Category filtering done in-memory (since Prisma can't query JSON array contents with OR logic)
+   - Proper pagination applied on filtered results
+
+4. **Updated `/api/llm-models/recommend` route** — Updated USE_CASE_MAP
+   - Added new user-facing categories: `general-chat`, `coding`, `vision`, `image-generation`, `video`, `math-reasoning`, `creative-writing`
+   - Each category has `extraFilter` for complex logic (e.g., math-reasoning checks for "thinking" in name)
+   - Legacy categories kept for backward compatibility with Find Your Model tab
+   - GET endpoint returns cleaner use case data (no extraFilter)
+
+5. **Other UI improvements**
+   - Title changed from "LLM Model Explorer" to "LLM Finder"
+   - Loading text updated to "Loading LLM Finder..."
+   - Added PenTool and Calculator icons for Creative Writing and Math & Reasoning pills
+   - Category pill counts fetched on component mount
+
+**Verified**:
+- ✅ `/llm-finder` returns 200 (new route works)
+- ✅ `/models` returns 404 (old route deleted)
+- ✅ Category filter counts: text-chat=135, coding=109, vision=70, image-generation=47, video=47, math-reasoning=27, creative-writing=135
+- ✅ All category API endpoints return 200 with correct filtered models
+- ✅ Recommend API returns all 13 use cases (7 new + 6 legacy)
+- ✅ Lint passes (no new errors)
+- ✅ Increased `--max-old-space-size` from 256 to 4096 to prevent OOM crashes
+
+**Files Changed**:
+- `src/app/models/page.tsx` — DELETED
+- `src/app/llm-finder/page.tsx` — NEW (replacement route)
+- `src/components/models/models-explorer.tsx` — Major refactor (pill filter bar, category logic)
+- `src/components/layout/navbar-lite.tsx` — Route/key update
+- `src/lib/store.ts` — ViewType update
+- `src/app/api/llm-models/route.ts` — Added category query parameter support
+- `src/app/api/llm-models/recommend/route.ts` — Updated USE_CASE_MAP with new categories
+- `package.json` — Increased memory limit for dev server
+
+---
+
+## Session: 2025-06-17 - Supabase SQL Migration Script
+
+### Task ID: 3-supabase-sql - Generate Complete Supabase SQL Migration Script
+**Status**: COMPLETED
+
+**Work Log**:
+- Read worklog.md and existing SQL migrations to understand project history
+- Reviewed existing `supabase/migrations/001_initial_auth_schema.sql` and `supabase-setup.sql` for current schema (profiles + user_preferences)
+- Created `supabase-migrations/` directory
+- Wrote `supabase-migrations/002_new_tables.sql` — Complete idempotent migration script with 12 new tables
+- Wrote `supabase-migrations/003_verify_tables.sql` — Comprehensive verification script with 10 check queries
+
+**New Tables Created (12)**:
+1. **bookmarks** — User bookmarks for agents/LLM models with unique(user_id, target_type, target_id)
+2. **collections** — User collections/folders for organizing agents with is_public flag and JSONB agent_ids
+3. **notifications** — User notifications with 5 types: agent_update, new_agent, bookmark_reminder, system, achievement
+4. **ai_chat_history** — AI chat conversations with session_id, index on (user_id, session_id)
+5. **recently_viewed** — Recently viewed items tracking with 3 target types
+6. **ratings** — User ratings (1-5) for agents with unique(user_id, agent_id), publicly readable for averages
+7. **user_settings** — Extended settings with email_digest, api_rate_limit, custom_css; unique(user_id)
+8. **agent_views** — View count tracking with unique(agent_id), publicly readable for display
+9. **agent_downloads** — Download tracking with 3 download types, publicly readable for counts
+10. **user_activity_log** — Action logging with 8 action types and IP tracking
+11. **api_keys** — API key management with key_hash, key_prefix, permissions JSONB
+12. **agent_deployments** — Deployment records with 3 types, 4 statuses, health checks
+
+**SQL Script Features**:
+- All tables use `CREATE TABLE IF NOT EXISTS` for idempotency
+- RLS enabled on ALL tables
+- User-scoped policies (own data only) + service_role full access on every table
+- Policies use `DO $$ ... IF NOT EXISTS ... $$` blocks to avoid duplicate policy errors on re-run
+- `update_updated_at_column()` trigger on all tables with `updated_at` (7 tables total)
+- Updated `handle_new_user()` to also auto-create `user_settings` on signup
+- CHECK constraints for all enum-like fields (target_type, role, action, status, etc.)
+- Foreign keys with `ON DELETE CASCADE` for all user_id references
+- Appropriate indexes on user_id, target_type+target_id, created_at, status, etc.
+- Existing tables (profiles, user_preferences) fully preserved
+
+**Verification Script (003_verify_tables.sql)**:
+- 10 check queries covering: table existence, RLS status, policies, triggers, indexes, FKs, unique constraints, check constraints, table count summary, column-level verification
+- Expected results documented inline
+
+**Files Created**:
+- `/home/z/my-project/supabase-migrations/002_new_tables.sql` (588 lines)
+- `/home/z/my-project/supabase-migrations/003_verify_tables.sql` (173 lines)
+
+**Stage Summary**:
+- ✅ Complete SQL migration script with 12 new tables
+- ✅ All tables have RLS, policies, triggers, indexes, constraints
+- ✅ Idempotent — safe to re-run without errors
+- ✅ Existing tables preserved intact
+- ✅ Verification script with 10 comprehensive checks
+- ✅ Auto-create user_settings added to signup trigger
+
+---
+
+## Session: 2026-03-04 - Build /create and /dashboard Pages
+
+### Task ID: 2-create-dashboard - Build Production-Ready /create and /dashboard Pages
+**Status**: COMPLETED
+
+**Work Log**:
+
+1. **Updated `src/lib/store.ts`** — Added `'create'` to the `ViewType` union type for navigation support.
+
+2. **Created `src/app/create/page.tsx`** — New route page that dynamically imports the CreatePage component with loading spinner, sets currentView to 'create' in store.
+
+3. **Created `src/components/create/create-page.tsx`** — Main creation page with 4 clickable cards:
+   - **From Scratch** — Opens a multi-step wizard form
+   - **From Template** — Opens a template gallery
+   - **From Knowledge Base** — Redirects to /knowledge-base
+   - **AI-Assisted** — Opens an AI chat interface
+   - Auth-protected: redirects to login if not authenticated
+   - Smooth AnimatePresence transitions between modes
+   - Each card has gradient header, icon, badge, and description
+
+4. **Created `src/components/create/scratch-wizard.tsx`** — Multi-step wizard (4 steps):
+   - Step 1: Basic Info (name, description, category, industry, difficulty, language)
+   - Step 2: Framework & Model (5 frameworks with visual selection, LLM model dropdown from /api/llm-models)
+   - Step 3: Agent Configuration (system prompt, tools with suggestions, tags, privacy toggle)
+   - Step 4: Review & Create (summary grid, code preview, create button)
+   - Progress bar, step indicators with check marks
+   - Form validation per step with error messages
+   - Auto-generates scaffolded code based on framework selection
+   - Creates agent via POST /api/agents, redirects to /dashboard on success
+
+5. **Created `src/components/create/template-gallery.tsx`** — Template gallery:
+   - Fetches curated agents from /api/knowledge
+   - Search bar and framework filter buttons
+   - Grid of template cards with framework badge, category, difficulty, tags
+   - Click template → opens customize dialog (name, description, visibility)
+   - Creates agent via POST /api/agents with source='template'
+
+6. **Created `src/components/create/ai-assisted.tsx`** — AI chat interface:
+   - Chat UI with user/assistant message bubbles
+   - Sends user description to /api/ai/generate-spec
+   - AI generates complete agent spec (name, description, framework, llm, tools, features, prompt)
+   - Two phases: Chat → Review
+   - Review phase shows full spec with edit mode toggle
+   - Can regenerate spec, edit all fields, then create agent
+   - Creates agent via POST /api/agents
+
+7. **Rebuilt `src/app/dashboard/page.tsx`** — New route page using DashboardPage component.
+
+8. **Created `src/components/dashboard/dashboard-page.tsx`** — Full production dashboard:
+   - Welcome header with avatar, name, and gradient banner
+   - Stats cards: My Agents, Total Stars, Public Agents, Bookmarked Models
+   - Quick Actions: Create New Agent, Browse Knowledge Base, Explore LLM Models, Browse Agents
+   - Tab navigation: Overview, My Agents, Bookmarks
+   - Overview tab: Recent Activity timeline, Bookmarked Models sidebar, Recent Agents preview grid
+   - My Agents tab: Privacy filter (All/Public/Private/Unlisted), agent grid with framework/difficulty badges, star counts, timestamps, dropdown menu (View/Delete)
+   - Bookmarks tab: Bookmarked LLM model cards with rating, rank, pricing
+   - Empty states for each section with action buttons
+   - Loading skeletons while data loads
+   - Auth-protected with redirect to login
+
+9. **Updated `src/components/layout/navbar-lite.tsx`**:
+   - Added 'Create' nav item to authNavItems with PlusCircle icon, route '/create'
+   - Added '/create' path recognition in getActiveKey()
+   - Changed "Create" button from `/?view=create` to `/create` route
+   - Changed mobile "Create Agent" button to use `/create` route
+
+**Verification**:
+- ✅ Lint passes (only pre-existing errors in non-project proxy scripts)
+- ✅ /create page returns HTTP 200
+- ✅ /dashboard page returns HTTP 200
+- ✅ Dev server compiles successfully with no errors
+
+**Files Created**:
+- `src/app/create/page.tsx` — Route page
+- `src/components/create/create-page.tsx` — Main creation page
+- `src/components/create/scratch-wizard.tsx` — Multi-step wizard
+- `src/components/create/template-gallery.tsx` — Template gallery
+- `src/components/create/ai-assisted.tsx` — AI chat interface
+- `src/components/dashboard/dashboard-page.tsx` — New dashboard component
+
+**Files Modified**:
+- `src/lib/store.ts` — Added 'create' to ViewType
+- `src/app/dashboard/page.tsx` — Rebuilt with new DashboardPage component
+- `src/components/layout/navbar-lite.tsx` — Added Create nav item, updated routes
+
+**Stage Summary**:
+- ✅ Full /create page with 4 creation paths (Scratch, Template, Knowledge Base, AI-Assisted)
+- ✅ Multi-step wizard with form validation, LLM model selection, code generation
+- ✅ Template gallery with search, filter, customize dialog
+- ✅ AI chat interface with spec generation, editing, and regeneration
+- ✅ All paths create agents via POST /api/agents and redirect to /dashboard
+- ✅ Full /dashboard page with stats, activity, agents grid, bookmarks
+- ✅ Auth protection on both pages
+- ✅ Navbar updated with Create link
+- ✅ Responsive design with smooth animations

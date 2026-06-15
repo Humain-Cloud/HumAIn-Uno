@@ -9,11 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Slider } from '@/components/ui/slider'
-import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Search,
   Filter,
@@ -29,20 +26,19 @@ import {
   Globe,
   Brain,
   Sparkles,
-  ChevronDown,
-  ChevronUp,
   X,
   Cpu,
   ArrowUpDown,
   Bookmark,
   BookmarkCheck,
   ExternalLink,
-  Info,
   LayoutGrid,
   List,
   BarChart3,
   Target,
   RefreshCw,
+  PenTool,
+  Calculator,
 } from 'lucide-react'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 
@@ -144,6 +140,21 @@ const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest First' },
 ]
 
+// ─── User-facing category definitions ──────────────────────────────
+
+const USER_CATEGORIES = [
+  { key: '', label: 'All Models', icon: Cpu },
+  { key: 'text-chat', label: 'Text & Chat', icon: Brain },
+  { key: 'coding', label: 'Coding', icon: Code },
+  { key: 'vision', label: 'Vision', icon: Eye },
+  { key: 'image-generation', label: 'Image Generation', icon: ImageIcon },
+  { key: 'video', label: 'Video', icon: Video },
+  { key: 'math-reasoning', label: 'Math & Reasoning', icon: Calculator },
+  { key: 'creative-writing', label: 'Creative Writing', icon: PenTool },
+] as const
+
+export type UserCategoryKey = typeof USER_CATEGORIES[number]['key']
+
 // ─── Main Component ─────────────────────────────────────────────────
 
 export default function ModelsExplorer() {
@@ -180,7 +191,7 @@ export default function ModelsExplorer() {
                 <Cpu className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">LLM Model Explorer</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">LLM Finder</h1>
                 <p className="text-muted-foreground text-sm sm:text-base mt-1">
                   Find the perfect AI model for your use-case — powered by <a href="https://arena.ai/leaderboard/" target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 hover:underline">Arena.ai</a> rankings
                 </p>
@@ -237,12 +248,17 @@ function ExploreTab({ userId }: { userId?: string }) {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 400)
   const [selectedOrg, setSelectedOrg] = useState<string>('')
-  const [selectedArena, setSelectedArena] = useState<string>('')
   const [selectedLicense, setSelectedLicense] = useState<string>('')
   const [selectedSort, setSelectedSort] = useState('rating')
   const [showFilters, setShowFilters] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [syncing, setSyncing] = useState(false)
+
+  // Category filter (user-facing)
+  const [selectedCategory, setSelectedCategory] = useState<UserCategoryKey>('')
+
+  // Category counts (fetched from stats or computed)
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
 
   const fetchModels = useCallback(async () => {
     setLoading(true)
@@ -254,8 +270,8 @@ function ExploreTab({ userId }: { userId?: string }) {
       })
       if (debouncedSearch) params.set('search', debouncedSearch)
       if (selectedOrg) params.set('organization', selectedOrg)
-      if (selectedArena) params.set('arena', selectedArena)
       if (selectedLicense) params.set('license', selectedLicense)
+      if (selectedCategory) params.set('category', selectedCategory)
 
       const res = await fetch(`/api/llm-models?${params}`)
       const data = await res.json()
@@ -267,7 +283,7 @@ function ExploreTab({ userId }: { userId?: string }) {
     } finally {
       setLoading(false)
     }
-  }, [page, debouncedSearch, selectedOrg, selectedArena, selectedLicense, selectedSort])
+  }, [page, debouncedSearch, selectedOrg, selectedLicense, selectedSort, selectedCategory])
 
   const fetchStats = useCallback(async () => {
     try {
@@ -279,8 +295,36 @@ function ExploreTab({ userId }: { userId?: string }) {
     }
   }, [])
 
+  // Fetch category counts
+  const fetchCategoryCounts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/llm-models/stats')
+      const data = await res.json()
+
+      // We need to compute category counts from all models
+      // Fetch all models and count per category
+      const allModelsRes = await fetch('/api/llm-models?pageSize=1000')
+      const allModelsData = await allModelsRes.json()
+      const allModels: any[] = allModelsData.models || []
+
+      const counts: Record<string, number> = { '': allModels.length }
+
+      for (const cat of USER_CATEGORIES) {
+        if (cat.key === '') continue
+        const catRes = await fetch(`/api/llm-models?category=${cat.key}&pageSize=1`)
+        const catData = await catRes.json()
+        counts[cat.key] = catData.pagination?.total || 0
+      }
+
+      setCategoryCounts(counts)
+    } catch (error) {
+      console.error('Failed to fetch category counts:', error)
+    }
+  }, [])
+
   useEffect(() => { fetchModels() }, [fetchModels])
   useEffect(() => { fetchStats() }, [fetchStats])
+  useEffect(() => { fetchCategoryCounts() }, [fetchCategoryCounts])
 
   const handleSync = async () => {
     setSyncing(true)
@@ -290,6 +334,7 @@ function ExploreTab({ userId }: { userId?: string }) {
       if (data.status === 'success') {
         fetchModels()
         fetchStats()
+        fetchCategoryCounts()
       }
     } catch (error) {
       console.error('Sync failed:', error)
@@ -298,7 +343,12 @@ function ExploreTab({ userId }: { userId?: string }) {
     }
   }
 
-  const activeFilterCount = [selectedOrg, selectedArena, selectedLicense, debouncedSearch].filter(Boolean).length
+  const activeFilterCount = [selectedOrg, selectedLicense, debouncedSearch].filter(Boolean).length
+
+  const handleCategoryChange = (key: UserCategoryKey) => {
+    setSelectedCategory(key)
+    setPage(1)
+  }
 
   return (
     <div className="space-y-6">
@@ -311,6 +361,40 @@ function ExploreTab({ userId }: { userId?: string }) {
           <StatsCard icon={TrendingUp} label="#1 Ranked" value={stats.topRated[0]?.name || 'N/A'} subtext={stats.topRated[0]?.organization} />
         </div>
       )}
+
+      {/* Category Filter Pills */}
+      <div className="relative">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+          {USER_CATEGORIES.map(cat => {
+            const Icon = cat.icon
+            const isActive = selectedCategory === cat.key
+            const count = categoryCounts[cat.key]
+            return (
+              <button
+                key={cat.key}
+                onClick={() => handleCategoryChange(cat.key)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all shrink-0 border ${
+                  isActive
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-200 dark:shadow-emerald-900/30'
+                    : 'bg-background text-muted-foreground border-border/60 hover:border-emerald-400 hover:text-emerald-600 dark:hover:border-emerald-600 dark:hover:text-emerald-400'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {cat.label}
+                {count !== undefined && (
+                  <span className={`text-xs ml-0.5 px-1.5 py-0.5 rounded-full ${
+                    isActive
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       {/* Search & Filter Bar */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -373,11 +457,11 @@ function ExploreTab({ userId }: { userId?: string }) {
         </div>
       </div>
 
-      {/* Filter Panel */}
+      {/* Filter Panel (organization + license only, arena removed since category pills handle it) */}
       {showFilters && (
         <Card className="border-border/60">
           <CardContent className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Organization Filter */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">Organization</Label>
@@ -392,27 +476,6 @@ function ExploreTab({ userId }: { userId?: string }) {
                         {o.name} ({o.modelCount})
                       </SelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Arena Category Filter */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-muted-foreground">Arena Category</Label>
-                <Select value={selectedArena} onValueChange={(v) => { setSelectedArena(v === '__all__' ? '' : v); setPage(1) }}>
-                  <SelectTrigger className="h-9 rounded-lg text-sm">
-                    <SelectValue placeholder="All arenas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">All arenas</SelectItem>
-                    {stats?.arenas.map(a => {
-                      const meta = ARENA_META[a.name]
-                      return (
-                        <SelectItem key={a.name} value={a.name}>
-                          {meta?.label || a.name} ({a.count})
-                        </SelectItem>
-                      )
-                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -441,9 +504,14 @@ function ExploreTab({ userId }: { userId?: string }) {
               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/40">
                 <span className="text-xs text-muted-foreground">Active:</span>
                 {selectedOrg && <FilterChip label={selectedOrg} onRemove={() => setSelectedOrg('')} />}
-                {selectedArena && <FilterChip label={ARENA_META[selectedArena]?.label || selectedArena} onRemove={() => setSelectedArena('')} />}
                 {selectedLicense && <FilterChip label={selectedLicense} onRemove={() => setSelectedLicense('')} />}
-                <Button variant="ghost" size="sm" className="text-xs h-6" onClick={() => { setSelectedOrg(''); setSelectedArena(''); setSelectedLicense(''); setSearch(''); }}>
+                {selectedCategory && (
+                  <FilterChip
+                    label={USER_CATEGORIES.find(c => c.key === selectedCategory)?.label || selectedCategory}
+                    onRemove={() => setSelectedCategory('')}
+                  />
+                )}
+                <Button variant="ghost" size="sm" className="text-xs h-6" onClick={() => { setSelectedOrg(''); setSelectedLicense(''); setSearch(''); setSelectedCategory(''); }}>
                   Clear all
                 </Button>
               </div>
@@ -456,6 +524,11 @@ function ExploreTab({ userId }: { userId?: string }) {
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {loading ? 'Loading...' : `${total} model${total !== 1 ? 's' : ''} found`}
+          {selectedCategory && (
+            <span className="ml-1">
+              in {USER_CATEGORIES.find(c => c.key === selectedCategory)?.label}
+            </span>
+          )}
         </p>
         {totalPages > 1 && (
           <div className="flex items-center gap-2">
@@ -755,7 +828,6 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
 
 function ModelCard({ model, userId, onBookmarkChange }: { model: LLMModel; userId?: string; onBookmarkChange: () => void }) {
   const [bookmarked, setBookmarked] = useState(false)
-  const [expanded, setExpanded] = useState(false)
 
   const toggleBookmark = async () => {
     if (!userId) return

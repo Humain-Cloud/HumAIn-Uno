@@ -1,0 +1,1009 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback, useMemo } from 'react'
+     4→import { useAuth } from '@/components/auth/auth-provider'
+     5→import { useRouter } from 'next/navigation'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Input } from '@/components/ui/input'
+     8→import { Badge } from '@/components/ui/badge'
+     9→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+    10→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    11→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+    12→import { Slider } from '@/components/ui/slider'
+    13→import { Switch } from '@/components/ui/switch'
+    14→import { Label } from '@/components/ui/label'
+    15→import { Skeleton } from '@/components/ui/skeleton'
+    16→import { ScrollArea } from '@/components/ui/scroll-area'
+    17→import {
+    18→  Search,
+    19→  Filter,
+    20→  Star,
+    21→  TrendingUp,
+    22→  DollarSign,
+    23→  Zap,
+    24→  Eye,
+    25→  Code,
+    26→  FileText,
+    27→  Image as ImageIcon,
+    28→  Video,
+    29→  Globe,
+    30→  Brain,
+    31→  Sparkles,
+    32→  ChevronDown,
+    33→  ChevronUp,
+    34→  X,
+    35→  Cpu,
+    36→  ArrowUpDown,
+    37→  Bookmark,
+    38→  BookmarkCheck,
+    39→  ExternalLink,
+    40→  Info,
+    41→  LayoutGrid,
+    42→  List,
+    43→  BarChart3,
+    44→  Target,
+    45→  RefreshCw,
+    46→} from 'lucide-react'
+    47→import { useDebounce } from '@/lib/hooks/use-debounce'
+    48→
+    49→// ─── Types ──────────────────────────────────────────────────────────
+    50→
+    51→interface LLMModel {
+    52→  id: string
+    53→  arenaKey: string
+    54→  name: string
+    55→  organization: string
+    56→  provider: string | null
+    57→  license: string
+    58→  modelUrl: string | null
+    59→  bestRank: number
+    60→  bestRating: number
+    61→  totalVotes: number
+    62→  inputPricePerMillion: number | null
+    63→  outputPricePerMillion: number | null
+    64→  contextLength: number | null
+    65→  pricePerImage: number | null
+    66→  pricePerSecond: number | null
+    67→  inputCapabilities: Record<string, boolean>
+    68→  outputCapabilities: Record<string, boolean>
+    69→  arenaCategories: string[]
+    70→  categoryRankings: Record<string, { rank: number; rating: number; votes: number }>
+    71→  useCaseTags: string[]
+    72→  userSelectable: boolean
+    73→  releaseType: string | null
+    74→  lastSyncedAt: string
+    75→  isBookmarked?: boolean
+    76→}
+    77→
+    78→interface ModelStats {
+    79→  totalModels: number
+    80→  totalOrganizations: number
+    81→  topRated: LLMModel[]
+    82→  newestModels: LLMModel[]
+    83→  organizations: { name: string; modelCount: number; avgRating: number }[]
+    84→  licenses: { name: string; count: number }[]
+    85→  arenas: { name: string; count: number }[]
+    86→  pricing: {
+    87→    input: { min: number | null; max: number | null; avg: number }
+    88→    output: { min: number | null; max: number | null; avg: number }
+    89→  }
+    90→}
+    91→
+    92→interface UseCase {
+    93→  id: string
+    94→  label: string
+    95→  description: string
+    96→  icon: string
+    97→}
+    98→
+    99→interface Recommendation {
+   100→  id: string
+   101→  name: string
+   102→  organization: string
+   103→  arenaKey: string
+   104→  license: string
+   105→  bestRating: number
+   106→  bestRank: number
+   107→  totalVotes: number
+   108→  inputPricePerMillion: number | null
+   109→  outputPricePerMillion: number | null
+   110→  contextLength: number | null
+   111→  inputCapabilities: string[]
+   112→  outputCapabilities: string[]
+   113→  arenaCategories: string[]
+   114→  useCaseTags: string[]
+   115→  specificRank: number | null
+   116→  specificRating: number | null
+   117→  score: number
+   118→  withinBudget: boolean
+   119→}
+   120→
+   121→// ─── Arena category metadata ────────────────────────────────────────
+   122→
+   123→const ARENA_META: Record<string, { label: string; icon: any; color: string }> = {
+   124→  text: { label: 'Text / Chat', icon: Brain, color: 'text-blue-500' },
+   125→  code: { label: 'Code', icon: Code, color: 'text-emerald-500' },
+   126→  vision: { label: 'Vision', icon: Eye, color: 'text-purple-500' },
+   127→  document: { label: 'Document', icon: FileText, color: 'text-orange-500' },
+   128→  'text-to-image': { label: 'Image Gen', icon: ImageIcon, color: 'text-pink-500' },
+   129→  'image-edit': { label: 'Image Edit', icon: ImageIcon, color: 'text-rose-500' },
+   130→  'image-to-code': { label: 'Image to Code', icon: Code, color: 'text-cyan-500' },
+   131→  search: { label: 'Search', icon: Search, color: 'text-yellow-500' },
+   132→  'text-to-video': { label: 'Video Gen', icon: Video, color: 'text-red-500' },
+   133→  'image-to-video': { label: 'Img → Video', icon: Video, color: 'text-amber-500' },
+   134→  'video-to-video': { label: 'Video Edit', icon: Video, color: 'text-indigo-500' },
+   135→}
+   136→
+   137→const SORT_OPTIONS = [
+   138→  { value: 'rating', label: 'Highest Rated' },
+   139→  { value: 'rank', label: 'Best Rank' },
+   140→  { value: 'votes', label: 'Most Votes' },
+   141→  { value: 'price-asc', label: 'Price: Low → High' },
+   142→  { value: 'price-desc', label: 'Price: High → Low' },
+   143→  { value: 'name', label: 'Name A-Z' },
+   144→  { value: 'newest', label: 'Newest First' },
+   145→]
+   146→
+   147→// ─── Main Component ─────────────────────────────────────────────────
+   148→
+   149→export default function ModelsExplorer() {
+   150→  const { user, loading: authLoading } = useAuth()
+   151→  const router = useRouter()
+   152→  const [activeTab, setActiveTab] = useState<'explore' | 'recommend' | 'bookmarks'>('explore')
+   153→
+   154→  // Auth guard
+   155→  useEffect(() => {
+   156→    if (!authLoading && !user) {
+   157→      router.push('/')
+   158→    }
+   159→  }, [user, authLoading, router])
+   160→
+   161→  if (authLoading) {
+   162→    return (
+   163→      <div className="min-h-screen flex items-center justify-center bg-background">
+   164→        <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+   165→      </div>
+   166→    )
+   167→  }
+   168→
+   169→  if (!user) return null
+   170→
+   171→  return (
+   172→    <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
+   173→      {/* Hero Header */}
+   174→      <div className="relative overflow-hidden border-b border-border/40 bg-gradient-to-r from-emerald-50/50 via-background to-teal-50/50 dark:from-emerald-950/20 dark:via-background dark:to-teal-950/20">
+   175→        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-100/20 via-transparent to-transparent dark:from-emerald-900/10" />
+   176→        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+   177→          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+   178→            <div className="flex items-center gap-3">
+   179→              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+   180→                <Cpu className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+   181→              </div>
+   182→              <div>
+   183→                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">LLM Model Explorer</h1>
+   184→                <p className="text-muted-foreground text-sm sm:text-base mt-1">
+   185→                  Find the perfect AI model for your use-case — powered by <a href="https://arena.ai/leaderboard/" target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 hover:underline">Arena.ai</a> rankings
+   186→                </p>
+   187→              </div>
+   188→            </div>
+   189→          </div>
+   190→        </div>
+   191→      </div>
+   192→
+   193→      {/* Tab Content */}
+   194→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+   195→        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-6">
+   196→          <TabsList className="bg-muted/50 p-1 rounded-xl">
+   197→            <TabsTrigger value="explore" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+   198→              <Search className="h-4 w-4 mr-2" /> Explore Models
+   199→            </TabsTrigger>
+   200→            <TabsTrigger value="recommend" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+   201→              <Target className="h-4 w-4 mr-2" /> Find Your Model
+   202→            </TabsTrigger>
+   203→            <TabsTrigger value="bookmarks" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+   204→              <Bookmark className="h-4 w-4 mr-2" /> My Bookmarks
+   205→            </TabsTrigger>
+   206→          </TabsList>
+   207→
+   208→          <TabsContent value="explore">
+   209→            <ExploreTab userId={user?.id} />
+   210→          </TabsContent>
+   211→
+   212→          <TabsContent value="recommend">
+   213→            <RecommendTab userId={user?.id} />
+   214→          </TabsContent>
+   215→
+   216→          <TabsContent value="bookmarks">
+   217→            <BookmarksTab userId={user?.id} />
+   218→          </TabsContent>
+   219→        </Tabs>
+   220→      </div>
+   221→    </div>
+   222→  )
+   223→}
+   224→
+   225→// ─── Explore Tab ────────────────────────────────────────────────────
+   226→
+   227→function ExploreTab({ userId }: { userId?: string }) {
+   228→  const [models, setModels] = useState<LLMModel[]>([])
+   229→  const [stats, setStats] = useState<ModelStats | null>(null)
+   230→  const [loading, setLoading] = useState(true)
+   231→  const [page, setPage] = useState(1)
+   232→  const [totalPages, setTotalPages] = useState(1)
+   233→  const [total, setTotal] = useState(0)
+   234→  const pageSize = 24
+   235→
+   236→  // Filters
+   237→  const [search, setSearch] = useState('')
+   238→  const debouncedSearch = useDebounce(search, 400)
+   239→  const [selectedOrg, setSelectedOrg] = useState<string>('')
+   240→  const [selectedArena, setSelectedArena] = useState<string>('')
+   241→  const [selectedLicense, setSelectedLicense] = useState<string>('')
+   242→  const [selectedSort, setSelectedSort] = useState('rating')
+   243→  const [showFilters, setShowFilters] = useState(false)
+   244→  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+   245→  const [syncing, setSyncing] = useState(false)
+   246→
+   247→  const fetchModels = useCallback(async () => {
+   248→    setLoading(true)
+   249→    try {
+   250→      const params = new URLSearchParams({
+   251→        page: page.toString(),
+   252→        pageSize: pageSize.toString(),
+   253→        sort: selectedSort,
+   254→      })
+   255→      if (debouncedSearch) params.set('search', debouncedSearch)
+   256→      if (selectedOrg) params.set('organization', selectedOrg)
+   257→      if (selectedArena) params.set('arena', selectedArena)
+   258→      if (selectedLicense) params.set('license', selectedLicense)
+   259→
+   260→      const res = await fetch(`/api/llm-models?${params}`)
+   261→      const data = await res.json()
+   262→      setModels(data.models || [])
+   263→      setTotalPages(data.pagination?.totalPages || 1)
+   264→      setTotal(data.pagination?.total || 0)
+   265→    } catch (error) {
+   266→      console.error('Failed to fetch models:', error)
+   267→    } finally {
+   268→      setLoading(false)
+   269→    }
+   270→  }, [page, debouncedSearch, selectedOrg, selectedArena, selectedLicense, selectedSort])
+   271→
+   272→  const fetchStats = useCallback(async () => {
+   273→    try {
+   274→      const res = await fetch('/api/llm-models/stats')
+   275→      const data = await res.json()
+   276→      setStats(data)
+   277→    } catch (error) {
+   278→      console.error('Failed to fetch stats:', error)
+   279→    }
+   280→  }, [])
+   281→
+   282→  useEffect(() => { fetchModels() }, [fetchModels])
+   283→  useEffect(() => { fetchStats() }, [fetchStats])
+   284→
+   285→  const handleSync = async () => {
+   286→    setSyncing(true)
+   287→    try {
+   288→      const res = await fetch('/api/llm-models/sync', { method: 'POST' })
+   289→      const data = await res.json()
+   290→      if (data.status === 'success') {
+   291→        fetchModels()
+   292→        fetchStats()
+   293→      }
+   294→    } catch (error) {
+   295→      console.error('Sync failed:', error)
+   296→    } finally {
+   297→      setSyncing(false)
+   298→    }
+   299→  }
+   300→
+   301→  const activeFilterCount = [selectedOrg, selectedArena, selectedLicense, debouncedSearch].filter(Boolean).length
+   302→
+   303→  return (
+   304→    <div className="space-y-6">
+   305→      {/* Stats Banner */}
+   306→      {stats && (
+   307→        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+   308→          <StatsCard icon={Cpu} label="Total Models" value={stats.totalModels.toString()} />
+   309→          <StatsCard icon={Globe} label="Organizations" value={stats.totalOrganizations.toString()} />
+   310→          <StatsCard icon={BarChart3} label="Avg Output $/M" value={`$${stats.pricing.output.avg?.toFixed(2) || 'N/A'}`} />
+   311→          <StatsCard icon={TrendingUp} label="#1 Ranked" value={stats.topRated[0]?.name || 'N/A'} subtext={stats.topRated[0]?.organization} />
+   312→        </div>
+   313→      )}
+   314→
+   315→      {/* Search & Filter Bar */}
+   316→      <div className="flex flex-col sm:flex-row gap-3">
+   317→        <div className="relative flex-1">
+   318→          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   319→          <Input
+   320→            placeholder="Search models, organizations..."
+   321→            value={search}
+   322→            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+   323→            className="pl-10 pr-4 h-10 rounded-xl border-border/60 bg-background"
+   324→          />
+   325→          {search && (
+   326→            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+   327→              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+   328→            </button>
+   329→          )}
+   330→        </div>
+   331→
+   332→        <div className="flex gap-2">
+   333→          <Button
+   334→            variant="outline"
+   335→            size="sm"
+   336→            className="rounded-xl"
+   337→            onClick={() => setShowFilters(!showFilters)}
+   338→          >
+   339→            <Filter className="h-4 w-4 mr-1" />
+   340→            Filters
+   341→            {activeFilterCount > 0 && (
+   342→              <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] rounded-full bg-emerald-500 text-white">
+   343→                {activeFilterCount}
+   344→              </Badge>
+   345→            )}
+   346→          </Button>
+   347→
+   348→          <Select value={selectedSort} onValueChange={(v) => { setSelectedSort(v); setPage(1) }}>
+   349→            <SelectTrigger className="w-[180px] h-10 rounded-xl">
+   350→              <ArrowUpDown className="h-4 w-4 mr-1" />
+   351→              <SelectValue placeholder="Sort by" />
+   352→            </SelectTrigger>
+   353→            <SelectContent>
+   354→              {SORT_OPTIONS.map(o => (
+   355→                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+   356→              ))}
+   357→            </SelectContent>
+   358→          </Select>
+   359→
+   360→          <div className="hidden sm:flex border rounded-xl overflow-hidden">
+   361→            <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="sm" className="rounded-none" onClick={() => setViewMode('grid')}>
+   362→              <LayoutGrid className="h-4 w-4" />
+   363→            </Button>
+   364→            <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="sm" className="rounded-none" onClick={() => setViewMode('list')}>
+   365→              <List className="h-4 w-4" />
+   366→            </Button>
+   367→          </div>
+   368→
+   369→          <Button variant="outline" size="sm" className="rounded-xl" onClick={handleSync} disabled={syncing}>
+   370→            <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
+   371→            Sync
+   372→          </Button>
+   373→        </div>
+   374→      </div>
+   375→
+   376→      {/* Filter Panel */}
+   377→      {showFilters && (
+   378→        <Card className="border-border/60">
+   379→          <CardContent className="p-4">
+   380→            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   381→              {/* Organization Filter */}
+   382→              <div className="space-y-2">
+   383→                <Label className="text-xs font-medium text-muted-foreground">Organization</Label>
+   384→                <Select value={selectedOrg} onValueChange={(v) => { setSelectedOrg(v === '__all__' ? '' : v); setPage(1) }}>
+   385→                  <SelectTrigger className="h-9 rounded-lg text-sm">
+   386→                    <SelectValue placeholder="All organizations" />
+   387→                  </SelectTrigger>
+   388→                  <SelectContent className="max-h-60">
+   389→                    <SelectItem value="__all__">All organizations</SelectItem>
+   390→                    {stats?.organizations.map(o => (
+   391→                      <SelectItem key={o.name} value={o.name}>
+   392→                        {o.name} ({o.modelCount})
+   393→                      </SelectItem>
+   394→                    ))}
+   395→                  </SelectContent>
+   396→                </Select>
+   397→              </div>
+   398→
+   399→              {/* Arena Category Filter */}
+   400→              <div className="space-y-2">
+   401→                <Label className="text-xs font-medium text-muted-foreground">Arena Category</Label>
+   402→                <Select value={selectedArena} onValueChange={(v) => { setSelectedArena(v === '__all__' ? '' : v); setPage(1) }}>
+   403→                  <SelectTrigger className="h-9 rounded-lg text-sm">
+   404→                    <SelectValue placeholder="All arenas" />
+   405→                  </SelectTrigger>
+   406→                  <SelectContent>
+   407→                    <SelectItem value="__all__">All arenas</SelectItem>
+   408→                    {stats?.arenas.map(a => {
+   409→                      const meta = ARENA_META[a.name]
+   410→                      return (
+   411→                        <SelectItem key={a.name} value={a.name}>
+   412→                          {meta?.label || a.name} ({a.count})
+   413→                        </SelectItem>
+   414→                      )
+   415→                    })}
+   416→                  </SelectContent>
+   417→                </Select>
+   418→              </div>
+   419→
+   420→              {/* License Filter */}
+   421→              <div className="space-y-2">
+   422→                <Label className="text-xs font-medium text-muted-foreground">License</Label>
+   423→                <Select value={selectedLicense} onValueChange={(v) => { setSelectedLicense(v === '__all__' ? '' : v); setPage(1) }}>
+   424→                  <SelectTrigger className="h-9 rounded-lg text-sm">
+   425→                    <SelectValue placeholder="All licenses" />
+   426→                  </SelectTrigger>
+   427→                  <SelectContent>
+   428→                    <SelectItem value="__all__">All licenses</SelectItem>
+   429→                    {stats?.licenses.map(l => (
+   430→                      <SelectItem key={l.name} value={l.name}>
+   431→                        {l.name} ({l.count})
+   432→                      </SelectItem>
+   433→                    ))}
+   434→                  </SelectContent>
+   435→                </Select>
+   436→              </div>
+   437→            </div>
+   438→
+   439→            {/* Active filters as chips */}
+   440→            {activeFilterCount > 0 && (
+   441→              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/40">
+   442→                <span className="text-xs text-muted-foreground">Active:</span>
+   443→                {selectedOrg && <FilterChip label={selectedOrg} onRemove={() => setSelectedOrg('')} />}
+   444→                {selectedArena && <FilterChip label={ARENA_META[selectedArena]?.label || selectedArena} onRemove={() => setSelectedArena('')} />}
+   445→                {selectedLicense && <FilterChip label={selectedLicense} onRemove={() => setSelectedLicense('')} />}
+   446→                <Button variant="ghost" size="sm" className="text-xs h-6" onClick={() => { setSelectedOrg(''); setSelectedArena(''); setSelectedLicense(''); setSearch(''); }}>
+   447→                  Clear all
+   448→                </Button>
+   449→              </div>
+   450→            )}
+   451→          </CardContent>
+   452→        </Card>
+   453→      )}
+   454→
+   455→      {/* Results count */}
+   456→      <div className="flex items-center justify-between">
+   457→        <p className="text-sm text-muted-foreground">
+   458→          {loading ? 'Loading...' : `${total} model${total !== 1 ? 's' : ''} found`}
+   459→        </p>
+   460→        {totalPages > 1 && (
+   461→          <div className="flex items-center gap-2">
+   462→            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Prev</Button>
+   463→            <span className="text-sm text-muted-foreground">{page}/{totalPages}</span>
+   464→            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
+   465→          </div>
+   466→        )}
+   467→      </div>
+   468→
+   469→      {/* Models Grid/List */}
+   470→      {loading ? (
+   471→        <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
+   472→          {Array.from({ length: 6 }).map((_, i) => (
+   473→            <Skeleton key={i} className="h-48 rounded-xl" />
+   474→          ))}
+   475→        </div>
+   476→      ) : models.length === 0 ? (
+   477→        <div className="text-center py-16">
+   478→          <Cpu className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+   479→          <h3 className="text-lg font-medium text-muted-foreground">No models found</h3>
+   480→          <p className="text-sm text-muted-foreground/70 mt-1">Try adjusting your search or filters</p>
+   481→        </div>
+   482→      ) : viewMode === 'grid' ? (
+   483→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   484→          {models.map(m => <ModelCard key={m.id} model={m} userId={userId} onBookmarkChange={fetchModels} />)}
+   485→        </div>
+   486→      ) : (
+   487→        <div className="space-y-2">
+   488→          {models.map(m => <ModelListItem key={m.id} model={m} userId={userId} onBookmarkChange={fetchModels} />)}
+   489→        </div>
+   490→      )}
+   491→    </div>
+   492→  )
+   493→}
+   494→
+   495→// ─── Recommend Tab ──────────────────────────────────────────────────
+   496→
+   497→function RecommendTab({ userId }: { userId?: string }) {
+   498→  const [useCases, setUseCases] = useState<UseCase[]>([])
+   499→  const [selectedUseCase, setSelectedUseCase] = useState<string>('')
+   500→  const [budget, setBudget] = useState<'any' | 'free' | 'low' | 'mid' | 'high'>('any')
+   501→  const [priorities, setPriorities] = useState<string[]>(['accuracy'])
+   502→  const [recommendations, setRecommendations] = useState<Recommendation[]>([])
+   503→  const [loading, setLoading] = useState(false)
+   504→  const [showResults, setShowResults] = useState(false)
+   505→
+   506→  useEffect(() => {
+   507→    fetch('/api/llm-models/recommend')
+   508→      .then(r => r.json())
+   509→      .then(data => setUseCases(data.useCases || []))
+   510→      .catch(console.error)
+   511→  }, [])
+   512→
+   513→  const handleRecommend = async () => {
+   514→    if (!selectedUseCase) return
+   515→    setLoading(true)
+   516→    setShowResults(true)
+   517→    try {
+   518→      const res = await fetch('/api/llm-models/recommend', {
+   519→        method: 'POST',
+   520→        headers: { 'Content-Type': 'application/json' },
+   521→        body: JSON.stringify({ useCase: selectedUseCase, budget, priorities }),
+   522→      })
+   523→      const data = await res.json()
+   524→      setRecommendations(data.recommendations || [])
+   525→    } catch (error) {
+   526→      console.error('Recommendation failed:', error)
+   527→    } finally {
+   528→      setLoading(false)
+   529→    }
+   530→  }
+   531→
+   532→  const togglePriority = (p: string) => {
+   533→    setPriorities(prev =>
+   534→      prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
+   535→    )
+   536→  }
+   537→
+   538→  return (
+   539→    <div className="space-y-8">
+   540→      {/* Use Case Selection */}
+   541→      <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-50/30 to-teal-50/30 dark:from-emerald-950/10 dark:to-teal-950/10">
+   542→        <CardHeader>
+   543→          <CardTitle className="flex items-center gap-2">
+   544→            <Target className="h-5 w-5 text-emerald-600" />
+   545→            What do you need the model for?
+   546→          </CardTitle>
+   547→        </CardHeader>
+   548→        <CardContent>
+   549→          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+   550→            {useCases.map(uc => (
+   551→              <button
+   552→                key={uc.id}
+   553→                onClick={() => setSelectedUseCase(uc.id)}
+   554→                className={`p-3 rounded-xl border-2 text-left transition-all hover:shadow-md ${
+   555→                  selectedUseCase === uc.id
+   556→                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 shadow-md'
+   557→                    : 'border-border/60 hover:border-emerald-300 dark:hover:border-emerald-700'
+   558→                }`}
+   559→              >
+   560→                <div className="text-2xl mb-1">{uc.icon}</div>
+   561→                <div className="text-sm font-medium">{uc.label}</div>
+   562→                <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{uc.description}</div>
+   563→              </button>
+   564→            ))}
+   565→          </div>
+   566→        </CardContent>
+   567→      </Card>
+   568→
+   569→      {/* Budget & Priorities */}
+   570→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   571→        <Card>
+   572→          <CardHeader className="pb-3">
+   573→            <CardTitle className="text-base flex items-center gap-2">
+   574→              <DollarSign className="h-4 w-4 text-emerald-600" />
+   575→              Budget
+   576→            </CardTitle>
+   577→          </CardHeader>
+   578→          <CardContent>
+   579→            <div className="grid grid-cols-5 gap-2">
+   580→              {(['any', 'free', 'low', 'mid', 'high'] as const).map(b => (
+   581→                <Button
+   582→                  key={b}
+   583→                  variant={budget === b ? 'default' : 'outline'}
+   584→                  size="sm"
+   585→                  className={`rounded-lg text-xs ${budget === b ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
+   586→                  onClick={() => setBudget(b)}
+   587→                >
+   588→                  {b === 'any' ? 'Any' : b === 'free' ? 'Free' : b === 'low' ? '<$5/M' : b === 'mid' ? '<$25/M' : '<$100/M'}
+   589→                </Button>
+   590→              ))}
+   591→            </div>
+   592→          </CardContent>
+   593→        </Card>
+   594→
+   595→        <Card>
+   596→          <CardHeader className="pb-3">
+   597→            <CardTitle className="text-base flex items-center gap-2">
+   598→              <Sparkles className="h-4 w-4 text-emerald-600" />
+   599→              Priorities
+   600→            </CardTitle>
+   601→          </CardHeader>
+   602→          <CardContent>
+   603→            <div className="flex flex-wrap gap-2">
+   604→              {[
+   605→                { id: 'accuracy', label: '🎯 Accuracy', desc: 'Best quality results' },
+   606→                { id: 'speed', label: '⚡ Speed', desc: 'Fast inference' },
+   607→                { id: 'cost', label: '💰 Cost', desc: 'Best value' },
+   608→                { id: 'context', label: '📏 Long Context', desc: '128K+ tokens' },
+   609→              ].map(p => (
+   610→                <Button
+   611→                  key={p.id}
+   612→                  variant={priorities.includes(p.id) ? 'default' : 'outline'}
+   613→                  size="sm"
+   614→                  className={`rounded-lg ${priorities.includes(p.id) ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
+   615→                  onClick={() => togglePriority(p.id)}
+   616→                >
+   617→                  {p.label}
+   618→                </Button>
+   619→              ))}
+   620→            </div>
+   621→          </CardContent>
+   622→        </Card>
+   623→      </div>
+   624→
+   625→      {/* Find Button */}
+   626→      <div className="flex justify-center">
+   627→        <Button
+   628→          size="lg"
+   629→          className="rounded-xl px-8 bg-emerald-600 hover:bg-emerald-700 text-white"
+   630→          disabled={!selectedUseCase || loading}
+   631→          onClick={handleRecommend}
+   632→        >
+   633→          {loading ? (
+   634→            <><RefreshCw className="h-5 w-5 mr-2 animate-spin" /> Finding models...</>
+   635→          ) : (
+   636→            <><Target className="h-5 w-5 mr-2" /> Find My Model</>
+   637→          )}
+   638→        </Button>
+   639→      </div>
+   640→
+   641→      {/* Results */}
+   642→      {showResults && (
+   643→        <div className="space-y-4">
+   644→          <h3 className="text-lg font-semibold flex items-center gap-2">
+   645→            <Sparkles className="h-5 w-5 text-emerald-600" />
+   646→            Recommended Models
+   647→            {recommendations.length > 0 && (
+   648→              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+   649→                {recommendations.length} matches
+   650→              </Badge>
+   651→            )}
+   652→          </h3>
+   653→
+   654→          {loading ? (
+   655→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   656→              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
+   657→            </div>
+   658→          ) : recommendations.length === 0 ? (
+   659→            <div className="text-center py-12">
+   660→              <Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+   661→              <h3 className="text-lg font-medium text-muted-foreground">No matching models</h3>
+   662→              <p className="text-sm text-muted-foreground/70 mt-1">Try a different use case or adjust your budget</p>
+   663→            </div>
+   664→          ) : (
+   665→            <div className="space-y-3">
+   666→              {recommendations.map((rec, idx) => (
+   667→                <RecommendationCard key={rec.id} recommendation={rec} rank={idx + 1} />
+   668→              ))}
+   669→            </div>
+   670→          )}
+   671→        </div>
+   672→      )}
+   673→    </div>
+   674→  )
+   675→}
+   676→
+   677→// ─── Bookmarks Tab ──────────────────────────────────────────────────
+   678→
+   679→function BookmarksTab({ userId }: { userId?: string }) {
+   680→  const [bookmarks, setBookmarks] = useState<any[]>([])
+   681→  const [loading, setLoading] = useState(true)
+   682→
+   683→  const fetchBookmarks = useCallback(async () => {
+   684→    if (!userId) return
+   685→    setLoading(true)
+   686→    try {
+   687→      const res = await fetch(`/api/llm-models/bookmark?userId=${userId}`)
+   688→      const data = await res.json()
+   689→      setBookmarks(data.bookmarks || [])
+   690→    } catch (error) {
+   691→      console.error('Failed to fetch bookmarks:', error)
+   692→    } finally {
+   693→      setLoading(false)
+   694→    }
+   695→  }, [userId])
+   696→
+   697→  useEffect(() => { fetchBookmarks() }, [fetchBookmarks])
+   698→
+   699→  if (loading) {
+   700→    return (
+   701→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   702→        {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
+   703→      </div>
+   704→    )
+   705→  }
+   706→
+   707→  if (bookmarks.length === 0) {
+   708→    return (
+   709→      <div className="text-center py-16">
+   710→        <Bookmark className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+   711→        <h3 className="text-lg font-medium text-muted-foreground">No bookmarked models</h3>
+   712→        <p className="text-sm text-muted-foreground/70 mt-1">Bookmark models from the Explore tab to save them here</p>
+   713→      </div>
+   714→    )
+   715→  }
+   716→
+   717→  return (
+   718→    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   719→      {bookmarks.map((b: any) => (
+   720→        <ModelCard key={b.id} model={b.model} userId={userId} onBookmarkChange={fetchBookmarks} />
+   721→      ))}
+   722→    </div>
+   723→  )
+   724→}
+   725→
+   726→// ─── Sub-Components ─────────────────────────────────────────────────
+   727→
+   728→function StatsCard({ icon: Icon, label, value, subtext }: { icon: any; label: string; value: string; subtext?: string }) {
+   729→  return (
+   730→    <Card className="border-border/40 bg-gradient-to-br from-background to-muted/20">
+   731→      <CardContent className="p-4 flex items-center gap-3">
+   732→        <div className="p-2 rounded-lg bg-emerald-500/10">
+   733→          <Icon className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+   734→        </div>
+   735→        <div>
+   736→          <p className="text-xs text-muted-foreground">{label}</p>
+   737→          <p className="text-lg font-bold truncate" title={value}>{value}</p>
+   738→          {subtext && <p className="text-xs text-muted-foreground">{subtext}</p>}
+   739→        </div>
+   740→      </CardContent>
+   741→    </Card>
+   742→  )
+   743→}
+   744→
+   745→function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+   746→  return (
+   747→    <Badge variant="secondary" className="gap-1 pr-1 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+   748→      {label}
+   749→      <button onClick={onRemove} className="ml-0.5 rounded-full hover:bg-emerald-200 dark:hover:bg-emerald-800 p-0.5">
+   750→        <X className="h-3 w-3" />
+   751→      </button>
+   752→    </Badge>
+   753→  )
+   754→}
+   755→
+   756→function ModelCard({ model, userId, onBookmarkChange }: { model: LLMModel; userId?: string; onBookmarkChange: () => void }) {
+   757→  const [bookmarked, setBookmarked] = useState(false)
+   758→  const [expanded, setExpanded] = useState(false)
+   759→
+   760→  const toggleBookmark = async () => {
+   761→    if (!userId) return
+   762→    try {
+   763→      if (bookmarked) {
+   764→        await fetch(`/api/llm-models/bookmark?userId=${userId}&modelId=${model.id}`, { method: 'DELETE' })
+   765→        setBookmarked(false)
+   766→      } else {
+   767→        await fetch('/api/llm-models/bookmark', {
+   768→          method: 'POST',
+   769→          headers: { 'Content-Type': 'application/json' },
+   770→          body: JSON.stringify({ userId, modelId: model.id }),
+   771→        })
+   772→        setBookmarked(true)
+   773→      }
+   774→      onBookmarkChange()
+   775→    } catch (error) {
+   776→      console.error('Bookmark error:', error)
+   777→    }
+   778→  }
+   779→
+   780→  const inpCaps = Object.keys(model.inputCapabilities || {})
+   781→  const outCaps = Object.keys(model.outputCapabilities || {})
+   782→  const topRank = model.bestRank <= 10
+   783→  const isFree = model.outputPricePerMillion === null
+   784→  const isCheap = model.outputPricePerMillion !== null && model.outputPricePerMillion <= 2
+   785→
+   786→  return (
+   787→    <Card className={`group border-border/60 hover:border-emerald-500/30 hover:shadow-lg transition-all duration-200 ${topRank ? 'ring-1 ring-emerald-500/20' : ''}`}>
+   788→      <CardContent className="p-4">
+   789→        {/* Header */}
+   790→        <div className="flex items-start justify-between gap-2 mb-3">
+   791→          <div className="flex-1 min-w-0">
+   792→            <div className="flex items-center gap-2">
+   793→              <h3 className="font-semibold text-sm truncate">{model.name}</h3>
+   794→              {topRank && <Badge className="bg-emerald-500 text-white text-[10px] px-1.5 py-0 shrink-0">Top #{model.bestRank}</Badge>}
+   795→            </div>
+   796→            <p className="text-xs text-muted-foreground mt-0.5">{model.organization}</p>
+   797→          </div>
+   798→          <button onClick={toggleBookmark} className="shrink-0 p-1 rounded-lg hover:bg-muted">
+   799→            {bookmarked ? <BookmarkCheck className="h-4 w-4 text-emerald-600" /> : <Bookmark className="h-4 w-4 text-muted-foreground" />}
+   800→          </button>
+   801→        </div>
+   802→
+   803→        {/* Rating & Rank */}
+   804→        <div className="flex items-center gap-3 mb-3">
+   805→          <div className="flex items-center gap-1.5">
+   806→            <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+   807→            <span className="text-sm font-medium">{model.bestRating.toFixed(0)}</span>
+   808→          </div>
+   809→          <div className="flex items-center gap-1.5 text-muted-foreground">
+   810→            <span className="text-xs">Rank #{model.bestRank}</span>
+   811→          </div>
+   812→          <div className="flex items-center gap-1.5 text-muted-foreground">
+   813→            <span className="text-xs">{(model.totalVotes / 1000).toFixed(1)}K votes</span>
+   814→          </div>
+   815→        </div>
+   816→
+   817→        {/* Arena Categories */}
+   818→        <div className="flex flex-wrap gap-1 mb-3">
+   819→          {model.arenaCategories.slice(0, 4).map(cat => {
+   820→            const meta = ARENA_META[cat]
+   821→            return (
+   822→              <Badge key={cat} variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-0.5">
+   823→                {meta?.icon && <meta.icon className={`h-2.5 w-2.5 ${meta.color}`} />}
+   824→                {meta?.label || cat}
+   825→              </Badge>
+   826→            )
+   827→          })}
+   828→          {model.arenaCategories.length > 4 && (
+   829→            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">+{model.arenaCategories.length - 4}</Badge>
+   830→          )}
+   831→        </div>
+   832→
+   833→        {/* Pricing */}
+   834→        <div className="flex items-center gap-3 mb-3 text-xs">
+   835→          <div className="flex items-center gap-1">
+   836→            <DollarSign className="h-3 w-3 text-muted-foreground" />
+   837→            {isFree ? (
+   838→              <span className="text-emerald-600 font-medium">Free / N/A</span>
+   839→            ) : (
+   840→              <span>
+   841→                <span className="text-muted-foreground">In:</span> ${model.inputPricePerMillion?.toFixed(2)}/M
+   842→                <span className="text-muted-foreground ml-1">Out:</span> ${model.outputPricePerMillion?.toFixed(2)}/M
+   843→              </span>
+   844→            )}
+   845→          </div>
+   846→          {model.contextLength && (
+   847→            <div className="flex items-center gap-1 text-muted-foreground">
+   848→              <Zap className="h-3 w-3" />
+   849→              {model.contextLength >= 1000000 ? `${(model.contextLength / 1000000).toFixed(0)}M` : `${(model.contextLength / 1000).toFixed(0)}K`} ctx
+   850→            </div>
+   851→          )}
+   852→        </div>
+   853→
+   854→        {/* Capabilities */}
+   855→        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+   856→          <span>Input: {inpCaps.join(', ') || 'N/A'}</span>
+   857→          <span>→</span>
+   858→          <span>Output: {outCaps.join(', ') || 'N/A'}</span>
+   859→        </div>
+   860→
+   861→        {/* Use-case Tags */}
+   862→        {model.useCaseTags.length > 0 && (
+   863→          <div className="flex flex-wrap gap-1 mt-2">
+   864→            {model.useCaseTags.slice(0, 4).map(tag => (
+   865→              <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+   866→                {tag}
+   867→              </span>
+   868→            ))}
+   869→          </div>
+   870→        )}
+   871→
+   872→        {/* License & Link */}
+   873→        <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/40">
+   874→          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${
+   875→            model.license === 'MIT' || model.license === 'Apache 2.0' ? 'border-emerald-500/30 text-emerald-600' : ''
+   876→          }`}>
+   877→            {model.license}
+   878→          </Badge>
+   879→          {model.modelUrl && (
+   880→            <a href={model.modelUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-emerald-600 hover:underline flex items-center gap-0.5">
+   881→              <ExternalLink className="h-3 w-3" /> Learn more
+   882→            </a>
+   883→          )}
+   884→        </div>
+   885→      </CardContent>
+   886→    </Card>
+   887→  )
+   888→}
+   889→
+   890→function ModelListItem({ model, userId, onBookmarkChange }: { model: LLMModel; userId?: string; onBookmarkChange: () => void }) {
+   891→  const [bookmarked, setBookmarked] = useState(false)
+   892→  const inpCaps = Object.keys(model.inputCapabilities || {})
+   893→  const outCaps = Object.keys(model.outputCapabilities || {})
+   894→
+   895→  const toggleBookmark = async () => {
+   896→    if (!userId) return
+   897→    try {
+   898→      if (bookmarked) {
+   899→        await fetch(`/api/llm-models/bookmark?userId=${userId}&modelId=${model.id}`, { method: 'DELETE' })
+   900→        setBookmarked(false)
+   901→      } else {
+   902→        await fetch('/api/llm-models/bookmark', {
+   903→          method: 'POST',
+   904→          headers: { 'Content-Type': 'application/json' },
+   905→          body: JSON.stringify({ userId, modelId: model.id }),
+   906→        })
+   907→        setBookmarked(true)
+   908→      }
+   909→      onBookmarkChange()
+   910→    } catch (error) {
+   911→      console.error('Bookmark error:', error)
+   912→    }
+   913→  }
+   914→
+   915→  return (
+   916→    <Card className="border-border/40 hover:border-emerald-500/20 transition-colors">
+   917→      <CardContent className="p-3 flex items-center gap-4">
+   918→        <div className="flex-1 min-w-0 flex items-center gap-4">
+   919→          <div className="flex items-center gap-1.5 w-10 shrink-0">
+   920→            <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+   921→            <span className="text-sm font-semibold">{model.bestRating.toFixed(0)}</span>
+   922→          </div>
+   923→          <div className="min-w-0 flex-1">
+   924→            <div className="flex items-center gap-2">
+   925→              <span className="font-medium text-sm truncate">{model.name}</span>
+   926→              {model.bestRank <= 10 && <Badge className="bg-emerald-500 text-white text-[10px] px-1.5 py-0 shrink-0">#{model.bestRank}</Badge>}
+   927→            </div>
+   928→            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+   929→              <span>{model.organization}</span>
+   930→              <span>•</span>
+   931→              <span>{(model.totalVotes / 1000).toFixed(1)}K votes</span>
+   932→              <span>•</span>
+   933→              <span>{model.outputPricePerMillion ? `$${model.outputPricePerMillion.toFixed(2)}/M` : 'Free/N/A'}</span>
+   934→              {model.contextLength && <><span>•</span><span>{model.contextLength >= 1000000 ? `${(model.contextLength / 1000000).toFixed(0)}M` : `${(model.contextLength / 1000).toFixed(0)}K`} ctx</span></>}
+   935→            </div>
+   936→          </div>
+   937→          <div className="hidden sm:flex items-center gap-1 shrink-0">
+   938→            {model.arenaCategories.slice(0, 3).map(cat => {
+   939→              const meta = ARENA_META[cat]
+   940→              return meta ? <meta.icon key={cat} className={`h-4 w-4 ${meta.color}`} title={meta.label} /> : null
+   941→            })}
+   942→          </div>
+   943→        </div>
+   944→        <button onClick={toggleBookmark} className="shrink-0 p-1.5 rounded-lg hover:bg-muted">
+   945→          {bookmarked ? <BookmarkCheck className="h-4 w-4 text-emerald-600" /> : <Bookmark className="h-4 w-4 text-muted-foreground" />}
+   946→        </button>
+   947→      </CardContent>
+   948→    </Card>
+   949→  )
+   950→}
+   951→
+   952→function RecommendationCard({ recommendation: rec, rank }: { recommendation: Recommendation; rank: number }) {
+   953→  const scorePercent = Math.min(100, Math.round(rec.score))
+   954→  const topRank = rec.bestRank <= 10
+   955→
+   956→  return (
+   957→    <Card className={`border-border/60 hover:border-emerald-500/30 hover:shadow-lg transition-all ${rank <= 3 ? 'ring-1 ring-emerald-500/20' : ''}`}>
+   958→      <CardContent className="p-4">
+   959→        <div className="flex items-start gap-4">
+   960→          {/* Rank Badge */}
+   961→          <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${
+   962→            rank === 1 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
+   963→            rank === 2 ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' :
+   964→            rank === 3 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
+   965→            'bg-muted text-muted-foreground'
+   966→          }`}>
+   967→            {rank}
+   968→          </div>
+   969→
+   970→          {/* Model Info */}
+   971→          <div className="flex-1 min-w-0">
+   972→            <div className="flex items-center gap-2 mb-1">
+   973→              <h3 className="font-semibold">{rec.name}</h3>
+   974→              {topRank && <Badge className="bg-emerald-500 text-white text-[10px] px-1.5 py-0">Top #{rec.bestRank}</Badge>}
+   975→              {rec.specificRank && <Badge variant="outline" className="text-[10px]">Arena Rank #{rec.specificRank}</Badge>}
+   976→            </div>
+   977→            <p className="text-sm text-muted-foreground">{rec.organization} • {rec.license}</p>
+   978→
+   979→            {/* Score Bar */}
+   980→            <div className="mt-2 flex items-center gap-2">
+   981→              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+   982→                <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full" style={{ width: `${scorePercent}%` }} />
+   983→              </div>
+   984→              <span className="text-xs font-medium text-emerald-600">{scorePercent}% match</span>
+   985→            </div>
+   986→
+   987→            {/* Details */}
+   988→            <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+   989→              <span className="flex items-center gap-1"><Star className="h-3 w-3 text-amber-500" /> {rec.bestRating.toFixed(0)}</span>
+   990→              <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> {rec.outputPricePerMillion ? `$${rec.outputPricePerMillion.toFixed(2)}/M` : 'N/A'}</span>
+   991→              {rec.contextLength && <span className="flex items-center gap-1"><Zap className="h-3 w-3" /> {rec.contextLength >= 1000000 ? `${(rec.contextLength/1000000).toFixed(0)}M` : `${(rec.contextLength/1000).toFixed(0)}K`} ctx</span>}
+   992→              <span>{(rec.totalVotes / 1000).toFixed(1)}K votes</span>
+   993→            </div>
+   994→
+   995→            {/* Tags */}
+   996→            <div className="flex flex-wrap gap-1 mt-2">
+   997→              {rec.useCaseTags.slice(0, 5).map(tag => (
+   998→                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">
+   999→                  {tag}
+  1000→                </span>
+  1001→              ))}
+  1002→            </div>
+  1003→          </div>
+  1004→        </div>
+  1005→      </CardContent>
+  1006→    </Card>
+  1007→  )
+  1008→}
+  1009→
