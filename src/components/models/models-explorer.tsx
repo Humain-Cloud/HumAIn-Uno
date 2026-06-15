@@ -39,6 +39,7 @@ import {
   RefreshCw,
   PenTool,
   Calculator,
+  Lock,
 } from 'lucide-react'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 
@@ -162,22 +163,12 @@ export default function ModelsExplorer() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'explore' | 'recommend' | 'bookmarks'>('explore')
 
-  // Auth guard
+  // Bookmarks tab requires auth; switch to explore if not logged in
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/')
+    if (!authLoading && !user && activeTab === 'bookmarks') {
+      setActiveTab('explore')
     }
-  }, [user, authLoading, router])
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
-      </div>
-    )
-  }
-
-  if (!user) return null
+  }, [user, authLoading, activeTab])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
@@ -211,8 +202,9 @@ export default function ModelsExplorer() {
             <TabsTrigger value="recommend" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <Target className="h-4 w-4 mr-2" /> Find Your Model
             </TabsTrigger>
-            <TabsTrigger value="bookmarks" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="bookmarks" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm" disabled={!user}>
               <Bookmark className="h-4 w-4 mr-2" /> My Bookmarks
+              {!user && <Lock className="h-3 w-3 ml-1 text-muted-foreground" />}
             </TabsTrigger>
           </TabsList>
 
@@ -754,7 +746,7 @@ function BookmarksTab({ userId }: { userId?: string }) {
   const [loading, setLoading] = useState(true)
 
   const fetchBookmarks = useCallback(async () => {
-    if (!userId) return
+    if (!userId) { setLoading(false); return }
     setLoading(true)
     try {
       const res = await fetch(`/api/llm-models/bookmark?userId=${userId}`)
@@ -768,6 +760,16 @@ function BookmarksTab({ userId }: { userId?: string }) {
   }, [userId])
 
   useEffect(() => { fetchBookmarks() }, [fetchBookmarks])
+
+  if (!userId) {
+    return (
+      <div className="text-center py-16">
+        <Lock className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+        <h3 className="text-lg font-medium text-muted-foreground">Sign in to view bookmarks</h3>
+        <p className="text-sm text-muted-foreground/70 mt-1">Create an account to bookmark and save your favorite models</p>
+      </div>
+    )
+  }
 
   if (loading) {
     return (

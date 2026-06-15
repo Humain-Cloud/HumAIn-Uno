@@ -580,3 +580,30 @@ Stage Summary:
   6. Prisma schema with lifecycle fields and workspace models
 - Memory constraint in dev environment: server can handle ~3 compiled pages at once
 - QA cron job (every 15 minutes) will continue improving and testing the platform
+
+---
+Task ID: 5
+Agent: Main Orchestrator
+Task: Fix preview - server stability and page rendering issues
+
+Work Log:
+- Identified root cause: Next.js dev server with Turbopack was using too much memory (--max-old-space-size=4096), causing OOM kills when browser connected
+- Changed dev script from Turbopack to webpack mode (--webpack flag) for better memory management
+- Reduced max-old-space-size from 4096MB to 1024MB in package.json
+- Fixed missing Card imports in src/components/dashboard/analytics-charts.tsx (Card, CardContent, CardHeader, CardTitle)
+- Fixed LLM Finder page: removed auth guard that redirected unauthenticated users to home page
+- Made LLM Finder accessible to all users, with bookmarks tab disabled for non-authenticated users
+- Added Lock icon and "Sign in to view bookmarks" message for unauthenticated users on bookmarks tab
+- Created dev-with-warmup.sh script that starts server, waits for readiness, and warms up key routes one at a time
+- Verified all pages work correctly: Home, Browse, LLM Finder, Create, Dashboard
+- All API routes returning 200: /api/stats, /api/knowledge, /api/categories, /api/llm-models/*
+- Server stays alive with browser connected when properly warmed up
+
+Stage Summary:
+- KEY FIX: Switched from Turbopack to webpack mode in dev script
+- KEY FIX: Reduced memory from 4096MB to 1024MB to prevent OOM
+- KEY FIX: Removed auth guard from LLM Finder page (was redirecting to /)
+- KEY FIX: Added missing Card component imports in analytics-charts.tsx
+- Created warmup script at scripts/dev-with-warmup.sh
+- All pages verified working via agent-browser with zero errors
+- Server stable at ~2.7GB memory usage with browser connected
