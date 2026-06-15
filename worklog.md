@@ -234,3 +234,73 @@ Stage Summary:
 - ✅ Local and remote are in sync at commit `3caac6e`
 - ✅ `tool-results/` added to `.gitignore`
 - ⚠️ PAT may need re-saving if `~/.git-credentials` is reset between sessions
+
+---
+
+## Session: 2025-06-16 - LLM Model Explorer Feature
+
+### Task ID: 6-llm-models - Build LLM Model Explorer Section
+**Status**: COMPLETED
+
+**What was built**:
+A full-scale dedicated section where logged-in users can find the exact LLM model for their use-case, powered by Arena.ai leaderboard data.
+
+**Data Sources**:
+- Arena.ai leaderboard (https://arena.ai/leaderboard/) — scraped 468 unique models across 52 organizations and 11 arena categories
+- Arena.ai changelog (https://arena.ai/blog/leaderboard-changelog/) — monitored for new model additions
+
+**Database Schema** (3 new Prisma models):
+1. `LLMModel` — 468 models with: arenaKey, name, organization, license, bestRank, bestRating, totalVotes, pricing (input/output per million), contextLength, capabilities (input/output JSON), arenaCategories, categoryRankings, useCaseTags, userSelectable
+2. `ModelBookmark` — User bookmarks with notes (userId + modelId unique)
+3. `ModelSyncLog` — Sync history tracking (source, syncType, status, counts, errors, duration)
+
+**API Routes** (5 endpoints):
+1. `GET /api/llm-models` — List models with search, filter (org/arena/license), sort (rating/rank/price/votes/name), pagination
+2. `GET /api/llm-models/stats` — Aggregate stats (total models, organizations, pricing ranges, arena distribution)
+3. `POST/GET /api/llm-models/recommend` — Use-case based recommendations with scoring engine
+4. `POST/DELETE/GET /api/llm-models/bookmark` — Bookmark management
+5. `POST /api/llm-models/sync` — Full sync from Arena.ai leaderboard (fetches page, parses RSC payload, upserts models)
+
+**Frontend** (`/models` page — logged-in users only):
+1. **Explore Tab**: Stats banner, search bar, filters (org/arena/license), sort options, grid/list view toggle, model cards with ratings/rankings/pricing/capabilities/tags, sync button
+2. **Find Your Model Tab**: 12 use-case categories (Chat, Coding, Reasoning, Creative Writing, Document Analysis, Vision, Image Gen, Image Edit, Video Gen, Web Dev, Research, Agentic Tasks), budget selector (Any/Free/Low/Mid/High), priority toggles (Accuracy/Speed/Cost/Long Context), scored recommendation cards with match percentage
+3. **Bookmarks Tab**: Saved models with bookmark management
+
+**Navbar Update**:
+- Added "LLM Models" nav item with Cpu icon, visible to logged-in users only
+
+**Periodic Sync**:
+- Cron job (every 6 hours) to sync from Arena.ai leaderboard
+- Manual sync button on the Explore tab
+- Sync logs tracked in ModelSyncLog table
+
+**Files Changed**:
+- `prisma/schema.prisma` — Added LLMModel, ModelBookmark, ModelSyncLog
+- `prisma/arena-seed-data.json` — 468 models seed data
+- `prisma/seed-llm-models.ts` — Seed script
+- `src/app/api/llm-models/route.ts` — Main models API
+- `src/app/api/llm-models/stats/route.ts` — Stats API
+- `src/app/api/llm-models/recommend/route.ts` — Recommendation engine
+- `src/app/api/llm-models/bookmark/route.ts` — Bookmarks API
+- `src/app/api/llm-models/sync/route.ts` — Arena.ai sync API
+- `src/app/models/page.tsx` — Models page route
+- `src/components/models/models-explorer.tsx` — Main explorer component
+- `src/components/layout/navbar-lite.tsx` — Added LLM Models nav item
+- `src/lib/store.ts` — Added 'models' to ViewType union
+- `src/lib/hooks/use-debounce.ts` — Debounce hook for search
+
+**Verification**:
+- ✅ API endpoints all return 200 with correct data
+- ✅ 468 models seeded and queryable
+- ✅ Recommendation engine scores models accurately (coding → claude-opus-4-7-thinking #1)
+- ✅ Sync endpoint works (updates 468 models from Arena.ai)
+- ✅ Frontend renders correctly with all 3 tabs
+- ✅ Agent-browser verification passed
+- ✅ Pushed to GitHub (commit e88ce94)
+
+**Stage Summary**:
+- ✅ Full LLM Model Explorer feature built end-to-end
+- ✅ 468 models from Arena.ai with real rankings, pricing, capabilities
+- ✅ Use-case recommendation engine with scoring
+- ✅ Periodic auto-sync from Arena.ai (every 6 hours)
+- ✅ All code pushed to GitHub
