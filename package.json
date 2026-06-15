@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "PORT=3000 HOSTNAME='::' NODE_OPTIONS='--max-old-space-size=256' node .next/standalone/server.js 2>&1 | tee dev.log",
+    "dev": "PORT=3000 HOSTNAME='0.0.0.0' NODE_OPTIONS='--max-old-space-size=256' node .next/standalone/server.js 2>&1 | tee dev.log",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
