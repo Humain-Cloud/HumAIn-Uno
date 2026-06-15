@@ -93,3 +93,77 @@ Stage Summary:
 - ✅ Dev server started with double-fork persistence technique
 - ✅ All page sections rendering correctly: hero, trending, stats, how-it-works, testimonials, featured agents, categories, frameworks, community, CTA, footer
 - ⚠️ Dev server still needs persistent restart mechanism (sandbox kills background processes)
+
+---
+
+## Session: 2025-06-15 (continued) - Fix Authentication System
+
+### Task ID: 3-auth-fix - Fix Auth System for Restored Supabase Credentials
+**Status**: COMPLETED
+
+**Context**: Supabase credentials were restored to `.env` (URL + anon key + service role key). The Supabase project at `https://iwjjiddydmnpjdzwlckn.supabase.co` is live and working. However, all auth pages crashed because `getSupabaseBrowserClient()` returned `null` when Supabase wasn't configured (previous defensive fix from Task 12), but all auth pages called methods on it without null checks.
+
+**Work Log**:
+
+1. **`src/lib/supabase/client.ts`** — Core fix:
+   - Removed the `isSupabaseConfigured()` guard that returned `null`
+   - Now creates the Supabase client directly (since credentials ARE in `.env`)
+   - If env vars are truly missing, throws a clear error in development mode instead of silently returning null
+   - Returns null in production as a graceful fallback
+   - Kept `isSupabaseConfigured()` as a display-purpose helper (not gating client creation)
+
+2. **`src/lib/supabase/server.ts`** — Server-side fix:
+   - Added `isSupabaseServerConfigured()` helper for display purposes
+   - Added env var check: throws in dev if missing, returns null in production as fallback
+   - Client creation no longer silently fails with `process.env.X!` non-null assertions
+
+3. **`src/components/auth/auth-provider.tsx`** — Minor type fix:
+   - Changed `NonNullable<ReturnType<...>>` to `Exclude<ReturnType<...>, null>` for clarity
+
+4. **`src/app/auth/signin/page.tsx`** — Added null checks:
+   - `handleSignIn`: null check after `getSupabaseBrowserClient()` with user-facing error
+   - `handleOAuth`: null check with user-facing error
+   - `handleMagicLink`: null check with user-facing error
+
+5. **`src/app/auth/signup/page.tsx`** — Added null checks:
+   - `handleSignUp`: null check after `getSupabaseBrowserClient()` with user-facing error
+   - `handleOAuth`: null check with user-facing error
+
+6. **`src/components/auth/auth-modal.tsx`** — Added null checks:
+   - `handleSignIn`: null check before calling `supabase.auth.signInWithPassword`
+   - `handleSignUp`: null check before calling `supabase.auth.signUp`
+   - `handleOAuth`: null check before calling `supabase.auth.signInWithOAuth`
+   - `handleMagicLink`: null check before calling `supabase.auth.signInWithOtp`
+
+7. **`src/app/auth/verify-email/page.tsx`** — Added null checks:
+   - `checkVerification` polling effect: null check with silent return
+   - `handleResend`: null check with user-facing error
+
+8. **`src/app/auth/forgot-password/page.tsx`** — Added null check:
+   - `handleSubmit`: null check with user-facing error
+
+9. **`src/app/auth/reset-password/page.tsx`** — Added null checks:
+   - `checkSession` effect: null check with user-facing error
+   - `handleReset`: null check with user-facing error
+
+10. **`src/app/auth/callback/route.ts`** — Added error handling:
+    - Null check after `createSupabaseServerClient()` with redirect to signin with error message
+
+11. **`src/middleware.ts`** — Changed behavior:
+    - Replaced silent early return with `console.warn` when Supabase not configured
+
+12. **`src/app/onboarding/page.tsx`** — Added null check:
+    - `checkAuth` effect: null check with graceful fallback (sets `authChecked=true`)
+
+**Verification**:
+- All auth pages return HTTP 200: `/auth/signin`, `/auth/signup`, `/auth/forgot-password`, `/auth/verify-email`
+- Dev log shows successful compilation with no TypeScript errors
+- Lint passes (only pre-existing errors in non-project proxy scripts)
+- Consistent null-check pattern applied: `if (!supabase) { setError('Authentication is not available...'); return }`
+
+**Stage Summary**:
+- ✅ Core Supabase client now creates client normally instead of returning null
+- ✅ All 12 files fixed with proper null safety and user-facing error messages
+- ✅ Dev mode throws clear errors when env vars are missing
+- ✅ Production mode returns null gracefully as fallback
+- ✅ Auth pages no longer crash on null client — they show user-friendly errors

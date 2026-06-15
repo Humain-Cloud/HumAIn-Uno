@@ -36,7 +36,7 @@ const MAX_LOADING_MS = 8_000
 const SESSION_TIMEOUT_MS = 5_000
 const PROFILE_TIMEOUT_MS = 3_000
 
-type SupabaseClientType = NonNullable<ReturnType<typeof getSupabaseBrowserClient>>
+type SupabaseClientType = Exclude<ReturnType<typeof getSupabaseBrowserClient>, null>
 
 interface AuthContextValue {
   user: User | null

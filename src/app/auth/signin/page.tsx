@@ -96,6 +96,10 @@ function SignInForm() {
     setLoading(true)
     try {
       const supabase = getSupabaseBrowserClient()
+      if (!supabase) {
+        setError('Authentication is not available. Please try again later.')
+        return
+      }
       const { error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -120,6 +124,10 @@ function SignInForm() {
     setOauthLoading(provider)
     try {
       const supabase = getSupabaseBrowserClient()
+      if (!supabase) {
+        setError('Authentication is not available. Please try again later.')
+        return
+      }
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -152,6 +160,10 @@ function SignInForm() {
     setMagicLinkLoading(true)
     try {
       const supabase = getSupabaseBrowserClient()
+      if (!supabase) {
+        setError('Authentication is not available. Please try again later.')
+        return
+      }
       const { error: authError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {

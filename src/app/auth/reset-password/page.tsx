@@ -72,6 +72,10 @@ export default function ResetPasswordPage() {
     const checkSession = async () => {
       try {
         const supabase = getSupabaseBrowserClient()
+        if (!supabase) {
+          setError('Authentication is not available. Please try again later.')
+          return
+        }
         const { data } = await supabase.auth.getSession()
 
         if (data.session) {
@@ -142,6 +146,10 @@ export default function ResetPasswordPage() {
     setLoading(true)
     try {
       const supabase = getSupabaseBrowserClient()
+      if (!supabase) {
+        setError('Authentication is not available. Please try again later.')
+        return
+      }
       const { error: updateError } = await supabase.auth.updateUser({
         password,
       })

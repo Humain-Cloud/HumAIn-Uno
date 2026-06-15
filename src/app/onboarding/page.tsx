@@ -299,6 +299,10 @@ export default function OnboardingPage() {
     const checkAuth = async () => {
       try {
         const supabase = getSupabaseBrowserClient()
+        if (!supabase) {
+          setAuthChecked(true)
+          return
+        }
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
           setUserEmail(user.email ?? null)

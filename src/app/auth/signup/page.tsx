@@ -135,6 +135,10 @@ export default function SignUpPage() {
     setLoading(true)
     try {
       const supabase = getSupabaseBrowserClient()
+      if (!supabase) {
+        setError('Authentication is not available. Please try again later.')
+        return
+      }
       const { error: authError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -166,6 +170,10 @@ export default function SignUpPage() {
     setOauthLoading(provider)
     try {
       const supabase = getSupabaseBrowserClient()
+      if (!supabase) {
+        setError('Authentication is not available. Please try again later.')
+        return
+      }
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {

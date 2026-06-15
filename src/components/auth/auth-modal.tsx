@@ -72,6 +72,12 @@ export function AuthModal() {
     setError('')
     setSuccess('')
 
+    if (!supabase) {
+      setError('Authentication is not available. Please try again later.')
+      setLoading(false)
+      return
+    }
+
     try {
       const { error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -114,6 +120,12 @@ export function AuthModal() {
     setError('')
     setSuccess('')
 
+    if (!supabase) {
+      setError('Authentication is not available. Please try again later.')
+      setLoading(false)
+      return
+    }
+
     try {
       const { error: authError } = await supabase.auth.signUp({
         email: email.trim(),
@@ -147,6 +159,10 @@ export function AuthModal() {
     setError('')
     setOauthLoading(provider)
     try {
+      if (!supabase) {
+        setError('Authentication is not available. Please try again later.')
+        return
+      }
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -173,6 +189,11 @@ export function AuthModal() {
     }
 
     setLoading(true)
+    if (!supabase) {
+      setError('Authentication is not available. Please try again later.')
+      setLoading(false)
+      return
+    }
     try {
       const { error: authError } = await supabase.auth.signInWithOtp({
         email: email.trim(),

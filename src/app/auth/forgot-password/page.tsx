@@ -60,6 +60,10 @@ export default function ForgotPasswordPage() {
     setLoading(true)
     try {
       const supabase = getSupabaseBrowserClient()
+      if (!supabase) {
+        setError('Authentication is not available. Please try again later.')
+        return
+      }
       const { error: authError } = await supabase.auth.resetPasswordForEmail(
         email.trim(),
         {
