@@ -1,0 +1,968 @@
+     1→'use client'
+     2→
+     3→import { useState, useCallback, useEffect } from 'react'
+     4→import { useRouter } from 'next/navigation'
+     5→import { useAuth } from '@/components/auth/auth-provider'
+     6→import { motion } from 'framer-motion'
+     7→import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+     8→import { OnboardingStep } from '@/components/auth/onboarding-step'
+     9→import { Card, CardContent } from '@/components/ui/card'
+    10→import { Input } from '@/components/ui/input'
+    11→import { Label } from '@/components/ui/label'
+    12→import { Badge } from '@/components/ui/badge'
+    13→import { Checkbox } from '@/components/ui/checkbox'
+    14→import {
+    15→  UserPlus,
+    16→  BarChart3,
+    17→  Layers,
+    18→  Building2,
+    19→  Rocket,
+    20→  Sprout,
+    21→  TreePine,
+    22→  Crown,
+    23→  Bot,
+    24→  Users,
+    25→  Network,
+    26→  BookOpen,
+    27→  FlaskConical,
+    28→  HeartPulse,
+    29→  Landmark,
+    30→  Monitor,
+    31→  GraduationCap,
+    32→  Megaphone,
+    33→  Scale,
+    34→  Wrench,
+    35→  ShoppingBag,
+    36→  Factory,
+    37→  Shield,
+    38→  Zap,
+    39→  TrainFront,
+    40→  Clapperboard,
+    41→  Home,
+    42→  Wheat,
+    43→  Swords,
+    44→  Wifi,
+    45→  Hotel,
+    46→  Trophy,
+    47→  Leaf,
+    48→  Code2,
+    49→  Search,
+    50→  UsersRound,
+    51→  Workflow,
+    52→  BarChart2,
+    53→  Headphones,
+    54→  PenTool,
+    55→  Terminal,
+    56→  MapPin,
+    57→  Briefcase,
+    58→  Building,
+    59→  CheckCircle2,
+    60→  Sparkles,
+    61→  LogIn,
+    62→  Compass,
+    63→} from 'lucide-react'
+    64→import { cn } from '@/lib/utils'
+    65→import type { OnboardingData } from '@/lib/supabase/types'
+    66→import { Button } from '@/components/ui/button'
+    67→
+    68→// ─── Step Configuration ──────────────────────────────────────────────────────
+    69→
+    70→const TOTAL_STEPS = 5
+    71→
+    72→const STEP_CONFIG = [
+    73→  {
+    74→    icon: <UserPlus className="h-4 w-4" />,
+    75→    title: 'Welcome & Profile',
+    76→    subtitle: 'Tell us a bit about yourself so we can personalize your experience.',
+    77→  },
+    78→  {
+    79→    icon: <BarChart3 className="h-4 w-4" />,
+    80→    title: 'Experience Level',
+    81→    subtitle: 'How familiar are you with AI agents? This helps us tailor recommendations.',
+    82→  },
+    83→  {
+    84→    icon: <Layers className="h-4 w-4" />,
+    85→    title: 'Framework Preferences',
+    86→    subtitle: 'Select the frameworks you\'re interested in exploring.',
+    87→  },
+    88→  {
+    89→    icon: <Building2 className="h-4 w-4" />,
+    90→    title: 'Industry Interests',
+    91→    subtitle: 'Choose the industries relevant to your work and goals.',
+    92→  },
+    93→  {
+    94→    icon: <Rocket className="h-4 w-4" />,
+    95→    title: 'Use Cases & Finish',
+    96→    subtitle: 'What do you want to accomplish with AI agents?',
+    97→  },
+    98→]
+    99→
+   100→// ─── Data Constants ──────────────────────────────────────────────────────────
+   101→
+   102→const EXPERIENCE_LEVELS = [
+   103→  {
+   104→    id: 'beginner' as const,
+   105→    title: 'Beginner',
+   106→    description: "I'm new to AI agents",
+   107→    icon: <Sprout className="h-8 w-8" />,
+   108→    color: 'emerald',
+   109→  },
+   110→  {
+   111→    id: 'intermediate' as const,
+   112→    title: 'Intermediate',
+   113→    description: "I've built or used AI agents before",
+   114→    icon: <TreePine className="h-8 w-8" />,
+   115→    color: 'amber',
+   116→  },
+   117→  {
+   118→    id: 'advanced' as const,
+   119→    title: 'Advanced',
+   120→    description: "I'm an expert in AI agent development",
+   121→    icon: <Crown className="h-8 w-8" />,
+   122→    color: 'violet',
+   123→  },
+   124→]
+   125→
+   126→const FRAMEWORKS = [
+   127→  {
+   128→    id: 'langgraph',
+   129→    name: 'LangGraph',
+   130→    description: 'Stateful multi-agent orchestration with graph-based workflows',
+   131→    agentCount: '180+',
+   132→    color: 'emerald',
+   133→    icon: <Network className="h-6 w-6" />,
+   134→  },
+   135→  {
+   136→    id: 'crewai',
+   137→    name: 'CrewAI',
+   138→    description: 'Role-playing autonomous agents that collaborate as a crew',
+   139→    agentCount: '160+',
+   140→    color: 'amber',
+   141→    icon: <Users className="h-6 w-6" />,
+   142→  },
+   143→  {
+   144→    id: 'autogen',
+   145→    name: 'AutoGen',
+   146→    description: 'Multi-agent conversations with customizable speakers',
+   147→    agentCount: '140+',
+   148→    color: 'rose',
+   149→    icon: <Bot className="h-6 w-6" />,
+   150→  },
+   151→  {
+   152→    id: 'agno',
+   153→    name: 'Agno',
+   154→    description: 'Lightning-fast agent building with minimal abstractions',
+   155→    agentCount: '120+',
+   156→    color: 'violet',
+   157→    icon: <FlaskConical className="h-6 w-6" />,
+   158→  },
+   159→  {
+   160→    id: 'llamaindex',
+   161→    name: 'LlamaIndex',
+   162→    description: 'Data framework for LLM-powered agents and RAG pipelines',
+   163→    agentCount: '100+',
+   164→    color: 'teal',
+   165→    icon: <BookOpen className="h-6 w-6" />,
+   166→  },
+   167→]
+   168→
+   169→const INDUSTRIES = [
+   170→  { id: 'healthcare', name: 'Healthcare', icon: <HeartPulse className="h-4 w-4" /> },
+   171→  { id: 'finance', name: 'Finance', icon: <Landmark className="h-4 w-4" /> },
+   172→  { id: 'technology', name: 'Technology', icon: <Monitor className="h-4 w-4" /> },
+   173→  { id: 'education', name: 'Education', icon: <GraduationCap className="h-4 w-4" /> },
+   174→  { id: 'marketing', name: 'Marketing', icon: <Megaphone className="h-4 w-4" /> },
+   175→  { id: 'legal', name: 'Legal', icon: <Scale className="h-4 w-4" /> },
+   176→  { id: 'engineering', name: 'Engineering', icon: <Wrench className="h-4 w-4" /> },
+   177→  { id: 'retail', name: 'Retail', icon: <ShoppingBag className="h-4 w-4" /> },
+   178→  { id: 'manufacturing', name: 'Manufacturing', icon: <Factory className="h-4 w-4" /> },
+   179→  { id: 'public-safety', name: 'Public Safety', icon: <Shield className="h-4 w-4" /> },
+   180→  { id: 'energy', name: 'Energy', icon: <Zap className="h-4 w-4" /> },
+   181→  { id: 'transportation', name: 'Transportation', icon: <TrainFront className="h-4 w-4" /> },
+   182→  { id: 'entertainment', name: 'Entertainment', icon: <Clapperboard className="h-4 w-4" /> },
+   183→  { id: 'real-estate', name: 'Real Estate', icon: <Home className="h-4 w-4" /> },
+   184→  { id: 'agriculture', name: 'Agriculture', icon: <Wheat className="h-4 w-4" /> },
+   185→  { id: 'defense', name: 'Defense', icon: <Swords className="h-4 w-4" /> },
+   186→  { id: 'telecommunications', name: 'Telecommunications', icon: <Wifi className="h-4 w-4" /> },
+   187→  { id: 'hospitality', name: 'Hospitality', icon: <Hotel className="h-4 w-4" /> },
+   188→  { id: 'sports', name: 'Sports', icon: <Trophy className="h-4 w-4" /> },
+   189→  { id: 'environmental', name: 'Environmental', icon: <Leaf className="h-4 w-4" /> },
+   190→]
+   191→
+   192→const USE_CASES = [
+   193→  { id: 'build-agents', name: 'Build AI Agents', description: 'Create and deploy custom AI agents', icon: <Code2 className="h-5 w-5" /> },
+   194→  { id: 'research-learning', name: 'Research & Learning', description: 'Explore and learn about AI agent patterns', icon: <Search className="h-5 w-5" /> },
+   195→  { id: 'team-collaboration', name: 'Team Collaboration', description: 'Enable multi-agent team workflows', icon: <UsersRound className="h-5 w-5" /> },
+   196→  { id: 'process-automation', name: 'Process Automation', description: 'Automate repetitive business processes', icon: <Workflow className="h-5 w-5" /> },
+   197→  { id: 'data-analysis', name: 'Data Analysis', description: 'Analyze and extract insights from data', icon: <BarChart2 className="h-5 w-5" /> },
+   198→  { id: 'customer-support', name: 'Customer Support', description: 'AI-powered customer service agents', icon: <Headphones className="h-5 w-5" /> },
+   199→  { id: 'content-creation', name: 'Content Creation', description: 'Generate and curate content at scale', icon: <PenTool className="h-5 w-5" /> },
+   200→  { id: 'code-generation', name: 'Code Generation', description: 'Auto-generate and review code', icon: <Terminal className="h-5 w-5" /> },
+   201→]
+   202→
+   203→// ─── Color mapping helpers ───────────────────────────────────────────────────
+   204→
+   205→function getFrameworkColorClasses(color: string, selected: boolean) {
+   206→  const map: Record<string, { border: string; bg: string; text: string; badge: string; ring: string }> = {
+   207→    emerald: {
+   208→      border: selected ? 'border-emerald-500' : 'border-border',
+   209→      bg: selected ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-card',
+   210→      text: 'text-emerald-600 dark:text-emerald-400',
+   211→      badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+   212→      ring: 'ring-emerald-500/30',
+   213→    },
+   214→    amber: {
+   215→      border: selected ? 'border-amber-500' : 'border-border',
+   216→      bg: selected ? 'bg-amber-50 dark:bg-amber-950/30' : 'bg-card',
+   217→      text: 'text-amber-600 dark:text-amber-400',
+   218→      badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+   219→      ring: 'ring-amber-500/30',
+   220→    },
+   221→    rose: {
+   222→      border: selected ? 'border-rose-500' : 'border-border',
+   223→      bg: selected ? 'bg-rose-50 dark:bg-rose-950/30' : 'bg-card',
+   224→      text: 'text-rose-600 dark:text-rose-400',
+   225→      badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
+   226→      ring: 'ring-rose-500/30',
+   227→    },
+   228→    violet: {
+   229→      border: selected ? 'border-violet-500' : 'border-border',
+   230→      bg: selected ? 'bg-violet-50 dark:bg-violet-950/30' : 'bg-card',
+   231→      text: 'text-violet-600 dark:text-violet-400',
+   232→      badge: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300',
+   233→      ring: 'ring-violet-500/30',
+   234→    },
+   235→    teal: {
+   236→      border: selected ? 'border-teal-500' : 'border-border',
+   237→      bg: selected ? 'bg-teal-50 dark:bg-teal-950/30' : 'bg-card',
+   238→      text: 'text-teal-600 dark:text-teal-400',
+   239→      badge: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
+   240→      ring: 'ring-teal-500/30',
+   241→    },
+   242→  }
+   243→  return map[color] || map.emerald
+   244→}
+   245→
+   246→function getExperienceColorClasses(color: string, selected: boolean) {
+   247→  const map: Record<string, { border: string; bg: string; text: string; iconBg: string }> = {
+   248→    emerald: {
+   249→      border: selected ? 'border-emerald-500 ring-2 ring-emerald-500/30' : 'border-border',
+   250→      bg: selected ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-card hover:bg-muted/50',
+   251→      text: 'text-emerald-600 dark:text-emerald-400',
+   252→      iconBg: selected ? 'bg-emerald-100 dark:bg-emerald-900/50' : 'bg-muted',
+   253→    },
+   254→    amber: {
+   255→      border: selected ? 'border-amber-500 ring-2 ring-amber-500/30' : 'border-border',
+   256→      bg: selected ? 'bg-amber-50 dark:bg-amber-950/30' : 'bg-card hover:bg-muted/50',
+   257→      text: 'text-amber-600 dark:text-amber-400',
+   258→      iconBg: selected ? 'bg-amber-100 dark:bg-amber-900/50' : 'bg-muted',
+   259→    },
+   260→    violet: {
+   261→      border: selected ? 'border-violet-500 ring-2 ring-violet-500/30' : 'border-border',
+   262→      bg: selected ? 'bg-violet-50 dark:bg-violet-950/30' : 'bg-card hover:bg-muted/50',
+   263→      text: 'text-violet-600 dark:text-violet-400',
+   264→      iconBg: selected ? 'bg-violet-100 dark:bg-violet-900/50' : 'bg-muted',
+   265→    },
+   266→  }
+   267→  return map[color] || map.emerald
+   268→}
+   269→
+   270→// ─── Main Page Component ─────────────────────────────────────────────────────
+   271→
+   272→export default function OnboardingPage() {
+   273→  const router = useRouter()
+   274→  const { user: authUser, loading: authLoading } = useAuth()
+   275→  const [currentStep, setCurrentStep] = useState(1)
+   276→  const [direction, setDirection] = useState(1)
+   277→  const [saving, setSaving] = useState(false)
+   278→  const [completed, setCompleted] = useState(false)
+   279→  const [authChecked, setAuthChecked] = useState(false)
+   280→  const [userEmail, setUserEmail] = useState<string | null>(null)
+   281→
+   282→  // Onboarding form data
+   283→  const [formData, setFormData] = useState<OnboardingData>({
+   284→    full_name: '',
+   285→    company: '',
+   286→    job_title: '',
+   287→    preferred_frameworks: [],
+   288→    preferred_industries: [],
+   289→    experience_level: 'beginner',
+   290→    use_cases: [],
+   291→    interests: [],
+   292→  })
+   293→
+   294→  // Additional profile fields
+   295→  const [location, setLocation] = useState('')
+   296→
+   297→  // Check Supabase auth state
+   298→  useEffect(() => {
+   299→    const checkAuth = async () => {
+   300→      try {
+   301→        const supabase = getSupabaseBrowserClient()
+   302→        const { data: { user } } = await supabase.auth.getUser()
+   303→        if (user) {
+   304→          setUserEmail(user.email ?? null)
+   305→          setFormData((prev) => ({
+   306→            ...prev,
+   307→            full_name: prev.full_name || user.user_metadata?.full_name || user.user_metadata?.name || '',
+   308→          }))
+   309→        }
+   310→        // If no Supabase user, check NextAuth session
+   311→      } catch {
+   312→        // Supabase not configured - continue with NextAuth session
+   313→      }
+   314→      setAuthChecked(true)
+   315→    }
+   316→    checkAuth()
+   317→  }, [])
+   318→
+   319→  // Pre-fill from Supabase auth
+   320→  useEffect(() => {
+   321→    if (authUser) {
+   322→      setFormData((prev) => ({
+   323→        ...prev,
+   324→        full_name: prev.full_name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
+   325→      }))
+   326→      if (!userEmail && authUser.email) {
+   327→        setUserEmail(authUser.email)
+   328→      }
+   329→    }
+   330→  }, [authUser, userEmail])
+   331→
+   332→  // Save progress to Supabase
+   333→  const saveProgress = useCallback(
+   334→    async (step: number, isComplete = false) => {
+   335→      setSaving(true)
+   336→      try {
+   337→        const userId = authUser?.id || userEmail || 'demo-user'
+   338→        const profileData: Record<string, unknown> = {}
+   339→        const preferencesData: Record<string, unknown> = {}
+   340→
+   341→        if (step >= 1) {
+   342→          profileData.full_name = formData.full_name
+   343→          profileData.company = formData.company
+   344→          profileData.job_title = formData.job_title
+   345→          profileData.location = location
+   346→          profileData.email = userEmail || authUser?.email || ''
+   347→        }
+   348→        if (step >= 2) {
+   349→          profileData.preferred_framework = formData.experience_level
+   350→          preferencesData.experience_level = formData.experience_level
+   351→        }
+   352→        if (step >= 3) {
+   353→          preferencesData.framework_filter = formData.preferred_frameworks
+   354→        }
+   355→        if (step >= 4) {
+   356→          preferencesData.industry_filter = formData.preferred_industries
+   357→          profileData.preferred_industry = formData.preferred_industries[0] || null
+   358→        }
+   359→        if (step >= 5) {
+   360→          preferencesData.use_cases = formData.use_cases
+   361→          preferencesData.interests = formData.interests
+   362→        }
+   363→
+   364→        await fetch('/api/onboarding', {
+   365→          method: 'POST',
+   366→          headers: { 'Content-Type': 'application/json' },
+   367→          body: JSON.stringify({
+   368→            userId,
+   369→            step,
+   370→            profileData,
+   371→            preferencesData,
+   372→            onboardingCompleted: isComplete,
+   373→          }),
+   374→        })
+   375→      } catch (error) {
+   376→        console.error('Failed to save progress:', error)
+   377→      } finally {
+   378→        setSaving(false)
+   379→      }
+   380→    },
+   381→    [formData, location, authUser, userEmail]
+   382→  )
+   383→
+   384→  // Navigation handlers
+   385→  const goNext = useCallback(async () => {
+   386→    if (currentStep < TOTAL_STEPS) {
+   387→      await saveProgress(currentStep)
+   388→      setDirection(1)
+   389→      setCurrentStep((s) => s + 1)
+   390→    } else {
+   391→      // Complete onboarding
+   392→      await saveProgress(currentStep, true)
+   393→      setCompleted(true)
+   394→      setTimeout(() => {
+   395→        router.push('/')
+   396→      }, 2500)
+   397→    }
+   398→  }, [currentStep, saveProgress, router])
+   399→
+   400→  const goBack = useCallback(() => {
+   401→    if (currentStep > 1) {
+   402→      setDirection(-1)
+   403→      setCurrentStep((s) => s - 1)
+   404→    }
+   405→  }, [currentStep])
+   406→
+   407→  const goSkip = useCallback(async () => {
+   408→    await saveProgress(currentStep)
+   409→    if (currentStep < TOTAL_STEPS) {
+   410→      setDirection(1)
+   411→      setCurrentStep((s) => s + 1)
+   412→    } else {
+   413→      await saveProgress(currentStep, true)
+   414→      setCompleted(true)
+   415→      setTimeout(() => {
+   416→        router.push('/')
+   417→      }, 2500)
+   418→    }
+   419→  }, [currentStep, saveProgress, router])
+   420→
+   421→  const skipAll = useCallback(async () => {
+   422→    await saveProgress(currentStep, true)
+   423→    setCompleted(true)
+   424→    setTimeout(() => {
+   425→      router.push('/')
+   426→    }, 1500)
+   427→  }, [currentStep, saveProgress, router])
+   428→
+   429→  // Validation
+   430→  const isNextDisabled = (() => {
+   431→    switch (currentStep) {
+   432→      case 1:
+   433→        return !formData.full_name.trim()
+   434→      case 2:
+   435→        return false // Experience level always has a default
+   436→      case 3:
+   437→        return formData.preferred_frameworks.length === 0
+   438→      case 4:
+   439→        return false // Industries are optional
+   440→      case 5:
+   441→        return false // Use cases are optional
+   442→      default:
+   443→        return false
+   444→    }
+   445→  })()
+   446→
+   447→  // ─── Step Renderers ──────────────────────────────────────────────────────
+   448→
+   449→  const renderStep1 = () => (
+   450→    <div className="space-y-6">
+   451→      {/* Welcome banner */}
+   452→      <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20 p-5 sm:p-6 border border-emerald-200/50 dark:border-emerald-800/30">
+   453→        <div className="flex items-start gap-4">
+   454→          <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
+   455→            <Sparkles className="h-6 w-6" />
+   456→          </div>
+   457→          <div>
+   458→            <h2 className="text-lg font-semibold text-emerald-900 dark:text-emerald-100">
+   459→              Welcome to Humain-Uno! 🎉
+   460→            </h2>
+   461→            <p className="text-sm text-emerald-700 dark:text-emerald-300 mt-1">
+   462→              {userEmail || authUser?.email
+   463→                ? `Signed in as ${userEmail || authUser?.email}`
+   464→                : 'Let\'s set up your personalized experience'}
+   465→            </p>
+   466→          </div>
+   467→        </div>
+   468→      </div>
+   469→
+   470→      {/* Profile form */}
+   471→      <div className="grid gap-5">
+   472→        <div className="space-y-2">
+   473→          <Label htmlFor="full-name" className="text-sm font-medium">
+   474→            Full Name <span className="text-emerald-500">*</span>
+   475→          </Label>
+   476→          <div className="relative">
+   477→            <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   478→            <Input
+   479→              id="full-name"
+   480→              placeholder="Enter your full name"
+   481→              value={formData.full_name}
+   482→              onChange={(e) =>
+   483→                setFormData((d) => ({ ...d, full_name: e.target.value }))
+   484→              }
+   485→              className="pl-10 input-focus"
+   486→            />
+   487→          </div>
+   488→        </div>
+   489→
+   490→        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+   491→          <div className="space-y-2">
+   492→            <Label htmlFor="company" className="text-sm font-medium">
+   493→              <span className="flex items-center gap-1.5">
+   494→                <Building className="h-3.5 w-3.5" />
+   495→                Company / Organization
+   496→              </span>
+   497→            </Label>
+   498→            <Input
+   499→              id="company"
+   500→              placeholder="Acme Inc."
+   501→              value={formData.company}
+   502→              onChange={(e) =>
+   503→                setFormData((d) => ({ ...d, company: e.target.value }))
+   504→              }
+   505→              className="input-focus"
+   506→            />
+   507→          </div>
+   508→          <div className="space-y-2">
+   509→            <Label htmlFor="job-title" className="text-sm font-medium">
+   510→              <span className="flex items-center gap-1.5">
+   511→                <Briefcase className="h-3.5 w-3.5" />
+   512→                Job Title
+   513→              </span>
+   514→            </Label>
+   515→            <Input
+   516→              id="job-title"
+   517→              placeholder="Software Engineer"
+   518→              value={formData.job_title}
+   519→              onChange={(e) =>
+   520→                setFormData((d) => ({ ...d, job_title: e.target.value }))
+   521→              }
+   522→              className="input-focus"
+   523→            />
+   524→          </div>
+   525→        </div>
+   526→
+   527→        <div className="space-y-2">
+   528→          <Label htmlFor="location" className="text-sm font-medium">
+   529→            <span className="flex items-center gap-1.5">
+   530→              <MapPin className="h-3.5 w-3.5" />
+   531→              Location
+   532→            </span>
+   533→          </Label>
+   534→          <Input
+   535→            id="location"
+   536→            placeholder="San Francisco, CA"
+   537→            value={location}
+   538→            onChange={(e) => setLocation(e.target.value)}
+   539→            className="input-focus"
+   540→          />
+   541→        </div>
+   542→      </div>
+   543→    </div>
+   544→  )
+   545→
+   546→  const renderStep2 = () => (
+   547→    <div className="space-y-4">
+   548→      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   549→        {EXPERIENCE_LEVELS.map((level) => {
+   550→          const isSelected = formData.experience_level === level.id
+   551→          const colors = getExperienceColorClasses(level.color, isSelected)
+   552→          return (
+   553→            <motion.div
+   554→              key={level.id}
+   555→              whileHover={{ scale: 1.02 }}
+   556→              whileTap={{ scale: 0.98 }}
+   557→            >
+   558→              <Card
+   559→                className={cn(
+   560→                  'cursor-pointer transition-all duration-200 border-2',
+   561→                  colors.border,
+   562→                  colors.bg
+   563→                )}
+   564→                onClick={() =>
+   565→                  setFormData((d) => ({ ...d, experience_level: level.id }))
+   566→                }
+   567→              >
+   568→                <CardContent className="p-5 flex flex-col items-center text-center gap-3">
+   569→                  <div
+   570→                    className={cn(
+   571→                      'h-14 w-14 rounded-xl flex items-center justify-center transition-colors',
+   572→                      colors.iconBg,
+   573→                      isSelected && colors.text
+   574→                    )}
+   575→                  >
+   576→                    {level.icon}
+   577→                  </div>
+   578→                  <div>
+   579→                    <h3 className="font-semibold text-base">{level.title}</h3>
+   580→                    <p className="text-xs text-muted-foreground mt-1">
+   581→                      {level.description}
+   582→                    </p>
+   583→                  </div>
+   584→                  {isSelected && (
+   585→                    <motion.div
+   586→                      initial={{ scale: 0 }}
+   587→                      animate={{ scale: 1 }}
+   588→                      className="mt-1"
+   589→                    >
+   590→                      <CheckCircle2 className={cn('h-5 w-5', colors.text)} />
+   591→                    </motion.div>
+   592→                  )}
+   593→                </CardContent>
+   594→              </Card>
+   595→            </motion.div>
+   596→          )
+   597→        })}
+   598→      </div>
+   599→    </div>
+   600→  )
+   601→
+   602→  const renderStep3 = () => (
+   603→    <div className="space-y-4">
+   604→      <p className="text-sm text-muted-foreground">
+   605→        Select at least one framework you&apos;re interested in.{' '}
+   606→        <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+   607→          {formData.preferred_frameworks.length} selected
+   608→        </span>
+   609→      </p>
+   610→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   611→        {FRAMEWORKS.map((fw) => {
+   612→          const isSelected = formData.preferred_frameworks.includes(fw.id)
+   613→          const colors = getFrameworkColorClasses(fw.color, isSelected)
+   614→          return (
+   615→            <motion.div
+   616→              key={fw.id}
+   617→              whileHover={{ scale: 1.02 }}
+   618→              whileTap={{ scale: 0.98 }}
+   619→            >
+   620→              <Card
+   621→                className={cn(
+   622→                  'cursor-pointer transition-all duration-200 border-2',
+   623→                  colors.border,
+   624→                  isSelected && `ring-2 ${colors.ring}`,
+   625→                  colors.bg
+   626→                )}
+   627→                onClick={() => {
+   628→                  setFormData((d) => ({
+   629→                    ...d,
+   630→                    preferred_frameworks: isSelected
+   631→                      ? d.preferred_frameworks.filter((f) => f !== fw.id)
+   632→                      : [...d.preferred_frameworks, fw.id],
+   633→                  }))
+   634→                }}
+   635→              >
+   636→                <CardContent className="p-5">
+   637→                  <div className="flex items-start gap-3">
+   638→                    <div
+   639→                      className={cn(
+   640→                        'h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
+   641→                        isSelected ? colors.badge : 'bg-muted'
+   642→                      )}
+   643→                    >
+   644→                      {fw.icon}
+   645→                    </div>
+   646→                    <div className="flex-1 min-w-0">
+   647→                      <div className="flex items-center justify-between gap-2">
+   648→                        <h3 className="font-semibold text-sm">{fw.name}</h3>
+   649→                        <Badge
+   650→                          variant="secondary"
+   651→                          className={cn('text-[10px] px-1.5 py-0', colors.badge)}
+   652→                        >
+   653→                          {fw.agentCount}
+   654→                        </Badge>
+   655→                      </div>
+   656→                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+   657→                        {fw.description}
+   658→                      </p>
+   659→                    </div>
+   660→                  </div>
+   661→                  {isSelected && (
+   662→                    <motion.div
+   663→                      initial={{ opacity: 0, y: 4 }}
+   664→                      animate={{ opacity: 1, y: 0 }}
+   665→                      className="mt-3 flex items-center gap-1.5 text-xs font-medium"
+   666→                    >
+   667→                      <CheckCircle2 className={cn('h-3.5 w-3.5', colors.text)} />
+   668→                      <span className={colors.text}>Selected</span>
+   669→                    </motion.div>
+   670→                  )}
+   671→                </CardContent>
+   672→              </Card>
+   673→            </motion.div>
+   674→          )
+   675→        })}
+   676→      </div>
+   677→    </div>
+   678→  )
+   679→
+   680→  const renderStep4 = () => (
+   681→    <div className="space-y-4">
+   682→      <p className="text-sm text-muted-foreground">
+   683→        Choose industries relevant to your work.{' '}
+   684→        <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+   685→          {formData.preferred_industries.length} selected
+   686→        </span>
+   687→      </p>
+   688→      <div className="flex flex-wrap gap-2.5">
+   689→        {INDUSTRIES.map((ind) => {
+   690→          const isSelected = formData.preferred_industries.includes(ind.id)
+   691→          return (
+   692→            <motion.button
+   693→              key={ind.id}
+   694→              whileHover={{ scale: 1.05 }}
+   695→              whileTap={{ scale: 0.95 }}
+   696→              onClick={() => {
+   697→                setFormData((d) => ({
+   698→                  ...d,
+   699→                  preferred_industries: isSelected
+   700→                    ? d.preferred_industries.filter((i) => i !== ind.id)
+   701→                    : [...d.preferred_industries, ind.id],
+   702→                }))
+   703→              }}
+   704→              className={cn(
+   705→                'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-medium transition-all duration-200 border',
+   706→                isSelected
+   707→                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700'
+   708→                  : 'bg-card text-foreground border-border hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/20'
+   709→              )}
+   710→            >
+   711→              {ind.icon}
+   712→              {ind.name}
+   713→              {isSelected && (
+   714→                <motion.span
+   715→                  initial={{ scale: 0 }}
+   716→                  animate={{ scale: 1 }}
+   717→                  className="ml-0.5"
+   718→                >
+   719→                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+   720→                </motion.span>
+   721→              )}
+   722→            </motion.button>
+   723→          )
+   724→        })}
+   725→      </div>
+   726→    </div>
+   727→  )
+   728→
+   729→  const renderStep5 = () => (
+   730→    <div className="space-y-6">
+   731→      <p className="text-sm text-muted-foreground">
+   732→        Select your primary use cases for AI agents.{' '}
+   733→        <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+   734→          {formData.use_cases.length} selected
+   735→        </span>
+   736→      </p>
+   737→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   738→        {USE_CASES.map((uc) => {
+   739→          const isSelected = formData.use_cases.includes(uc.id)
+   740→          return (
+   741→            <motion.div
+   742→              key={uc.id}
+   743→              whileHover={{ scale: 1.01 }}
+   744→              whileTap={{ scale: 0.99 }}
+   745→            >
+   746→              <Card
+   747→                className={cn(
+   748→                  'cursor-pointer transition-all duration-200 border-2',
+   749→                  isSelected
+   750→                    ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-950/20'
+   751→                    : 'border-border hover:border-emerald-300 dark:hover:border-emerald-700'
+   752→                )}
+   753→                onClick={() => {
+   754→                  setFormData((d) => ({
+   755→                    ...d,
+   756→                    use_cases: isSelected
+   757→                      ? d.use_cases.filter((u) => u !== uc.id)
+   758→                      : [...d.use_cases, uc.id],
+   759→                  }))
+   760→                }}
+   761→              >
+   762→                <CardContent className="p-4 flex items-center gap-3">
+   763→                  <div
+   764→                    className={cn(
+   765→                      'h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
+   766→                      isSelected
+   767→                        ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400'
+   768→                        : 'bg-muted text-muted-foreground'
+   769→                    )}
+   770→                  >
+   771→                    {uc.icon}
+   772→                  </div>
+   773→                  <div className="flex-1 min-w-0">
+   774→                    <h3 className="font-medium text-sm">{uc.name}</h3>
+   775→                    <p className="text-xs text-muted-foreground mt-0.5">
+   776→                      {uc.description}
+   777→                    </p>
+   778→                  </div>
+   779→                  <Checkbox
+   780→                    checked={isSelected}
+   781→                    className={cn(
+   782→                      isSelected && 'border-emerald-500 data-[state=checked]:bg-emerald-500'
+   783→                    )}
+   784→                  />
+   785→                </CardContent>
+   786→              </Card>
+   787→            </motion.div>
+   788→          )
+   789→        })}
+   790→      </div>
+   791→
+   792→      {/* Summary */}
+   793→      <div className="rounded-xl bg-muted/50 border border-border p-4 space-y-3">
+   794→        <h4 className="text-sm font-semibold">Your Setup Summary</h4>
+   795→        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+   796→          <div>
+   797→            <span className="text-muted-foreground">Name</span>
+   798→            <p className="font-medium truncate">{formData.full_name || '—'}</p>
+   799→          </div>
+   800→          <div>
+   801→            <span className="text-muted-foreground">Experience</span>
+   802→            <p className="font-medium capitalize">{formData.experience_level}</p>
+   803→          </div>
+   804→          <div>
+   805→            <span className="text-muted-foreground">Frameworks</span>
+   806→            <p className="font-medium">{formData.preferred_frameworks.length} selected</p>
+   807→          </div>
+   808→          <div>
+   809→            <span className="text-muted-foreground">Industries</span>
+   810→            <p className="font-medium">{formData.preferred_industries.length} selected</p>
+   811→          </div>
+   812→        </div>
+   813→      </div>
+   814→    </div>
+   815→  )
+   816→
+   817→  // ─── Loading state while checking auth ──────────────────────────────────────
+   818→
+   819→  if (!authChecked || authLoading) {
+   820→    return (
+   821→      <div className="min-h-screen flex items-center justify-center">
+   822→        <div className="flex flex-col items-center gap-4">
+   823→          <div className="h-10 w-10 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+   824→          <p className="text-sm text-muted-foreground">Loading onboarding...</p>
+   825→        </div>
+   826→      </div>
+   827→    )
+   828→  }
+   829→
+   830→  // ─── Unauthenticated redirect ──────────────────────────────────────────────
+   831→  if (!authUser && authChecked) {
+   832→    return (
+   833→      <div className="min-h-screen flex items-center justify-center p-4">
+   834→        <motion.div
+   835→          initial={{ opacity: 0, scale: 0.95 }}
+   836→          animate={{ opacity: 1, scale: 1 }}
+   837→          transition={{ duration: 0.4 }}
+   838→          className="max-w-md w-full text-center"
+   839→        >
+   840→          <div className="mb-6">
+   841→            <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mx-auto shadow-lg shadow-emerald-200 dark:shadow-emerald-900/40">
+   842→              <Shield className="h-10 w-10 text-white" />
+   843→            </div>
+   844→          </div>
+   845→          <h1 className="text-2xl font-bold mb-2">Sign In Required</h1>
+   846→          <p className="text-muted-foreground mb-6">
+   847→            Please sign in to start the onboarding process and set up your personalized experience.
+   848→          </p>
+   849→          <div className="flex flex-col gap-3">
+   850→            <Button
+   851→              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md rounded-xl h-11"
+   852→              onClick={() => router.push('/auth/signin?redirect=/onboarding')}
+   853→            >
+   854→              <LogIn className="h-4 w-4 mr-2" /> Sign In to Continue
+   855→            </Button>
+   856→            <Button
+   857→              variant="outline"
+   858→              className="rounded-xl"
+   859→              onClick={() => router.push('/')}
+   860→            >
+   861→              <Compass className="h-4 w-4 mr-2" /> Go Home
+   862→            </Button>
+   863→          </div>
+   864→        </motion.div>
+   865→      </div>
+   866→    )
+   867→  }
+   868→
+   869→  // ─── Completion overlay ──────────────────────────────────────────────────
+   870→
+   871→  if (completed) {
+   872→    return (
+   873→      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+   874→        <motion.div
+   875→          initial={{ opacity: 0, scale: 0.9 }}
+   876→          animate={{ opacity: 1, scale: 1 }}
+   877→          className="text-center space-y-4 p-8"
+   878→        >
+   879→          <motion.div
+   880→            initial={{ scale: 0 }}
+   881→            animate={{ scale: 1 }}
+   882→            transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
+   883→            className="h-20 w-20 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center"
+   884→          >
+   885→            <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+   886→          </motion.div>
+   887→          <motion.h2
+   888→            initial={{ opacity: 0, y: 10 }}
+   889→            animate={{ opacity: 1, y: 0 }}
+   890→            transition={{ delay: 0.4 }}
+   891→            className="text-2xl font-bold"
+   892→          >
+   893→            You&apos;re All Set! 🚀
+   894→          </motion.h2>
+   895→          <motion.p
+   896→            initial={{ opacity: 0 }}
+   897→            animate={{ opacity: 1 }}
+   898→            transition={{ delay: 0.6 }}
+   899→            className="text-muted-foreground"
+   900→          >
+   901→            Redirecting you to the dashboard...
+   902→          </motion.p>
+   903→          <motion.div
+   904→            initial={{ width: 0 }}
+   905→            animate={{ width: '100%' }}
+   906→            transition={{ delay: 0.8, duration: 1.5 }}
+   907→            className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full mx-auto max-w-[200px]"
+   908→          />
+   909→        </motion.div>
+   910→      </div>
+   911→    )
+   912→  }
+   913→
+   914→  // ─── Step renderer ───────────────────────────────────────────────────────
+   915→
+   916→  const stepContent = (() => {
+   917→    switch (currentStep) {
+   918→      case 1:
+   919→        return renderStep1()
+   920→      case 2:
+   921→        return renderStep2()
+   922→      case 3:
+   923→        return renderStep3()
+   924→      case 4:
+   925→        return renderStep4()
+   926→      case 5:
+   927→        return renderStep5()
+   928→      default:
+   929→        return null
+   930→    }
+   931→  })()
+   932→
+   933→  const config = STEP_CONFIG[currentStep - 1]
+   934→
+   935→  return (
+   936→    <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
+   937→      {/* Skip all link */}
+   938→      <div className="absolute top-3 right-4 z-40">
+   939→        <button
+   940→          onClick={skipAll}
+   941→          disabled={saving}
+   942→          className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
+   943→        >
+   944→          Skip all →
+   945→        </button>
+   946→      </div>
+   947→
+   948→      <OnboardingStep
+   949→        stepNumber={currentStep}
+   950→        totalSteps={TOTAL_STEPS}
+   951→        title={config.title}
+   952→        subtitle={config.subtitle}
+   953→        icon={config.icon}
+   954→        onBack={currentStep > 1 ? goBack : undefined}
+   955→        onNext={goNext}
+   956→        onSkip={goSkip}
+   957→        isNextDisabled={isNextDisabled}
+   958→        isNextLoading={saving}
+   959→        isLastStep={currentStep === TOTAL_STEPS}
+   960→        showBack={currentStep > 1}
+   961→        direction={direction}
+   962→      >
+   963→        {stepContent}
+   964→      </OnboardingStep>
+   965→    </div>
+   966→  )
+   967→}
+   968→
