@@ -1,0 +1,874 @@
+     1→-- ============================================================
+     2→-- Humain-Uno: Supabase Migration 002
+     3→-- New Tables: bookmarks, collections, notifications,
+     4→--   ai_chat_history, recently_viewed, ratings, user_settings,
+     5→--   agent_views, agent_downloads, user_activity_log,
+     6→--   api_keys, agent_deployments
+     7→-- ============================================================
+     8→-- This script is IDEMPOTENT: uses IF NOT EXISTS, DROP TRIGGER IF EXISTS, etc.
+     9→-- It preserves the existing profiles and user_preferences tables.
+    10→-- ============================================================
+    11→
+    12→-- Ensure UUID extension is available
+    13→CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    14→
+    15→-- ============================================================
+    16→-- HELPER: updated_at auto-update function
+    17→-- (Re-created with CREATE OR REPLACE so it works regardless of
+    18→--  whether the 001 migration's version or supabase-setup.sql's
+    19→--  version was applied. Both do the same thing.)
+    20→-- ============================================================
+    21→CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+    22→RETURNS TRIGGER AS $$
+    23→BEGIN
+    24→  NEW.updated_at = NOW();
+    25→  RETURN NEW;
+    26→END;
+    27→$$ LANGUAGE plpgsql;
+    28→
+    29→-- ============================================================
+    30→-- 1. BOOKMARKS
+    31→-- User bookmarks for agents and LLM models
+    32→-- ============================================================
+    33→CREATE TABLE IF NOT EXISTS public.bookmarks (
+    34→  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    35→  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    36→  target_type TEXT NOT NULL CHECK (target_type IN ('agent', 'llm_model')),
+    37→  target_id TEXT NOT NULL,
+    38→  note TEXT,
+    39→  created_at TIMESTAMPTZ DEFAULT NOW(),
+    40→  updated_at TIMESTAMPTZ DEFAULT NOW(),
+    41→  UNIQUE(user_id, target_type, target_id)
+    42→);
+    43→
+    44→ALTER TABLE public.bookmarks ENABLE ROW LEVEL SECURITY;
+    45→
+    46→DO $$
+    47→BEGIN
+    48→  IF NOT EXISTS (
+    49→    SELECT 1 FROM pg_policies WHERE tablename = 'bookmarks' AND policyname = 'Users can view own bookmarks'
+    50→  ) THEN
+    51→    CREATE POLICY "Users can view own bookmarks"
+    52→      ON public.bookmarks FOR SELECT
+    53→      USING (auth.uid() = user_id);
+    54→  END IF;
+    55→
+    56→  IF NOT EXISTS (
+    57→    SELECT 1 FROM pg_policies WHERE tablename = 'bookmarks' AND policyname = 'Users can insert own bookmarks'
+    58→  ) THEN
+    59→    CREATE POLICY "Users can insert own bookmarks"
+    60→      ON public.bookmarks FOR INSERT
+    61→      WITH CHECK (auth.uid() = user_id);
+    62→  END IF;
+    63→
+    64→  IF NOT EXISTS (
+    65→    SELECT 1 FROM pg_policies WHERE tablename = 'bookmarks' AND policyname = 'Users can update own bookmarks'
+    66→  ) THEN
+    67→    CREATE POLICY "Users can update own bookmarks"
+    68→      ON public.bookmarks FOR UPDATE
+    69→      USING (auth.uid() = user_id);
+    70→  END IF;
+    71→
+    72→  IF NOT EXISTS (
+    73→    SELECT 1 FROM pg_policies WHERE tablename = 'bookmarks' AND policyname = 'Users can delete own bookmarks'
+    74→  ) THEN
+    75→    CREATE POLICY "Users can delete own bookmarks"
+    76→      ON public.bookmarks FOR DELETE
+    77→      USING (auth.uid() = user_id);
+    78→  END IF;
+    79→
+    80→  IF NOT EXISTS (
+    81→    SELECT 1 FROM pg_policies WHERE tablename = 'bookmarks' AND policyname = 'Service role full access on bookmarks'
+    82→  ) THEN
+    83→    CREATE POLICY "Service role full access on bookmarks"
+    84→      ON public.bookmarks FOR ALL
+    85→      USING (auth.role() = 'service_role')
+    86→      WITH CHECK (auth.role() = 'service_role');
+    87→  END IF;
+    88→END
+    89→$$;
+    90→
+    91→DROP TRIGGER IF EXISTS update_bookmarks_updated_at ON public.bookmarks;
+    92→CREATE TRIGGER update_bookmarks_updated_at
+    93→  BEFORE UPDATE ON public.bookmarks
+    94→  FOR EACH ROW
+    95→  EXECUTE FUNCTION public.update_updated_at_column();
+    96→
+    97→CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON public.bookmarks(user_id);
+    98→CREATE INDEX IF NOT EXISTS idx_bookmarks_target ON public.bookmarks(target_type, target_id);
+    99→CREATE INDEX IF NOT EXISTS idx_bookmarks_created_at ON public.bookmarks(created_at DESC);
+   100→
+   101→-- ============================================================
+   102→-- 2. COLLECTIONS
+   103→-- User collections/folders for organizing agents
+   104→-- ============================================================
+   105→CREATE TABLE IF NOT EXISTS public.collections (
+   106→  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+   107→  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+   108→  name TEXT NOT NULL,
+   109→  description TEXT,
+   110→  icon TEXT,
+   111→  is_public BOOLEAN DEFAULT FALSE,
+   112→  agent_ids JSONB DEFAULT '[]',
+   113→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   114→  updated_at TIMESTAMPTZ DEFAULT NOW()
+   115→);
+   116→
+   117→ALTER TABLE public.collections ENABLE ROW LEVEL SECURITY;
+   118→
+   119→DO $$
+   120→BEGIN
+   121→  IF NOT EXISTS (
+   122→    SELECT 1 FROM pg_policies WHERE tablename = 'collections' AND policyname = 'Users can view own collections'
+   123→  ) THEN
+   124→    CREATE POLICY "Users can view own collections"
+   125→      ON public.collections FOR SELECT
+   126→      USING (auth.uid() = user_id OR is_public = TRUE);
+   127→  END IF;
+   128→
+   129→  IF NOT EXISTS (
+   130→    SELECT 1 FROM pg_policies WHERE tablename = 'collections' AND policyname = 'Users can insert own collections'
+   131→  ) THEN
+   132→    CREATE POLICY "Users can insert own collections"
+   133→      ON public.collections FOR INSERT
+   134→      WITH CHECK (auth.uid() = user_id);
+   135→  END IF;
+   136→
+   137→  IF NOT EXISTS (
+   138→    SELECT 1 FROM pg_policies WHERE tablename = 'collections' AND policyname = 'Users can update own collections'
+   139→  ) THEN
+   140→    CREATE POLICY "Users can update own collections"
+   141→      ON public.collections FOR UPDATE
+   142→      USING (auth.uid() = user_id);
+   143→  END IF;
+   144→
+   145→  IF NOT EXISTS (
+   146→    SELECT 1 FROM pg_policies WHERE tablename = 'collections' AND policyname = 'Users can delete own collections'
+   147→  ) THEN
+   148→    CREATE POLICY "Users can delete own collections"
+   149→      ON public.collections FOR DELETE
+   150→      USING (auth.uid() = user_id);
+   151→  END IF;
+   152→
+   153→  IF NOT EXISTS (
+   154→    SELECT 1 FROM pg_policies WHERE tablename = 'collections' AND policyname = 'Service role full access on collections'
+   155→  ) THEN
+   156→    CREATE POLICY "Service role full access on collections"
+   157→      ON public.collections FOR ALL
+   158→      USING (auth.role() = 'service_role')
+   159→      WITH CHECK (auth.role() = 'service_role');
+   160→  END IF;
+   161→END
+   162→$$;
+   163→
+   164→DROP TRIGGER IF EXISTS update_collections_updated_at ON public.collections;
+   165→CREATE TRIGGER update_collections_updated_at
+   166→  BEFORE UPDATE ON public.collections
+   167→  FOR EACH ROW
+   168→  EXECUTE FUNCTION public.update_updated_at_column();
+   169→
+   170→CREATE INDEX IF NOT EXISTS idx_collections_user_id ON public.collections(user_id);
+   171→CREATE INDEX IF NOT EXISTS idx_collections_is_public ON public.collections(is_public);
+   172→CREATE INDEX IF NOT EXISTS idx_collections_created_at ON public.collections(created_at DESC);
+   173→
+   174→-- ============================================================
+   175→-- 3. NOTIFICATIONS
+   176→-- User notifications
+   177→-- ============================================================
+   178→CREATE TABLE IF NOT EXISTS public.notifications (
+   179→  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+   180→  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+   181→  type TEXT NOT NULL CHECK (type IN ('agent_update', 'new_agent', 'bookmark_reminder', 'system', 'achievement')),
+   182→  title TEXT NOT NULL,
+   183→  message TEXT NOT NULL,
+   184→  data JSONB DEFAULT '{}',
+   185→  read BOOLEAN DEFAULT FALSE,
+   186→  created_at TIMESTAMPTZ DEFAULT NOW()
+   187→);
+   188→
+   189→ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+   190→
+   191→DO $$
+   192→BEGIN
+   193→  IF NOT EXISTS (
+   194→    SELECT 1 FROM pg_policies WHERE tablename = 'notifications' AND policyname = 'Users can view own notifications'
+   195→  ) THEN
+   196→    CREATE POLICY "Users can view own notifications"
+   197→      ON public.notifications FOR SELECT
+   198→      USING (auth.uid() = user_id);
+   199→  END IF;
+   200→
+   201→  IF NOT EXISTS (
+   202→    SELECT 1 FROM pg_policies WHERE tablename = 'notifications' AND policyname = 'Users can update own notifications'
+   203→  ) THEN
+   204→    CREATE POLICY "Users can update own notifications"
+   205→      ON public.notifications FOR UPDATE
+   206→      USING (auth.uid() = user_id);
+   207→  END IF;
+   208→
+   209→  IF NOT EXISTS (
+   210→    SELECT 1 FROM pg_policies WHERE tablename = 'notifications' AND policyname = 'Users can insert own notifications'
+   211→  ) THEN
+   212→    CREATE POLICY "Users can insert own notifications"
+   213→      ON public.notifications FOR INSERT
+   214→      WITH CHECK (auth.uid() = user_id);
+   215→  END IF;
+   216→
+   217→  IF NOT EXISTS (
+   218→    SELECT 1 FROM pg_policies WHERE tablename = 'notifications' AND policyname = 'Users can delete own notifications'
+   219→  ) THEN
+   220→    CREATE POLICY "Users can delete own notifications"
+   221→      ON public.notifications FOR DELETE
+   222→      USING (auth.uid() = user_id);
+   223→  END IF;
+   224→
+   225→  IF NOT EXISTS (
+   226→    SELECT 1 FROM pg_policies WHERE tablename = 'notifications' AND policyname = 'Service role full access on notifications'
+   227→  ) THEN
+   228→    CREATE POLICY "Service role full access on notifications"
+   229→      ON public.notifications FOR ALL
+   230→      USING (auth.role() = 'service_role')
+   231→      WITH CHECK (auth.role() = 'service_role');
+   232→  END IF;
+   233→END
+   234→$$;
+   235→
+   236→CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
+   237→CREATE INDEX IF NOT EXISTS idx_notifications_read ON public.notifications(user_id, read);
+   238→CREATE INDEX IF NOT EXISTS idx_notifications_type ON public.notifications(type);
+   239→CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at DESC);
+   240→
+   241→-- ============================================================
+   242→-- 4. AI_CHAT_HISTORY
+   243→-- AI chat conversations
+   244→-- ============================================================
+   245→CREATE TABLE IF NOT EXISTS public.ai_chat_history (
+   246→  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+   247→  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+   248→  session_id UUID NOT NULL DEFAULT uuid_generate_v4(),
+   249→  role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+   250→  content TEXT NOT NULL,
+   251→  metadata JSONB DEFAULT '{}',
+   252→  created_at TIMESTAMPTZ DEFAULT NOW()
+   253→);
+   254→
+   255→ALTER TABLE public.ai_chat_history ENABLE ROW LEVEL SECURITY;
+   256→
+   257→DO $$
+   258→BEGIN
+   259→  IF NOT EXISTS (
+   260→    SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_history' AND policyname = 'Users can view own chat history'
+   261→  ) THEN
+   262→    CREATE POLICY "Users can view own chat history"
+   263→      ON public.ai_chat_history FOR SELECT
+   264→      USING (auth.uid() = user_id);
+   265→  END IF;
+   266→
+   267→  IF NOT EXISTS (
+   268→    SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_history' AND policyname = 'Users can insert own chat history'
+   269→  ) THEN
+   270→    CREATE POLICY "Users can insert own chat history"
+   271→      ON public.ai_chat_history FOR INSERT
+   272→      WITH CHECK (auth.uid() = user_id);
+   273→  END IF;
+   274→
+   275→  IF NOT EXISTS (
+   276→    SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_history' AND policyname = 'Users can delete own chat history'
+   277→  ) THEN
+   278→    CREATE POLICY "Users can delete own chat history"
+   279→      ON public.ai_chat_history FOR DELETE
+   280→      USING (auth.uid() = user_id);
+   281→  END IF;
+   282→
+   283→  IF NOT EXISTS (
+   284→    SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_history' AND policyname = 'Service role full access on ai_chat_history'
+   285→  ) THEN
+   286→    CREATE POLICY "Service role full access on ai_chat_history"
+   287→      ON public.ai_chat_history FOR ALL
+   288→      USING (auth.role() = 'service_role')
+   289→      WITH CHECK (auth.role() = 'service_role');
+   290→  END IF;
+   291→END
+   292→$$;
+   293→
+   294→CREATE INDEX IF NOT EXISTS idx_ai_chat_history_user_session ON public.ai_chat_history(user_id, session_id);
+   295→CREATE INDEX IF NOT EXISTS idx_ai_chat_history_created_at ON public.ai_chat_history(created_at DESC);
+   296→
+   297→-- ============================================================
+   298→-- 5. RECENTLY_VIEWED
+   299→-- Track recently viewed items
+   300→-- ============================================================
+   301→CREATE TABLE IF NOT EXISTS public.recently_viewed (
+   302→  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+   303→  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+   304→  target_type TEXT NOT NULL CHECK (target_type IN ('agent', 'llm_model', 'knowledge_agent')),
+   305→  target_id TEXT NOT NULL,
+   306→  viewed_at TIMESTAMPTZ DEFAULT NOW()
+   307→);
+   308→
+   309→ALTER TABLE public.recently_viewed ENABLE ROW LEVEL SECURITY;
+   310→
+   311→DO $$
+   312→BEGIN
+   313→  IF NOT EXISTS (
+   314→    SELECT 1 FROM pg_policies WHERE tablename = 'recently_viewed' AND policyname = 'Users can view own recently viewed'
+   315→  ) THEN
+   316→    CREATE POLICY "Users can view own recently viewed"
+   317→      ON public.recently_viewed FOR SELECT
+   318→      USING (auth.uid() = user_id);
+   319→  END IF;
+   320→
+   321→  IF NOT EXISTS (
+   322→    SELECT 1 FROM pg_policies WHERE tablename = 'recently_viewed' AND policyname = 'Users can insert own recently viewed'
+   323→  ) THEN
+   324→    CREATE POLICY "Users can insert own recently viewed"
+   325→      ON public.recently_viewed FOR INSERT
+   326→      WITH CHECK (auth.uid() = user_id);
+   327→  END IF;
+   328→
+   329→  IF NOT EXISTS (
+   330→    SELECT 1 FROM pg_policies WHERE tablename = 'recently_viewed' AND policyname = 'Users can delete own recently viewed'
+   331→  ) THEN
+   332→    CREATE POLICY "Users can delete own recently viewed"
+   333→      ON public.recently_viewed FOR DELETE
+   334→      USING (auth.uid() = user_id);
+   335→  END IF;
+   336→
+   337→  IF NOT EXISTS (
+   338→    SELECT 1 FROM pg_policies WHERE tablename = 'recently_viewed' AND policyname = 'Service role full access on recently_viewed'
+   339→  ) THEN
+   340→    CREATE POLICY "Service role full access on recently_viewed"
+   341→      ON public.recently_viewed FOR ALL
+   342→      USING (auth.role() = 'service_role')
+   343→      WITH CHECK (auth.role() = 'service_role');
+   344→  END IF;
+   345→END
+   346→$$;
+   347→
+   348→CREATE INDEX IF NOT EXISTS idx_recently_viewed_user_id ON public.recently_viewed(user_id);
+   349→CREATE INDEX IF NOT EXISTS idx_recently_viewed_target ON public.recently_viewed(target_type, target_id);
+   350→CREATE INDEX IF NOT EXISTS idx_recently_viewed_viewed_at ON public.recently_viewed(user_id, viewed_at DESC);
+   351→
+   352→-- ============================================================
+   353→-- 6. RATINGS
+   354→-- User ratings for agents
+   355→-- ============================================================
+   356→CREATE TABLE IF NOT EXISTS public.ratings (
+   357→  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+   358→  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+   359→  agent_id TEXT NOT NULL,
+   360→  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+   361→  review TEXT,
+   362→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   363→  updated_at TIMESTAMPTZ DEFAULT NOW(),
+   364→  UNIQUE(user_id, agent_id)
+   365→);
+   366→
+   367→ALTER TABLE public.ratings ENABLE ROW LEVEL SECURITY;
+   368→
+   369→DO $$
+   370→BEGIN
+   371→  IF NOT EXISTS (
+   372→    SELECT 1 FROM pg_policies WHERE tablename = 'ratings' AND policyname = 'Users can view own ratings'
+   373→  ) THEN
+   374→    CREATE POLICY "Users can view own ratings"
+   375→      ON public.ratings FOR SELECT
+   376→      USING (auth.uid() = user_id);
+   377→  END IF;
+   378→
+   379→  -- Ratings are publicly readable (to show average ratings)
+   380→  IF NOT EXISTS (
+   381→    SELECT 1 FROM pg_policies WHERE tablename = 'ratings' AND policyname = 'Anyone can view ratings'
+   382→  ) THEN
+   383→    CREATE POLICY "Anyone can view ratings"
+   384→      ON public.ratings FOR SELECT
+   385→      USING (TRUE);
+   386→  END IF;
+   387→
+   388→  IF NOT EXISTS (
+   389→    SELECT 1 FROM pg_policies WHERE tablename = 'ratings' AND policyname = 'Users can insert own ratings'
+   390→  ) THEN
+   391→    CREATE POLICY "Users can insert own ratings"
+   392→      ON public.ratings FOR INSERT
+   393→      WITH CHECK (auth.uid() = user_id);
+   394→  END IF;
+   395→
+   396→  IF NOT EXISTS (
+   397→    SELECT 1 FROM pg_policies WHERE tablename = 'ratings' AND policyname = 'Users can update own ratings'
+   398→  ) THEN
+   399→    CREATE POLICY "Users can update own ratings"
+   400→      ON public.ratings FOR UPDATE
+   401→      USING (auth.uid() = user_id);
+   402→  END IF;
+   403→
+   404→  IF NOT EXISTS (
+   405→    SELECT 1 FROM pg_policies WHERE tablename = 'ratings' AND policyname = 'Users can delete own ratings'
+   406→  ) THEN
+   407→    CREATE POLICY "Users can delete own ratings"
+   408→      ON public.ratings FOR DELETE
+   409→      USING (auth.uid() = user_id);
+   410→  END IF;
+   411→
+   412→  IF NOT EXISTS (
+   413→    SELECT 1 FROM pg_policies WHERE tablename = 'ratings' AND policyname = 'Service role full access on ratings'
+   414→  ) THEN
+   415→    CREATE POLICY "Service role full access on ratings"
+   416→      ON public.ratings FOR ALL
+   417→      USING (auth.role() = 'service_role')
+   418→      WITH CHECK (auth.role() = 'service_role');
+   419→  END IF;
+   420→END
+   421→$$;
+   422→
+   423→DROP TRIGGER IF EXISTS update_ratings_updated_at ON public.ratings;
+   424→CREATE TRIGGER update_ratings_updated_at
+   425→  BEFORE UPDATE ON public.ratings
+   426→  FOR EACH ROW
+   427→  EXECUTE FUNCTION public.update_updated_at_column();
+   428→
+   429→CREATE INDEX IF NOT EXISTS idx_ratings_user_id ON public.ratings(user_id);
+   430→CREATE INDEX IF NOT EXISTS idx_ratings_agent_id ON public.ratings(agent_id);
+   431→CREATE INDEX IF NOT EXISTS idx_ratings_created_at ON public.ratings(created_at DESC);
+   432→
+   433→-- ============================================================
+   434→-- 7. USER_SETTINGS
+   435→-- Extended user settings (syncs with user_preferences)
+   436→-- ============================================================
+   437→CREATE TABLE IF NOT EXISTS public.user_settings (
+   438→  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+   439→  user_id UUID UNIQUE NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+   440→  sidebar_collapsed BOOLEAN DEFAULT FALSE,
+   441→  default_create_method TEXT,
+   442→  auto_save_drafts BOOLEAN DEFAULT TRUE,
+   443→  email_digest TEXT DEFAULT 'none' CHECK (email_digest IN ('none', 'daily', 'weekly')),
+   444→  api_rate_limit INTEGER DEFAULT 100,
+   445→  custom_css TEXT,
+   446→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   447→  updated_at TIMESTAMPTZ DEFAULT NOW()
+   448→);
+   449→
+   450→ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
+   451→
+   452→DO $$
+   453→BEGIN
+   454→  IF NOT EXISTS (
+   455→    SELECT 1 FROM pg_policies WHERE tablename = 'user_settings' AND policyname = 'Users can view own settings'
+   456→  ) THEN
+   457→    CREATE POLICY "Users can view own settings"
+   458→      ON public.user_settings FOR SELECT
+   459→      USING (auth.uid() = user_id);
+   460→  END IF;
+   461→
+   462→  IF NOT EXISTS (
+   463→    SELECT 1 FROM pg_policies WHERE tablename = 'user_settings' AND policyname = 'Users can insert own settings'
+   464→  ) THEN
+   465→    CREATE POLICY "Users can insert own settings"
+   466→      ON public.user_settings FOR INSERT
+   467→      WITH CHECK (auth.uid() = user_id);
+   468→  END IF;
+   469→
+   470→  IF NOT EXISTS (
+   471→    SELECT 1 FROM pg_policies WHERE tablename = 'user_settings' AND policyname = 'Users can update own settings'
+   472→  ) THEN
+   473→    CREATE POLICY "Users can update own settings"
+   474→      ON public.user_settings FOR UPDATE
+   475→      USING (auth.uid() = user_id);
+   476→  END IF;
+   477→
+   478→  IF NOT EXISTS (
+   479→    SELECT 1 FROM pg_policies WHERE tablename = 'user_settings' AND policyname = 'Service role full access on user_settings'
+   480→  ) THEN
+   481→    CREATE POLICY "Service role full access on user_settings"
+   482→      ON public.user_settings FOR ALL
+   483→      USING (auth.role() = 'service_role')
+   484→      WITH CHECK (auth.role() = 'service_role');
+   485→  END IF;
+   486→END
+   487→$$;
+   488→
+   489→DROP TRIGGER IF EXISTS update_user_settings_updated_at ON public.user_settings;
+   490→CREATE TRIGGER update_user_settings_updated_at
+   491→  BEFORE UPDATE ON public.user_settings
+   492→  FOR EACH ROW
+   493→  EXECUTE FUNCTION public.update_updated_at_column();
+   494→
+   495→CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON public.user_settings(user_id);
+   496→
+   497→-- ============================================================
+   498→-- 8. AGENT_VIEWS
+   499→-- View count tracking for agents
+   500→-- ============================================================
+   501→CREATE TABLE IF NOT EXISTS public.agent_views (
+   502→  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+   503→  agent_id TEXT UNIQUE NOT NULL,
+   504→  view_count INTEGER DEFAULT 0,
+   505→  unique_viewers INTEGER DEFAULT 0,
+   506→  last_viewed_at TIMESTAMPTZ DEFAULT NOW()
+   507→);
+   508→
+   509→ALTER TABLE public.agent_views ENABLE ROW LEVEL SECURITY;
+   510→
+   511→DO $$
+   512→BEGIN
+   513→  -- Agent views are publicly readable (to display view counts)
+   514→  IF NOT EXISTS (
+   515→    SELECT 1 FROM pg_policies WHERE tablename = 'agent_views' AND policyname = 'Anyone can view agent_views'
+   516→  ) THEN
+   517→    CREATE POLICY "Anyone can view agent_views"
+   518→      ON public.agent_views FOR SELECT
+   519→      USING (TRUE);
+   520→  END IF;
+   521→
+   522→  IF NOT EXISTS (
+   523→    SELECT 1 FROM pg_policies WHERE tablename = 'agent_views' AND policyname = 'Authenticated users can insert agent_views'
+   524→  ) THEN
+   525→    CREATE POLICY "Authenticated users can insert agent_views"
+   526→      ON public.agent_views FOR INSERT
+   527→      WITH CHECK (auth.role() = 'authenticated' OR auth.role() = 'service_role');
+   528→  END IF;
+   529→
+   530→  IF NOT EXISTS (
+   531→    SELECT 1 FROM pg_policies WHERE tablename = 'agent_views' AND policyname = 'Authenticated users can update agent_views'
+   532→  ) THEN
+   533→    CREATE POLICY "Authenticated users can update agent_views"
+   534→      ON public.agent_views FOR UPDATE
+   535→      USING (auth.role() = 'authenticated' OR auth.role() = 'service_role');
+   536→  END IF;
+   537→
+   538→  IF NOT EXISTS (
+   539→    SELECT 1 FROM pg_policies WHERE tablename = 'agent_views' AND policyname = 'Service role full access on agent_views'
+   540→  ) THEN
+   541→    CREATE POLICY "Service role full access on agent_views"
+   542→      ON public.agent_views FOR ALL
+   543→      USING (auth.role() = 'service_role')
+   544→      WITH CHECK (auth.role() = 'service_role');
+   545→  END IF;
+   546→END
+   547→$$;
+   548→
+   549→CREATE INDEX IF NOT EXISTS idx_agent_views_agent_id ON public.agent_views(agent_id);
+   550→CREATE INDEX IF NOT EXISTS idx_agent_views_view_count ON public.agent_views(view_count DESC);
+   551→
+   552→-- ============================================================
+   553→-- 9. AGENT_DOWNLOADS
+   554→-- Download tracking for agents
+   555→-- ============================================================
+   556→CREATE TABLE IF NOT EXISTS public.agent_downloads (
+   557→  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+   558→  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+   559→  agent_id TEXT NOT NULL,
+   560→  download_type TEXT NOT NULL CHECK (download_type IN ('code', 'spec', 'template')),
+   561→  created_at TIMESTAMPTZ DEFAULT NOW()
+   562→);
+   563→
+   564→ALTER TABLE public.agent_downloads ENABLE ROW LEVEL SECURITY;
+   565→
+   566→DO $$
+   567→BEGIN
+   568→  IF NOT EXISTS (
+   569→    SELECT 1 FROM pg_policies WHERE tablename = 'agent_downloads' AND policyname = 'Users can view own downloads'
+   570→  ) THEN
+   571→    CREATE POLICY "Users can view own downloads"
+   572→      ON public.agent_downloads FOR SELECT
+   573→      USING (auth.uid() = user_id);
+   574→  END IF;
+   575→
+   576→  -- Anyone can see download counts (for display)
+   577→  IF NOT EXISTS (
+   578→    SELECT 1 FROM pg_policies WHERE tablename = 'agent_downloads' AND policyname = 'Anyone can view agent_downloads'
+   579→  ) THEN
+   580→    CREATE POLICY "Anyone can view agent_downloads"
+   581→      ON public.agent_downloads FOR SELECT
+   582→      USING (TRUE);
+   583→  END IF;
+   584→
+   585→  IF NOT EXISTS (
+   586→    SELECT 1 FROM pg_policies WHERE tablename = 'agent_downloads' AND policyname = 'Users can insert own downloads'
+   587→  ) THEN
+   588→    CREATE POLICY "Users can insert own downloads"
+   589→      ON public.agent_downloads FOR INSERT
+   590→      WITH CHECK (auth.uid() = user_id);
+   591→  END IF;
+   592→
+   593→  IF NOT EXISTS (
+   594→    SELECT 1 FROM pg_policies WHERE tablename = 'agent_downloads' AND policyname = 'Service role full access on agent_downloads'
+   595→  ) THEN
+   596→    CREATE POLICY "Service role full access on agent_downloads"
+   597→      ON public.agent_downloads FOR ALL
+   598→      USING (auth.role() = 'service_role')
+   599→      WITH CHECK (auth.role() = 'service_role');
+   600→  END IF;
+   601→END
+   602→$$;
+   603→
+   604→CREATE INDEX IF NOT EXISTS idx_agent_downloads_user_id ON public.agent_downloads(user_id);
+   605→CREATE INDEX IF NOT EXISTS idx_agent_downloads_agent_id ON public.agent_downloads(agent_id);
+   606→CREATE INDEX IF NOT EXISTS idx_agent_downloads_created_at ON public.agent_downloads(created_at DESC);
+   607→
+   608→-- ============================================================
+   609→-- 10. USER_ACTIVITY_LOG
+   610→-- Track user actions
+   611→-- ============================================================
+   612→CREATE TABLE IF NOT EXISTS public.user_activity_log (
+   613→  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+   614→  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+   615→  action TEXT NOT NULL CHECK (action IN (
+   616→    'create_agent', 'fork_agent', 'bookmark_agent', 'rate_agent',
+   617→    'download_agent', 'view_agent', 'create_api_key', 'deploy_agent'
+   618→  )),
+   619→  target_type TEXT,
+   620→  target_id TEXT,
+   621→  metadata JSONB DEFAULT '{}',
+   622→  ip_address TEXT,
+   623→  created_at TIMESTAMPTZ DEFAULT NOW()
+   624→);
+   625→
+   626→ALTER TABLE public.user_activity_log ENABLE ROW LEVEL SECURITY;
+   627→
+   628→DO $$
+   629→BEGIN
+   630→  IF NOT EXISTS (
+   631→    SELECT 1 FROM pg_policies WHERE tablename = 'user_activity_log' AND policyname = 'Users can view own activity log'
+   632→  ) THEN
+   633→    CREATE POLICY "Users can view own activity log"
+   634→      ON public.user_activity_log FOR SELECT
+   635→      USING (auth.uid() = user_id);
+   636→  END IF;
+   637→
+   638→  IF NOT EXISTS (
+   639→    SELECT 1 FROM pg_policies WHERE tablename = 'user_activity_log' AND policyname = 'Users can insert own activity log'
+   640→  ) THEN
+   641→    CREATE POLICY "Users can insert own activity log"
+   642→      ON public.user_activity_log FOR INSERT
+   643→      WITH CHECK (auth.uid() = user_id);
+   644→  END IF;
+   645→
+   646→  IF NOT EXISTS (
+   647→    SELECT 1 FROM pg_policies WHERE tablename = 'user_activity_log' AND policyname = 'Service role full access on user_activity_log'
+   648→  ) THEN
+   649→    CREATE POLICY "Service role full access on user_activity_log"
+   650→      ON public.user_activity_log FOR ALL
+   651→      USING (auth.role() = 'service_role')
+   652→      WITH CHECK (auth.role() = 'service_role');
+   653→  END IF;
+   654→END
+   655→$$;
+   656→
+   657→CREATE INDEX IF NOT EXISTS idx_user_activity_log_user_id ON public.user_activity_log(user_id);
+   658→CREATE INDEX IF NOT EXISTS idx_user_activity_log_action ON public.user_activity_log(action);
+   659→CREATE INDEX IF NOT EXISTS idx_user_activity_log_target ON public.user_activity_log(target_type, target_id);
+   660→CREATE INDEX IF NOT EXISTS idx_user_activity_log_created_at ON public.user_activity_log(created_at DESC);
+   661→
+   662→-- ============================================================
+   663→-- 11. API_KEYS
+   664→-- API keys for agent deployments
+   665→-- ============================================================
+   666→CREATE TABLE IF NOT EXISTS public.api_keys (
+   667→  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+   668→  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+   669→  name TEXT NOT NULL,
+   670→  key_hash TEXT NOT NULL,
+   671→  key_prefix TEXT NOT NULL,
+   672→  permissions JSONB DEFAULT '{}',
+   673→  last_used_at TIMESTAMPTZ,
+   674→  expires_at TIMESTAMPTZ,
+   675→  is_active BOOLEAN DEFAULT TRUE,
+   676→  created_at TIMESTAMPTZ DEFAULT NOW()
+   677→);
+   678→
+   679→ALTER TABLE public.api_keys ENABLE ROW LEVEL SECURITY;
+   680→
+   681→DO $$
+   682→BEGIN
+   683→  IF NOT EXISTS (
+   684→    SELECT 1 FROM pg_policies WHERE tablename = 'api_keys' AND policyname = 'Users can view own api keys'
+   685→  ) THEN
+   686→    CREATE POLICY "Users can view own api keys"
+   687→      ON public.api_keys FOR SELECT
+   688→      USING (auth.uid() = user_id);
+   689→  END IF;
+   690→
+   691→  IF NOT EXISTS (
+   692→    SELECT 1 FROM pg_policies WHERE tablename = 'api_keys' AND policyname = 'Users can insert own api keys'
+   693→  ) THEN
+   694→    CREATE POLICY "Users can insert own api keys"
+   695→      ON public.api_keys FOR INSERT
+   696→      WITH CHECK (auth.uid() = user_id);
+   697→  END IF;
+   698→
+   699→  IF NOT EXISTS (
+   700→    SELECT 1 FROM pg_policies WHERE tablename = 'api_keys' AND policyname = 'Users can update own api keys'
+   701→  ) THEN
+   702→    CREATE POLICY "Users can update own api keys"
+   703→      ON public.api_keys FOR UPDATE
+   704→      USING (auth.uid() = user_id);
+   705→  END IF;
+   706→
+   707→  IF NOT EXISTS (
+   708→    SELECT 1 FROM pg_policies WHERE tablename = 'api_keys' AND policyname = 'Users can delete own api keys'
+   709→  ) THEN
+   710→    CREATE POLICY "Users can delete own api keys"
+   711→      ON public.api_keys FOR DELETE
+   712→      USING (auth.uid() = user_id);
+   713→  END IF;
+   714→
+   715→  IF NOT EXISTS (
+   716→    SELECT 1 FROM pg_policies WHERE tablename = 'api_keys' AND policyname = 'Service role full access on api_keys'
+   717→  ) THEN
+   718→    CREATE POLICY "Service role full access on api_keys"
+   719→      ON public.api_keys FOR ALL
+   720→      USING (auth.role() = 'service_role')
+   721→      WITH CHECK (auth.role() = 'service_role');
+   722→  END IF;
+   723→END
+   724→$$;
+   725→
+   726→CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON public.api_keys(user_id);
+   727→CREATE INDEX IF NOT EXISTS idx_api_keys_key_prefix ON public.api_keys(key_prefix);
+   728→CREATE INDEX IF NOT EXISTS idx_api_keys_is_active ON public.api_keys(user_id, is_active);
+   729→CREATE INDEX IF NOT EXISTS idx_api_keys_created_at ON public.api_keys(created_at DESC);
+   730→
+   731→-- ============================================================
+   732→-- 12. AGENT_DEPLOYMENTS
+   733→-- Agent deployment records
+   734→-- ============================================================
+   735→CREATE TABLE IF NOT EXISTS public.agent_deployments (
+   736→  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+   737→  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+   738→  agent_id TEXT NOT NULL,
+   739→  deployment_url TEXT,
+   740→  deployment_type TEXT NOT NULL CHECK (deployment_type IN ('cloud', 'local', 'api')),
+   741→  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'stopped', 'failed')),
+   742→  config JSONB DEFAULT '{}',
+   743→  last_health_check TIMESTAMPTZ,
+   744→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   745→  updated_at TIMESTAMPTZ DEFAULT NOW()
+   746→);
+   747→
+   748→ALTER TABLE public.agent_deployments ENABLE ROW LEVEL SECURITY;
+   749→
+   750→DO $$
+   751→BEGIN
+   752→  IF NOT EXISTS (
+   753→    SELECT 1 FROM pg_policies WHERE tablename = 'agent_deployments' AND policyname = 'Users can view own deployments'
+   754→  ) THEN
+   755→    CREATE POLICY "Users can view own deployments"
+   756→      ON public.agent_deployments FOR SELECT
+   757→      USING (auth.uid() = user_id);
+   758→  END IF;
+   759→
+   760→  IF NOT EXISTS (
+   761→    SELECT 1 FROM pg_policies WHERE tablename = 'agent_deployments' AND policyname = 'Users can insert own deployments'
+   762→  ) THEN
+   763→    CREATE POLICY "Users can insert own deployments"
+   764→      ON public.agent_deployments FOR INSERT
+   765→      WITH CHECK (auth.uid() = user_id);
+   766→  END IF;
+   767→
+   768→  IF NOT EXISTS (
+   769→    SELECT 1 FROM pg_policies WHERE tablename = 'agent_deployments' AND policyname = 'Users can update own deployments'
+   770→  ) THEN
+   771→    CREATE POLICY "Users can update own deployments"
+   772→      ON public.agent_deployments FOR UPDATE
+   773→      USING (auth.uid() = user_id);
+   774→  END IF;
+   775→
+   776→  IF NOT EXISTS (
+   777→    SELECT 1 FROM pg_policies WHERE tablename = 'agent_deployments' AND policyname = 'Users can delete own deployments'
+   778→  ) THEN
+   779→    CREATE POLICY "Users can delete own deployments"
+   780→      ON public.agent_deployments FOR DELETE
+   781→      USING (auth.uid() = user_id);
+   782→  END IF;
+   783→
+   784→  IF NOT EXISTS (
+   785→    SELECT 1 FROM pg_policies WHERE tablename = 'agent_deployments' AND policyname = 'Service role full access on agent_deployments'
+   786→  ) THEN
+   787→    CREATE POLICY "Service role full access on agent_deployments"
+   788→      ON public.agent_deployments FOR ALL
+   789→      USING (auth.role() = 'service_role')
+   790→      WITH CHECK (auth.role() = 'service_role');
+   791→  END IF;
+   792→END
+   793→$$;
+   794→
+   795→DROP TRIGGER IF EXISTS update_agent_deployments_updated_at ON public.agent_deployments;
+   796→CREATE TRIGGER update_agent_deployments_updated_at
+   797→  BEFORE UPDATE ON public.agent_deployments
+   798→  FOR EACH ROW
+   799→  EXECUTE FUNCTION public.update_updated_at_column();
+   800→
+   801→CREATE INDEX IF NOT EXISTS idx_agent_deployments_user_id ON public.agent_deployments(user_id);
+   802→CREATE INDEX IF NOT EXISTS idx_agent_deployments_agent_id ON public.agent_deployments(agent_id);
+   803→CREATE INDEX IF NOT EXISTS idx_agent_deployments_status ON public.agent_deployments(status);
+   804→CREATE INDEX IF NOT EXISTS idx_agent_deployments_created_at ON public.agent_deployments(created_at DESC);
+   805→
+   806→-- ============================================================
+   807→-- AUTO-CREATE user_settings ON SIGNUP
+   808→-- Update the handle_new_user trigger to also create user_settings
+   809→-- ============================================================
+   810→CREATE OR REPLACE FUNCTION public.handle_new_user()
+   811→RETURNS TRIGGER AS $$
+   812→BEGIN
+   813→  -- Create profile
+   814→  INSERT INTO public.profiles (id, email, full_name, avatar_url)
+   815→  VALUES (
+   816→    NEW.id,
+   817→    NEW.email,
+   818→    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', ''),
+   819→    COALESCE(NEW.raw_user_meta_data->>'avatar_url', '')
+   820→  );
+   821→
+   822→  -- Create default preferences
+   823→  INSERT INTO public.user_preferences (user_id, theme, default_view, experience_level)
+   824→  VALUES (
+   825→    NEW.id,
+   826→    'system',
+   827→    'grid',
+   828→    'beginner'
+   829→  )
+   830→  ON CONFLICT (user_id) DO NOTHING;
+   831→
+   832→  -- Create default user settings
+   833→  INSERT INTO public.user_settings (user_id, sidebar_collapsed, auto_save_drafts, email_digest, api_rate_limit)
+   834→  VALUES (
+   835→    NEW.id,
+   836→    FALSE,
+   837→    TRUE,
+   838→    'none',
+   839→    100
+   840→  )
+   841→  ON CONFLICT (user_id) DO NOTHING;
+   842→
+   843→  RETURN NEW;
+   844→END;
+   845→$$ LANGUAGE plpgsql SECURITY DEFINER;
+   846→
+   847→-- ============================================================
+   848→-- MIGRATION COMPLETE
+   849→-- Summary of new tables:
+   850→--   1.  bookmarks          - User bookmarks for agents/models
+   851→--   2.  collections        - User collections for organizing agents
+   852→--   3.  notifications      - User notifications
+   853→--   4.  ai_chat_history    - AI chat conversations
+   854→--   5.  recently_viewed    - Recently viewed items tracking
+   855→--   6.  ratings            - User ratings for agents
+   856→--   7.  user_settings      - Extended user settings
+   857→--   8.  agent_views        - View count tracking
+   858→--   9.  agent_downloads    - Download tracking
+   859→--   10. user_activity_log  - User action logging
+   860→--   11. api_keys           - API key management
+   861→--   12. agent_deployments  - Agent deployment records
+   862→--
+   863→-- All tables have:
+   864→--   - RLS enabled
+   865→--   - User-scoped policies (own data only)
+   866→--   - Service role full access policies
+   867→--   - updated_at auto-update triggers (where applicable)
+   868→--   - Appropriate indexes
+   869→--   - Foreign key constraints with ON DELETE CASCADE
+   870→--   - CHECK constraints for enum-like fields
+   871→--
+   872→-- Existing tables preserved: profiles, user_preferences
+   873→-- ============================================================
+   874→

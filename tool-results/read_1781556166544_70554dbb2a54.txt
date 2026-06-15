@@ -1,0 +1,485 @@
+     1→   748→          </Card>
+     2→   749→
+     3→   750→          {/* Avg Health Score */}
+     4→   751→          <Card className="border-0 shadow-md bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm hover:shadow-lg transition-shadow">
+     5→   752→            <CardContent className="p-4 sm:p-6">
+     6→   753→              <div className="flex items-center justify-between mb-2">
+     7→   754→                <div className="flex items-center gap-2">
+     8→   755→                  <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-900/30">
+     9→   756→                    <HeartPulse className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+    10→   757→                  </div>
+    11→   758→                  <span className="text-xs font-medium text-muted-foreground">Health Score</span>
+    12→   759→                </div>
+    13→   760→                <MiniSparkline data={sparkData.health} color="#f43f5e" />
+    14→   761→              </div>
+    15→   762→              <div className="flex items-end gap-2">
+    16→   763→                <span className="text-2xl sm:text-3xl font-bold">{stats.avgHealth}%</span>
+    17→   764→                {stats.avgHealth >= 80 && (
+    18→   765→                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center mb-1">
+    19→   766→                    <TrendingUp className="h-3 w-3 mr-0.5" />
+    20→   767→                    Good
+    21→   768→                  </span>
+    22→   769→                )}
+    23→   770→                {stats.avgHealth > 0 && stats.avgHealth < 60 && (
+    24→   771→                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400 flex items-center mb-1">
+    25→   772→                    <TrendingDown className="h-3 w-3 mr-0.5" />
+    26→   773→                    Needs attention
+    27→   774→                  </span>
+    28→   775→                )}
+    29→   776→              </div>
+    30→   777→            </CardContent>
+    31→   778→          </Card>
+    32→   779→        </motion.div>
+    33→   780→
+    34→   781→        {/* ─── Main Tabbed Content ───────────────────────────────────── */}
+    35→   782→        <motion.div variants={itemVariants}>
+    36→   783→          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+    37→   784→            <TabsList className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-1 h-auto flex-wrap">
+    38→   785→              <TabsTrigger value="agents" className="gap-1.5 text-xs sm:text-sm data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+    39→   786→                <Bot className="h-3.5 w-3.5" />
+    40→   787→                My Agents
+    41→   788→              </TabsTrigger>
+    42→   789→              <TabsTrigger value="activity" className="gap-1.5 text-xs sm:text-sm data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+    43→   790→                <Activity className="h-3.5 w-3.5" />
+    44→   791→                Activity
+    45→   792→              </TabsTrigger>
+    46→   793→              <TabsTrigger value="bookmarks" className="gap-1.5 text-xs sm:text-sm data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+    47→   794→                <Bookmark className="h-3.5 w-3.5" />
+    48→   795→                Models
+    49→   796→              </TabsTrigger>
+    50→   797→              <TabsTrigger value="analytics" className="gap-1.5 text-xs sm:text-sm data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+    51→   798→                <BarChart3 className="h-3.5 w-3.5" />
+    52→   799→                Analytics
+    53→   800→              </TabsTrigger>
+    54→   801→            </TabsList>
+    55→   802→
+    56→   803→            {/* ─── My Agents Tab ──────────────────────────────────────── */}
+    57→   804→            <TabsContent value="agents" className="space-y-4">
+    58→   805→              {/* Status Filter */}
+    59→   806→              <div className="flex flex-wrap gap-2">
+    60→   807→                {[
+    61→   808→                  { key: 'all', label: 'All' },
+    62→   809→                  { key: 'draft', label: 'Draft' },
+    63→   810→                  { key: 'active', label: 'Active' },
+    64→   811→                  { key: 'testing', label: 'Testing' },
+    65→   812→                  { key: 'deployed', label: 'Deployed' },
+    66→   813→                  { key: 'archived', label: 'Archived' },
+    67→   814→                ].map(filter => (
+    68→   815→                  <Button
+    69→   816→                    key={filter.key}
+    70→   817→                    variant={statusFilter === filter.key ? 'default' : 'outline'}
+    71→   818→                    size="sm"
+    72→   819→                    onClick={() => setStatusFilter(filter.key)}
+    73→   820→                    className={`h-8 text-xs gap-1.5 ${
+    74→   821→                      statusFilter === filter.key
+    75→   822→                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+    76→   823→                        : 'hover:border-emerald-300 dark:hover:border-emerald-700'
+    77→   824→                    }`}
+    78→   825→                  >
+    79→   826→                    {filter.label}
+    80→   827→                    <Badge variant="secondary" className="h-4 px-1 text-[10px] ml-0.5">
+    81→   828→                      {statusCounts[filter.key] || 0}
+    82→   829→                    </Badge>
+    83→   830→                  </Button>
+    84→   831→                ))}
+    85→   832→              </div>
+    86→   833→
+    87→   834→              {/* Agents Grid */}
+    88→   835→              {agentsLoading ? (
+    89→   836→                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+    90→   837→                  {Array.from({ length: 6 }).map((_, i) => (
+    91→   838→                    <Card key={i} className="border-0 shadow-md">
+    92→   839→                      <CardContent className="p-5 space-y-3">
+    93→   840→                        <Skeleton className="h-5 w-3/4" />
+    94→   841→                        <Skeleton className="h-4 w-1/2" />
+    95→   842→                        <Skeleton className="h-4 w-full" />
+    96→   843→                        <Skeleton className="h-2 w-full" />
+    97→   844→                        <div className="flex gap-2">
+    98→   845→                          <Skeleton className="h-6 w-16" />
+    99→   846→                          <Skeleton className="h-6 w-20" />
+   100→   847→                        </div>
+   101→   848→                      </CardContent>
+   102→   849→                    </Card>
+   103→   850→                  ))}
+   104→   851→                </div>
+   105→   852→              ) : filteredAgents.length === 0 ? (
+   106→   853→                <motion.div
+   107→   854→                  initial={{ opacity: 0, y: 10 }}
+   108→   855→                  animate={{ opacity: 1, y: 0 }}
+   109→   856→                  className="text-center py-16"
+   110→   857→                >
+   111→   858→                  <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
+   112→   859→                    <Bot className="h-10 w-10 text-emerald-500" />
+   113→   860→                  </div>
+   114→   861→                  <h3 className="text-lg font-semibold mb-1">
+   115→   862→                    {statusFilter !== 'all' ? `No ${statusLabel[statusFilter] || statusFilter} agents` : 'No agents yet'}
+   116→   863→                  </h3>
+   117→   864→                  <p className="text-muted-foreground text-sm mb-4 max-w-sm mx-auto">
+   118→   865→                    {statusFilter !== 'all'
+   119→   866→                      ? 'Try a different filter or create a new agent.'
+   120→   867→                      : 'Create your first AI agent and start building something amazing.'
+   121→   868→                    }
+   122→   869→                  </p>
+   123→   870→                  <Button
+   124→   871→                    onClick={() => router.push('/create')}
+   125→   872→                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/25"
+   126→   873→                  >
+   127→   874→                    <PlusCircle className="h-4 w-4 mr-2" />
+   128→   875→                    Create Your First Agent
+   129→   876→                  </Button>
+   130→   877→                </motion.div>
+   131→   878→              ) : (
+   132→   879→                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+   133→   880→                  <AnimatePresence mode="popLayout">
+   134→   881→                    {filteredAgents.map((agent, i) => (
+   135→   882→                      <motion.div
+   136→   883→                        key={agent.id}
+   137→   884→                        layout
+   138→   885→                        initial={{ opacity: 0, scale: 0.95 }}
+   139→   886→                        animate={{ opacity: 1, scale: 1 }}
+   140→   887→                        exit={{ opacity: 0, scale: 0.95 }}
+   141→   888→                        transition={{ delay: i * 0.03, duration: 0.3 }}
+   142→   889→                      >
+   143→   890→                        <motion.div variants={cardHover} whileHover="hover" initial="rest">
+   144→   891→                          <Card className="border-0 shadow-md bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm hover:shadow-lg transition-shadow group h-full flex flex-col">
+   145→   892→                            <CardContent className="p-5 flex flex-col flex-1">
+   146→   893→                              {/* Header */}
+   147→   894→                              <div className="flex items-start justify-between gap-2 mb-2">
+   148→   895→                                <div className="flex-1 min-w-0">
+   149→   896→                                  <h3 className="font-semibold text-sm truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+   150→   897→                                    {agent.name}
+   151→   898→                                  </h3>
+   152→   899→                                  {agent.category?.name && (
+   153→   900→                                    <p className="text-xs text-muted-foreground">{agent.category.name}</p>
+   154→   901→                                  )}
+   155→   902→                                </div>
+   156→   903→                                <DropdownMenu>
+   157→   904→                                  <DropdownMenuTrigger asChild>
+   158→   905→                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+   159→   906→                                      <MoreVertical className="h-3.5 w-3.5" />
+   160→   907→                                    </Button>
+   161→   908→                                  </DropdownMenuTrigger>
+   162→   909→                                  <DropdownMenuContent align="end" className="w-40">
+   163→   910→                                    <DropdownMenuItem onClick={() => router.push(`/agents/${agent.id}`)}>
+   164→   911→                                      <Eye className="h-3.5 w-3.5 mr-2" /> View
+   165→   912→                                    </DropdownMenuItem>
+   166→   913→                                    <DropdownMenuItem onClick={() => router.push(`/agents/${agent.id}`)}>
+   167→   914→                                      <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+   168→   915→                                    </DropdownMenuItem>
+   169→   916→                                    {agent.status !== 'deployed' && (
+   170→   917→                                      <DropdownMenuItem onClick={() => router.push(`/agents/${agent.id}`)}>
+   171→   918→                                        <Rocket className="h-3.5 w-3.5 mr-2" /> Deploy
+   172→   919→                                      </DropdownMenuItem>
+   173→   920→                                    )}
+   174→   921→                                    {agent.status === 'draft' && (
+   175→   922→                                      <DropdownMenuItem onClick={() => router.push(`/agents/${agent.id}`)}>
+   176→   923→                                        <Beaker className="h-3.5 w-3.5 mr-2" /> Test
+   177→   924→                                      </DropdownMenuItem>
+   178→   925→                                    )}
+   179→   926→                                    <DropdownMenuItem
+   180→   927→                                      className="text-rose-600 dark:text-rose-400 focus:text-rose-600"
+   181→   928→                                      onClick={() => setDeleteTarget(agent)}
+   182→   929→                                    >
+   183→   930→                                      <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+   184→   931→                                    </DropdownMenuItem>
+   185→   932→                                  </DropdownMenuContent>
+   186→   933→                                </DropdownMenu>
+   187→   934→                              </div>
+   188→   935→
+   189→   936→                              {/* Description */}
+   190→   937→                              <p className="text-xs text-muted-foreground line-clamp-2 mb-3 flex-1">
+   191→   938→                                {agent.description || 'No description provided'}
+   192→   939→                              </p>
+   193→   940→
+   194→   941→                              {/* Health Score */}
+   195→   942→                              <div className="mb-3">
+   196→   943→                                <HealthScoreBar score={agent.healthScore || 0} />
+   197→   944→                              </div>
+   198→   945→
+   199→   946→                              {/* Badges Row */}
+   200→   947→                              <div className="flex flex-wrap gap-1.5 mb-3">
+   201→   948→                                <Badge variant="secondary" className={`text-[10px] h-5 ${statusBadge[agent.status] || statusBadge.draft}`}>
+   202→   949→                                  {statusLabel[agent.status] || agent.status}
+   203→   950→                                </Badge>
+   204→   951→                                {agent.framework && (
+   205→   952→                                  <Badge variant="secondary" className={`text-[10px] h-5 ${frameworkBadge[agent.framework] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>
+   206→   953→                                    {agent.framework}
+   207→   954→                                  </Badge>
+   208→   955→                                )}
+   209→   956→                                {agent.privacy === 'PUBLIC' && (
+   210→   957→                                  <Badge variant="secondary" className="text-[10px] h-5 bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+   211→   958→                                    <Globe className="h-2.5 w-2.5 mr-0.5" /> Public
+   212→   959→                                  </Badge>
+   213→   960→                                )}
+   214→   961→                              </div>
+   215→   962→
+   216→   963→                              {/* Footer */}
+   217→   964→                              <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-2 border-t border-gray-100 dark:border-gray-800">
+   218→   965→                                <div className="flex items-center gap-3">
+   219→   966→                                  {agent.totalRequests > 0 && (
+   220→   967→                                    <span className="flex items-center gap-0.5">
+   221→   968→                                      <Zap className="h-3 w-3" /> {agent.totalRequests}
+   222→   969→                                    </span>
+   223→   970→                                  )}
+   224→   971→                                  {agent._count?.starredBy !== undefined && agent._count.starredBy > 0 && (
+   225→   972→                                    <span className="flex items-center gap-0.5">
+   226→   973→                                      <Star className="h-3 w-3" /> {agent._count.starredBy}
+   227→   974→                                    </span>
+   228→   975→                                  )}
+   229→   976→                                </div>
+   230→   977→                                <span className="flex items-center gap-0.5">
+   231→   978→                                  <Clock className="h-3 w-3" /> {formatRelativeTime(agent.updatedAt || agent.createdAt)}
+   232→   979→                                </span>
+   233→   980→                              </div>
+   234→   981→                            </CardContent>
+   235→   982→                          </Card>
+   236→   983→                        </motion.div>
+   237→   984→                      </motion.div>
+   238→   985→                    ))}
+   239→   986→                  </AnimatePresence>
+   240→   987→                </div>
+   241→   988→              )}
+   242→   989→            </TabsContent>
+   243→   990→
+   244→   991→            {/* ─── Activity Feed Tab ──────────────────────────────────── */}
+   245→   992→            <TabsContent value="activity">
+   246→   993→              <Card className="border-0 shadow-md bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
+   247→   994→                <CardHeader className="pb-3">
+   248→   995→                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+   249→   996→                    <Activity className="h-4 w-4 text-emerald-500" />
+   250→   997→                    Activity Timeline
+   251→   998→                  </CardTitle>
+   252→   999→                  <CardDescription className="text-xs">
+   253→  1000→                    Recent actions and events in your workspace
+   254→  1001→                  </CardDescription>
+   255→  1002→                </CardHeader>
+   256→  1003→                <CardContent>
+   257→  1004→                  {activityLog.length === 0 ? (
+   258→  1005→                    <div className="text-center py-12">
+   259→  1006→                      <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+   260→  1007→                        <Activity className="h-8 w-8 text-gray-400" />
+   261→  1008→                      </div>
+   262→  1009→                      <h3 className="font-semibold mb-1">No activity yet</h3>
+   263→  1010→                      <p className="text-sm text-muted-foreground">
+   264→  1011→                        Your actions will appear here as you create and manage agents.
+   265→  1012→                      </p>
+   266→  1013→                    </div>
+   267→  1014→                  ) : (
+   268→  1015→                    <ScrollArea className="max-h-[500px]">
+   269→  1016→                      <div className="space-y-1">
+   270→  1017→                        {activityLog.map((item, idx) => (
+   271→  1018→                          <motion.div
+   272→  1019→                            key={item.id}
+   273→  1020→                            initial={{ opacity: 0, x: -10 }}
+   274→  1021→                            animate={{ opacity: 1, x: 0 }}
+   275→  1022→                            transition={{ delay: idx * 0.03 }}
+   276→  1023→                            className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
+   277→  1024→                          >
+   278→  1025→                            {/* Timeline dot + line */}
+   279→  1026→                            <div className="flex flex-col items-center pt-0.5">
+   280→  1027→                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/20 transition-colors">
+   281→  1028→                                <ActivityIcon type={item.type} />
+   282→  1029→                              </div>
+   283→  1030→                              {idx < activityLog.length - 1 && (
+   284→  1031→                                <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mt-1" />
+   285→  1032→                              )}
+   286→  1033→                            </div>
+   287→  1034→                            {/* Content */}
+   288→  1035→                            <div className="flex-1 min-w-0">
+   289→  1036→                              <p className="text-sm">{item.message}</p>
+   290→  1037→                              <div className="flex items-center gap-2 mt-0.5">
+   291→  1038→                                <span className="text-xs text-muted-foreground">
+   292→  1039→                                  {formatRelativeTime(item.timestamp)}
+   293→  1040→                                </span>
+   294→  1041→                                {item.agentId && (
+   295→  1042→                                  <Button
+   296→  1043→                                    variant="link"
+   297→  1044→                                    size="sm"
+   298→  1045→                                    className="h-auto p-0 text-xs text-emerald-600 dark:text-emerald-400"
+   299→  1046→                                    onClick={() => router.push(`/agents/${item.agentId}`)}
+   300→  1047→                                  >
+   301→  1048→                                    View agent <ArrowUpRight className="h-3 w-3 ml-0.5" />
+   302→  1049→                                  </Button>
+   303→  1050→                                )}
+   304→  1051→                              </div>
+   305→  1052→                            </div>
+   306→  1053→                          </motion.div>
+   307→  1054→                        ))}
+   308→  1055→                      </div>
+   309→  1056→                    </ScrollArea>
+   310→  1057→                  )}
+   311→  1058→                </CardContent>
+   312→  1059→              </Card>
+   313→  1060→            </TabsContent>
+   314→  1061→
+   315→  1062→            {/* ─── Bookmarked Models Tab ──────────────────────────────── */}
+   316→  1063→            <TabsContent value="bookmarks">
+   317→  1064→              <Card className="border-0 shadow-md bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
+   318→  1065→                <CardHeader className="pb-3">
+   319→  1066→                  <div className="flex items-center justify-between">
+   320→  1067→                    <div>
+   321→  1068→                      <CardTitle className="text-base font-semibold flex items-center gap-2">
+   322→  1069→                        <Bookmark className="h-4 w-4 text-emerald-500" />
+   323→  1070→                        Bookmarked Models
+   324→  1071→                      </CardTitle>
+   325→  1072→                      <CardDescription className="text-xs">
+   326→  1073→                        LLM models you&apos;ve saved for quick reference
+   327→  1074→                      </CardDescription>
+   328→  1075→                    </div>
+   329→  1076→                    <Button
+   330→  1077→                      variant="outline"
+   331→  1078→                      size="sm"
+   332→  1079→                      onClick={() => router.push('/llm-finder')}
+   333→  1080→                      className="text-xs gap-1.5 hover:border-emerald-300"
+   334→  1081→                    >
+   335→  1082→                      <Search className="h-3.5 w-3.5" />
+   336→  1083→                      Find Models
+   337→  1084→                    </Button>
+   338→  1085→                  </div>
+   339→  1086→                </CardHeader>
+   340→  1087→                <CardContent>
+   341→  1088→                  {modelsLoading ? (
+   342→  1089→                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+   343→  1090→                      {Array.from({ length: 6 }).map((_, i) => (
+   344→  1091→                        <div key={i} className="p-4 rounded-lg border space-y-2">
+   345→  1092→                          <Skeleton className="h-4 w-3/4" />
+   346→  1093→                          <Skeleton className="h-3 w-1/2" />
+   347→  1094→                          <Skeleton className="h-3 w-1/3" />
+   348→  1095→                        </div>
+   349→  1096→                      ))}
+   350→  1097→                    </div>
+   351→  1098→                  ) : bookmarkedModels.length === 0 ? (
+   352→  1099→                    <div className="text-center py-12">
+   353→  1100→                      <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
+   354→  1101→                        <Bookmark className="h-8 w-8 text-emerald-500" />
+   355→  1102→                      </div>
+   356→  1103→                      <h3 className="font-semibold mb-1">No bookmarked models</h3>
+   357→  1104→                      <p className="text-sm text-muted-foreground mb-4">
+   358→  1105→                        Explore LLM models and bookmark your favorites.
+   359→  1106→                      </p>
+   360→  1107→                      <Button
+   361→  1108→                        onClick={() => router.push('/llm-finder')}
+   362→  1109→                        className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
+   363→  1110→                      >
+   364→  1111→                        <Search className="h-4 w-4 mr-2" />
+   365→  1112→                        Explore Models
+   366→  1113→                      </Button>
+   367→  1114→                    </div>
+   368→  1115→                  ) : (
+   369→  1116→                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+   370→  1117→                      {bookmarkedModels.map((bm, idx) => (
+   371→  1118→                        <motion.div
+   372→  1119→                          key={bm.id}
+   373→  1120→                          initial={{ opacity: 0, y: 10 }}
+   374→  1121→                          animate={{ opacity: 1, y: 0 }}
+   375→  1122→                          transition={{ delay: idx * 0.04 }}
+   376→  1123→                          className="p-4 rounded-xl border border-gray-200/50 dark:border-gray-700/50 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md transition-all group"
+   377→  1124→                        >
+   378→  1125→                          <div className="flex items-start justify-between gap-2 mb-2">
+   379→  1126→                            <div className="flex-1 min-w-0">
+   380→  1127→                              <h4 className="font-medium text-sm truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+   381→  1128→                                {bm.model.name}
+   382→  1129→                              </h4>
+   383→  1130→                              <p className="text-xs text-muted-foreground">{bm.model.organization}</p>
+   384→  1131→                            </div>
+   385→  1132→                            {bm.model.bestRank <= 100 && (
+   386→  1133→                              <Badge className="text-[10px] h-5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 shrink-0">
+   387→  1134→                                #{bm.model.bestRank}
+   388→  1135→                              </Badge>
+   389→  1136→                            )}
+   390→  1137→                          </div>
+   391→  1138→                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+   392→  1139→                            {bm.model.bestRating > 0 && (
+   393→  1140→                              <span className="flex items-center gap-0.5">
+   394→  1141→                                <Star className="h-3 w-3 text-amber-500" /> {bm.model.bestRating.toFixed(0)}
+   395→  1142→                              </span>
+   396→  1143→                            )}
+   397→  1144→                            {bm.model.outputPricePerMillion != null && (
+   398→  1145→                              <span>${bm.model.outputPricePerMillion.toFixed(2)}/M</span>
+   399→  1146→                            )}
+   400→  1147→                            {bm.model.contextLength != null && (
+   401→  1148→                              <span className="flex items-center gap-0.5">
+   402→  1149→                                <Database className="h-3 w-3" /> {(bm.model.contextLength / 1000).toFixed(0)}k
+   403→  1150→                              </span>
+   404→  1151→                            )}
+   405→  1152→                          </div>
+   406→  1153→                          {bm.note && (
+   407→  1154→                            <p className="text-xs text-muted-foreground mt-2 italic line-clamp-1">
+   408→  1155→                              &ldquo;{bm.note}&rdquo;
+   409→  1156→                            </p>
+   410→  1157→                          )}
+   411→  1158→                        </motion.div>
+   412→  1159→                      ))}
+   413→  1160→                    </div>
+   414→  1161→                  )}
+   415→  1162→                </CardContent>
+   416→  1163→              </Card>
+   417→  1164→            </TabsContent>
+   418→  1165→
+   419→  1166→            {/* ─── Analytics Tab ──────────────────────────────────────── */}
+   420→  1167→            <TabsContent value="analytics" className="space-y-4">
+   421→  1168→              {/* Summary Metrics */}
+   422→  1169→              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   423→  1170→                {[
+   424→  1171→                  { label: 'Avg Latency', value: myAgents.length > 0 ? `${Math.round(myAgents.reduce((s, a) => s + (a.avgLatencyMs || 0), 0) / myAgents.length)}ms` : '0ms', icon: Clock, color: 'emerald' },
+   425→  1172→                  { label: 'Error Rate', value: myAgents.length > 0 ? `${(myAgents.reduce((s, a) => s + (a.errorRate || 0), 0) / myAgents.length * 100).toFixed(1)}%` : '0%', icon: Shield, color: 'teal' },
+   426→  1173→                  { label: 'Frameworks', value: `${new Set(myAgents.map(a => a.framework).filter(Boolean)).size}`, icon: Cpu, color: 'amber' },
+   427→  1174→                  { label: 'Public Agents', value: `${myAgents.filter(a => a.privacy === 'PUBLIC').length}`, icon: Globe, color: 'rose' },
+   428→  1175→                ].map((metric, idx) => (
+   429→  1176→                  <motion.div
+   430→  1177→                    key={metric.label}
+   431→  1178→                    initial={{ opacity: 0, y: 10 }}
+   432→  1179→                    animate={{ opacity: 1, y: 0 }}
+   433→  1180→                    transition={{ delay: idx * 0.05 }}
+   434→  1181→                  >
+   435→  1182→                    <Card className="border-0 shadow-sm bg-white/80 dark:bg-gray-900/80">
+   436→  1183→                      <CardContent className="p-3 sm:p-4">
+   437→  1184→                        <div className="flex items-center gap-2 mb-1">
+   438→  1185→                          <metric.icon className="h-3.5 w-3.5 text-muted-foreground" />
+   439→  1186→                          <span className="text-[10px] sm:text-xs text-muted-foreground">{metric.label}</span>
+   440→  1187→                        </div>
+   441→  1188→                        <span className="text-lg sm:text-xl font-bold">{metric.value}</span>
+   442→  1189→                      </CardContent>
+   443→  1190→                    </Card>
+   444→  1191→                  </motion.div>
+   445→  1192→                ))}
+   446→  1193→              </div>
+   447→  1194→
+   448→  1195→              {/* Charts Row */}
+   449→  1196→              <LazyRecharts
+   450→  1197→                usageData={usageChartData.map(d => ({ date: d.day, requests: d.requests }))}
+   451→  1198→                statusData={statusChartData.map(d => ({ status: d.name, count: d.count }))}
+   452→  1199→                frameworkData={frameworkChartData.map(d => ({ name: d.name, value: d.count, color: d.color }))}
+   453→  1200→              />
+   454→  1201→            </TabsContent>
+   455→  1202→          </Tabs>
+   456→  1203→        </motion.div>
+   457→  1204→      </motion.div>
+   458→  1205→
+   459→  1206→      {/* ─── Delete Confirmation Dialog ──────────────────────────────── */}
+   460→  1207→      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+   461→  1208→        <AlertDialogContent>
+   462→  1209→          <AlertDialogHeader>
+   463→  1210→            <AlertDialogTitle>Delete Agent</AlertDialogTitle>
+   464→  1211→            <AlertDialogDescription>
+   465→  1212→              Are you sure you want to delete <strong>&ldquo;{deleteTarget?.name}&rdquo;</strong>?
+   466→  1213→              This action cannot be undone.
+   467→  1214→            </AlertDialogDescription>
+   468→  1215→          </AlertDialogHeader>
+   469→  1216→          <AlertDialogFooter>
+   470→  1217→            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+   471→  1218→            <AlertDialogAction
+   472→  1219→              onClick={handleDeleteAgent}
+   473→  1220→              disabled={deleting}
+   474→  1221→              className="bg-rose-600 hover:bg-rose-700 text-white"
+   475→  1222→            >
+   476→  1223→              {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+   477→  1224→              Delete
+   478→  1225→            </AlertDialogAction>
+   479→  1226→          </AlertDialogFooter>
+   480→  1227→        </AlertDialogContent>
+   481→  1228→      </AlertDialog>
+   482→  1229→    </div>
+   483→  1230→  )
+   484→  1231→}
+   485→  1232→

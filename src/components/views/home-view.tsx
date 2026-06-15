@@ -1,21 +1,23 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useAppStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
 import type { KnowledgeAgent, Stats, Category } from '@/lib/types'
 import { getCachedStats, getCachedCategories, getCachedRecentAgents, getCachedFeaturedAgents } from '@/lib/data-cache'
 
-import { HeroSection } from '@/components/home/hero-section'
-import { TrendingSection } from '@/components/home/trending-section'
-import { StatsSection } from '@/components/home/stats-section'
-import { HowItWorksSection } from '@/components/home/how-it-works-section'
-import { FeaturedAgentsSection } from '@/components/home/featured-agents-section'
-import { CategoriesSection } from '@/components/home/categories-section'
-import { FrameworksSection } from '@/components/home/frameworks-section'
-import { TestimonialsSection } from '@/components/home/testimonials-section'
-import { CommunitySection } from '@/components/home/community-section'
-import { CtaSection } from '@/components/home/cta-section'
+// Lazy load heavy sections to reduce initial compilation memory
+const HeroSection = dynamic(() => import('@/components/home/hero-section').then(m => ({ default: m.HeroSection })), { ssr: false })
+const TrendingSection = dynamic(() => import('@/components/home/trending-section').then(m => ({ default: m.TrendingSection })), { ssr: false })
+const StatsSection = dynamic(() => import('@/components/home/stats-section').then(m => ({ default: m.StatsSection })), { ssr: false })
+const HowItWorksSection = dynamic(() => import('@/components/home/how-it-works-section').then(m => ({ default: m.HowItWorksSection })), { ssr: false })
+const FeaturedAgentsSection = dynamic(() => import('@/components/home/featured-agents-section').then(m => ({ default: m.FeaturedAgentsSection })), { ssr: false })
+const CategoriesSection = dynamic(() => import('@/components/home/categories-section').then(m => ({ default: m.CategoriesSection })), { ssr: false })
+const FrameworksSection = dynamic(() => import('@/components/home/frameworks-section').then(m => ({ default: m.FrameworksSection })), { ssr: false })
+const TestimonialsSection = dynamic(() => import('@/components/home/testimonials-section').then(m => ({ default: m.TestimonialsSection })), { ssr: false })
+const CommunitySection = dynamic(() => import('@/components/home/community-section').then(m => ({ default: m.CommunitySection })), { ssr: false })
+const CtaSection = dynamic(() => import('@/components/home/cta-section').then(m => ({ default: m.CtaSection })), { ssr: false })
 
 export function HomeView() {
   const { setCurrentView, setSelectedAgentId, recentlyViewedAgentIds } = useAppStore()

@@ -1,0 +1,1232 @@
+     1→'use client'
+     2→
+     3→import { useEffect, useState, useMemo, useCallback } from 'react'
+     4→import { useRouter } from 'next/navigation'
+     5→import { useAuth } from '@/components/auth/auth-provider'
+     6→import { useAppStore } from '@/lib/store'
+     7→import { api } from '@/lib/api-client'
+     8→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+     9→import { Button } from '@/components/ui/button'
+    10→import { Badge } from '@/components/ui/badge'
+    11→import { Skeleton } from '@/components/ui/skeleton'
+    12→import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+    13→import { Progress } from '@/components/ui/progress'
+    14→import { ScrollArea } from '@/components/ui/scroll-area'
+    15→import { Separator } from '@/components/ui/separator'
+    16→import {
+    17→  Avatar,
+    18→  AvatarFallback,
+    19→  AvatarImage,
+    20→} from '@/components/ui/avatar'
+    21→import {
+    22→  DropdownMenu,
+    23→  DropdownMenuContent,
+    24→  DropdownMenuItem,
+    25→  DropdownMenuTrigger,
+    26→} from '@/components/ui/dropdown-menu'
+    27→import {
+    28→  AlertDialog,
+    29→  AlertDialogAction,
+    30→  AlertDialogCancel,
+    31→  AlertDialogContent,
+    32→  AlertDialogDescription,
+    33→  AlertDialogFooter,
+    34→  AlertDialogHeader,
+    35→  AlertDialogTitle,
+    36→} from '@/components/ui/alert-dialog'
+    37→import {
+    38→  Bot,
+    39→  Globe,
+    40→  Star,
+    41→  Clock,
+    42→  PlusCircle,
+    43→  Loader2,
+    44→  Trash2,
+    45→  ArrowUpRight,
+    46→  LayoutDashboard,
+    47→  RefreshCw,
+    48→  TrendingUp,
+    49→  TrendingDown,
+    50→  Sparkles,
+    51→  MoreVertical,
+    52→  Bookmark,
+    53→  Activity,
+    54→  Rocket,
+    55→  TestTube,
+    56→  Pencil,
+    57→  Eye,
+    58→  Zap,
+    59→  HeartPulse,
+    60→  BarChart3,
+    61→  Lightbulb,
+    62→  Wrench,
+    63→  Monitor,
+    64→  Gauge,
+    65→  ChevronRight,
+    66→  Play,
+    67→  GitBranch,
+    68→  MessageSquare,
+    69→  CircleDot,
+    70→  ArrowRight,
+    71→  Calendar,
+    72→  Server,
+    73→  Shield,
+    74→  Database,
+    75→  Cpu,
+    76→  CircleCheck,
+    77→  Circle,
+    78→  Beaker,
+    79→  Package,
+    80→  Search,
+    81→} from 'lucide-react'
+    82→import { motion, AnimatePresence } from 'framer-motion'
+    83→
+    84→// Lazy load recharts to avoid OOM during compilation
+    85→import dynamic from 'next/dynamic'
+    86→const LazyRecharts = dynamic(() => import('@/components/dashboard/analytics-charts'), {
+    87→  ssr: false,
+    88→  loading: () => <div className="h-64 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-emerald-500" /></div>
+    89→})
+    90→
+    91→// ─── Types ────────────────────────────────────────────────────────────
+    92→
+    93→interface AgentItem {
+    94→  id: string
+    95→  name: string
+    96→  description: string
+    97→  privacy: string
+    98→  framework: string | null
+    99→  llm: string | null
+   100→  industry: string | null
+   101→  difficulty: string | null
+   102→  tags: string[]
+   103→  stars: number
+   104→  status: string
+   105→  healthScore: number
+   106→  totalRequests: number
+   107→  avgLatencyMs: number
+   108→  errorRate: number
+   109→  createdAt: string
+   110→  updatedAt: string
+   111→  category?: { name: string }
+   112→  _count?: { starredBy: number; comments: number }
+   113→}
+   114→
+   115→interface ActivityItem {
+   116→  id: string
+   117→  type: 'created' | 'updated' | 'deployed' | 'tested' | 'deleted' | 'starred' | 'archived'
+   118→  message: string
+   119→  timestamp: string
+   120→  agentName?: string
+   121→  agentId?: string
+   122→}
+   123→
+   124→interface BookmarkedModel {
+   125→  id: string
+   126→  model: {
+   127→    id: string
+   128→    name: string
+   129→    organization: string
+   130→    bestRating: number
+   131→    bestRank: number
+   132→    inputPricePerMillion: number | null
+   133→    outputPricePerMillion: number | null
+   134→    contextLength: number | null
+   135→    license: string
+   136→  }
+   137→  note?: string
+   138→  createdAt: string
+   139→}
+   140→
+   141→// ─── Constants ────────────────────────────────────────────────────────
+   142→
+   143→const frameworkBadge: Record<string, string> = {
+   144→  langgraph: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+   145→  crewai: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+   146→  autogen: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
+   147→  agno: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
+   148→  llamaindex: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
+   149→}
+   150→
+   151→const statusBadge: Record<string, string> = {
+   152→  draft: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+   153→  active: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+   154→  testing: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+   155→  deployed: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
+   156→  archived: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
+   157→}
+   158→
+   159→const statusLabel: Record<string, string> = {
+   160→  draft: 'Draft',
+   161→  active: 'Active',
+   162→  testing: 'Testing',
+   163→  deployed: 'Deployed',
+   164→  archived: 'Archived',
+   165→}
+   166→
+   167→const frameworkColors: Record<string, string> = {
+   168→  langgraph: '#10b981',
+   169→  crewai: '#f59e0b',
+   170→  autogen: '#f43f5e',
+   171→  agno: '#8b5cf6',
+   172→  llamaindex: '#14b8a6',
+   173→}
+   174→
+   175→const CHART_COLORS = ['#10b981', '#14b8a6', '#f59e0b', '#f43f5e', '#8b5cf6', '#06b6d4']
+   176→
+   177→// Pipeline stages definition
+   178→const PIPELINE_STAGES = [
+   179→  { key: 'ideate', label: 'Ideate', icon: Lightbulb, statuses: ['draft'] },
+   180→  { key: 'initiate', label: 'Initiate', icon: Rocket, statuses: ['active'] },
+   181→  { key: 'configure', label: 'Configure', icon: Wrench, statuses: [] },
+   182→  { key: 'test', label: 'Test', icon: Beaker, statuses: ['testing'] },
+   183→  { key: 'deploy', label: 'Deploy', icon: Server, statuses: ['deployed'] },
+   184→  { key: 'monitor', label: 'Monitor', icon: Monitor, statuses: [] },
+   185→  { key: 'optimize', label: 'Optimize', icon: Gauge, statuses: [] },
+   186→] as const
+   187→
+   188→// ─── Animation Variants ───────────────────────────────────────────────
+   189→
+   190→const containerVariants = {
+   191→  hidden: { opacity: 0 },
+   192→  visible: {
+   193→    opacity: 1,
+   194→    transition: { staggerChildren: 0.06 },
+   195→  },
+   196→}
+   197→
+   198→const itemVariants = {
+   199→  hidden: { opacity: 0, y: 20 },
+   200→  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
+   201→}
+   202→
+   203→const cardHover = {
+   204→  rest: { scale: 1 },
+   205→  hover: { scale: 1.01, transition: { duration: 0.2 } },
+   206→}
+   207→
+   208→// ─── Helper: Format relative time ─────────────────────────────────────
+   209→
+   210→function formatRelativeTime(dateStr: string): string {
+   211→  try {
+   212→    const date = new Date(dateStr)
+   213→    const now = new Date()
+   214→    const diffMs = now.getTime() - date.getTime()
+   215→    const diffMins = Math.floor(diffMs / 60000)
+   216→    const diffHours = Math.floor(diffMs / 3600000)
+   217→    const diffDays = Math.floor(diffMs / 86400000)
+   218→
+   219→    if (diffMins < 1) return 'Just now'
+   220→    if (diffMins < 60) return `${diffMins}m ago`
+   221→    if (diffHours < 24) return `${diffHours}h ago`
+   222→    if (diffDays < 7) return `${diffDays}d ago`
+   223→    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+   224→  } catch {
+   225→    return dateStr
+   226→  }
+   227→}
+   228→
+   229→// ─── Mini Sparkline SVG ───────────────────────────────────────────────
+   230→
+   231→function MiniSparkline({ data, color = '#10b981', width = 60, height = 24 }: { data: number[]; color?: string; width?: number; height?: number }) {
+   232→  if (!data || data.length < 2) return null
+   233→  const max = Math.max(...data)
+   234→  const min = Math.min(...data)
+   235→  const range = max - min || 1
+   236→
+   237→  const points = data.map((v, i) => {
+   238→    const x = (i / (data.length - 1)) * width
+   239→    const y = height - ((v - min) / range) * (height - 4) - 2
+   240→    return `${x},${y}`
+   241→  }).join(' ')
+   242→
+   243→  return (
+   244→    <svg width={width} height={height} className="inline-block ml-1">
+   245→      <polyline
+   246→        points={points}
+   247→        fill="none"
+   248→        stroke={color}
+   249→        strokeWidth="1.5"
+   250→        strokeLinecap="round"
+   251→        strokeLinejoin="round"
+   252→      />
+   253→    </svg>
+   254→  )
+   255→}
+   256→
+   257→// ─── Activity Icon ────────────────────────────────────────────────────
+   258→
+   259→function ActivityIcon({ type }: { type: ActivityItem['type'] }) {
+   260→  const iconMap: Record<string, { icon: typeof PlusCircle; className: string }> = {
+   261→    created: { icon: PlusCircle, className: 'text-emerald-500' },
+   262→    updated: { icon: Pencil, className: 'text-amber-500' },
+   263→    deployed: { icon: Rocket, className: 'text-teal-500' },
+   264→    tested: { icon: Beaker, className: 'text-violet-500' },
+   265→    deleted: { icon: Trash2, className: 'text-rose-500' },
+   266→    starred: { icon: Star, className: 'text-amber-500' },
+   267→    archived: { icon: Package, className: 'text-gray-500' },
+   268→  }
+   269→  const { icon: Icon, className } = iconMap[type] || iconMap.updated
+   270→  return <Icon className={`h-4 w-4 ${className}`} />
+   271→}
+   272→
+   273→// ─── Health Score Bar ─────────────────────────────────────────────────
+   274→
+   275→function HealthScoreBar({ score }: { score: number }) {
+   276→  const color =
+   277→    score >= 80 ? 'bg-emerald-500' :
+   278→    score >= 60 ? 'bg-amber-500' :
+   279→    score >= 40 ? 'bg-orange-500' :
+   280→    'bg-rose-500'
+   281→
+   282→  return (
+   283→    <div className="flex items-center gap-2">
+   284→      <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+   285→        <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${Math.max(score, 0)}%` }} />
+   286→      </div>
+   287→      <span className="text-xs font-medium text-muted-foreground w-8 text-right">{score}%</span>
+   288→    </div>
+   289→  )
+   290→}
+   291→
+   292→// ─── Main Component ───────────────────────────────────────────────────
+   293→
+   294→export function DashboardPage() {
+   295→  const router = useRouter()
+   296→  const { user, profile, loading: authLoading } = useAuth()
+   297→  const { setShowAuthModal } = useAppStore()
+   298→  const isAuthenticated = !!user
+   299→
+   300→  const [activeTab, setActiveTab] = useState('agents')
+   301→  const [myAgents, setMyAgents] = useState<AgentItem[]>([])
+   302→  const [agentsLoading, setAgentsLoading] = useState(true)
+   303→  const [bookmarkedModels, setBookmarkedModels] = useState<BookmarkedModel[]>([])
+   304→  const [modelsLoading, setModelsLoading] = useState(false)
+   305→  const [statusFilter, setStatusFilter] = useState<string>('all')
+   306→  const [deleteTarget, setDeleteTarget] = useState<AgentItem | null>(null)
+   307→  const [deleting, setDeleting] = useState(false)
+   308→  const [activityLog, setActivityLog] = useState<ActivityItem[]>([])
+   309→
+   310→  // Derived user info
+   311→  const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'
+   312→  const firstName = displayName.split(' ')[0]
+   313→  const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url
+   314→  const initials = displayName.slice(0, 2).toUpperCase()
+   315→
+   316→  // Motivational messages
+   317→  const greetings = useMemo(() => {
+   318→    const hour = new Date().getHours()
+   319→    if (hour < 12) return 'Good morning'
+   320→    if (hour < 18) return 'Good afternoon'
+   321→    return 'Good evening'
+   322→  }, [])
+   323→
+   324→  // Redirect unauthenticated users
+   325→  useEffect(() => {
+   326→    if (!authLoading && !user) {
+   327→      setShowAuthModal(true)
+   328→    }
+   329→  }, [authLoading, user, setShowAuthModal])
+   330→
+   331→  // Load user agents
+   332→  const loadAgents = useCallback(async () => {
+   333→    if (!isAuthenticated || !user) return
+   334→    setAgentsLoading(true)
+   335→    try {
+   336→      const data: any = await api.agents.list({ creatorId: user.id, pageSize: 50 })
+   337→      const agents = data?.data || data || []
+   338→      setMyAgents(agents)
+   339→    } catch (err) {
+   340→      console.error('Failed to load agents:', err)
+   341→    } finally {
+   342→      setAgentsLoading(false)
+   343→    }
+   344→  }, [isAuthenticated, user])
+   345→
+   346→  useEffect(() => {
+   347→    loadAgents()
+   348→  }, [loadAgents])
+   349→
+   350→  // Load bookmarked models
+   351→  useEffect(() => {
+   352→    if (!isAuthenticated || !user) return
+   353→    setModelsLoading(true)
+   354→    fetch(`/api/llm-models/bookmark?userId=${user.id}`)
+   355→      .then(res => res.json())
+   356→      .then(data => {
+   357→        setBookmarkedModels(data?.bookmarks || [])
+   358→      })
+   359→      .catch(console.error)
+   360→      .finally(() => setModelsLoading(false))
+   361→  }, [isAuthenticated, user])
+   362→
+   363→  // Load activity from localStorage or generate from agent data
+   364→  useEffect(() => {
+   365→    try {
+   366→      const stored = localStorage.getItem('humain-activity-log')
+   367→      if (stored) {
+   368→        setActivityLog(JSON.parse(stored))
+   369→        return
+   370→      }
+   371→    } catch { /* ignore */ }
+   372→
+   373→    // Generate from agent data
+   374→    const generated: ActivityItem[] = myAgents.map((agent, i) => {
+   375→      const types: ActivityItem['type'][] = ['created', 'updated', 'deployed', 'tested', 'starred']
+   376→      const type = agent.status === 'deployed' ? 'deployed' :
+   377→                   agent.status === 'testing' ? 'tested' :
+   378→                   agent.status === 'active' ? 'updated' :
+   379→                   types[i % types.length]
+   380→      return {
+   381→        id: `activity-${agent.id}-${i}`,
+   382→        type,
+   383→        message: type === 'created' ? `Created "${agent.name}"` :
+   384→                 type === 'deployed' ? `Deployed "${agent.name}"` :
+   385→                 type === 'tested' ? `Started testing "${agent.name}"` :
+   386→                 type === 'starred' ? `Starred "${agent.name}"` :
+   387→                 `Updated "${agent.name}"`,
+   388→        timestamp: agent.updatedAt || agent.createdAt,
+   389→        agentName: agent.name,
+   390→        agentId: agent.id,
+   391→      }
+   392→    }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+   393→
+   394→    setActivityLog(generated)
+   395→  }, [myAgents])
+   396→
+   397→  // ─── Computed Stats ────────────────────────────────────────────────
+   398→
+   399→  const stats = useMemo(() => {
+   400→    const totalAgents = myAgents.length
+   401→    const deployedAgents = myAgents.filter(a => a.status === 'deployed').length
+   402→    const totalApiCalls = myAgents.reduce((sum, a) => sum + (a.totalRequests || 0), 0)
+   403→    const healthScores = myAgents.filter(a => (a.healthScore || 0) > 0)
+   404→    const avgHealth = healthScores.length > 0
+   405→      ? Math.round(healthScores.reduce((sum, a) => sum + a.healthScore, 0) / healthScores.length)
+   406→      : 0
+   407→
+   408→    return { totalAgents, deployedAgents, totalApiCalls, avgHealth }
+   409→  }, [myAgents])
+   410→
+   411→  // Pipeline counts
+   412→  const pipelineCounts = useMemo(() => {
+   413→    const counts: Record<string, number> = {}
+   414→    PIPELINE_STAGES.forEach(stage => {
+   415→      counts[stage.key] = myAgents.filter(a => stage.statuses.includes(a.status)).length
+   416→    })
+   417→    // Add configured count to "configure" stage
+   418→    counts.configure = myAgents.filter(a => a.framework && a.status !== 'draft').length
+   419→    // Monitor = deployed agents with requests
+   420→    counts.monitor = myAgents.filter(a => a.status === 'deployed' && (a.totalRequests || 0) > 0).length
+   421→    // Optimize = agents with health score > 80
+   422→    counts.optimize = myAgents.filter(a => a.healthScore >= 80).length
+   423→    return counts
+   424→  }, [myAgents])
+   425→
+   426→  // Determine "active" pipeline stage
+   427→  const activePipelineStage = useMemo(() => {
+   428→    if (myAgents.some(a => a.status === 'deployed')) return 'deploy'
+   429→    if (myAgents.some(a => a.status === 'testing')) return 'test'
+   430→    if (myAgents.some(a => a.status === 'active')) return 'initiate'
+   431→    if (myAgents.length > 0) return 'ideate'
+   432→    return 'ideate'
+   433→  }, [myAgents])
+   434→
+   435→  // Filtered agents
+   436→  const filteredAgents = useMemo(() => {
+   437→    if (statusFilter === 'all') return myAgents
+   438→    return myAgents.filter(a => a.status === statusFilter)
+   439→  }, [myAgents, statusFilter])
+   440→
+   441→  // Status counts for filter badges
+   442→  const statusCounts = useMemo(() => {
+   443→    const counts: Record<string, number> = { all: myAgents.length }
+   444→    myAgents.forEach(a => {
+   445→      counts[a.status] = (counts[a.status] || 0) + 1
+   446→    })
+   447→    return counts
+   448→  }, [myAgents])
+   449→
+   450→  // ─── Chart Data ────────────────────────────────────────────────────
+   451→
+   452→  // Mock usage over last 7 days
+   453→  const usageChartData = useMemo(() => {
+   454→    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+   455→    const base = stats.totalApiCalls || 50
+   456→    return days.map((day, i) => ({
+   457→      day,
+   458→      requests: Math.round(base * (0.5 + Math.random() * 0.8) / 7),
+   459→      errors: Math.round(base * 0.05 * Math.random() / 7),
+   460→    }))
+   461→  }, [stats.totalApiCalls])
+   462→
+   463→  // Agents by status
+   464→  const statusChartData = useMemo(() => {
+   465→    const entries = Object.entries(statusCounts).filter(([k]) => k !== 'all')
+   466→    return entries.map(([status, count]) => ({
+   467→      name: statusLabel[status] || status,
+   468→      count,
+   469→      color: status === 'draft' ? '#6b7280' :
+   470→             status === 'active' ? '#10b981' :
+   471→             status === 'testing' ? '#f59e0b' :
+   472→             status === 'deployed' ? '#14b8a6' :
+   473→             '#f43f5e',
+   474→    }))
+   475→  }, [statusCounts])
+   476→
+   477→  // Framework distribution
+   478→  const frameworkChartData = useMemo(() => {
+   479→    const counts: Record<string, number> = {}
+   480→    myAgents.forEach(a => {
+   481→      const fw = a.framework || 'other'
+   482→      counts[fw] = (counts[fw] || 0) + 1
+   483→    })
+   484→    return Object.entries(counts).map(([fw, count]) => ({
+   485→      name: fw.charAt(0).toUpperCase() + fw.slice(1),
+   486→      count,
+   487→      color: frameworkColors[fw] || '#94a3b8',
+   488→    }))
+   489→  }, [myAgents])
+   490→
+   491→  // ─── Sparkline data ────────────────────────────────────────────────
+   492→
+   493→  const sparkData = useMemo(() => ({
+   494→    agents: [3, 5, 4, 7, 6, 8, stats.totalAgents],
+   495→    deployments: [0, 1, 1, 2, 2, 3, stats.deployedAgents],
+   496→    apiCalls: [20, 45, 30, 55, 42, 68, Math.min(stats.totalApiCalls, 100)],
+   497→    health: [65, 72, 68, 78, 74, 82, stats.avgHealth],
+   498→  }), [stats])
+   499→
+   500→  // ─── Handlers ──────────────────────────────────────────────────────
+   501→
+   502→  const handleDeleteAgent = async () => {
+   503→    if (!deleteTarget) return
+   504→    setDeleting(true)
+   505→    try {
+   506→      await api.agents.delete(deleteTarget.id)
+   507→      setMyAgents(prev => prev.filter(a => a.id !== deleteTarget.id))
+   508→      setDeleteTarget(null)
+   509→    } catch (err) {
+   510→      console.error('Failed to delete agent:', err)
+   511→    } finally {
+   512→      setDeleting(false)
+   513→    }
+   514→  }
+   515→
+   516→  // ─── Loading State ─────────────────────────────────────────────────
+   517→
+   518→  if (authLoading) {
+   519→    return (
+   520→      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
+   521→        <div className="flex flex-col items-center gap-4">
+   522→          <div className="h-10 w-10 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+   523→          <p className="text-sm text-muted-foreground">Loading your command center...</p>
+   524→        </div>
+   525→      </div>
+   526→    )
+   527→  }
+   528→
+   529→  // ─── Unauthenticated State ─────────────────────────────────────────
+   530→
+   531→  if (!isAuthenticated) {
+   532→    return (
+   533→      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
+   534→        <motion.div
+   535→          initial={{ opacity: 0, scale: 0.95 }}
+   536→          animate={{ opacity: 1, scale: 1 }}
+   537→          className="text-center max-w-md mx-auto p-8"
+   538→        >
+   539→          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/25">
+   540→            <LayoutDashboard className="h-10 w-10 text-white" />
+   541→          </div>
+   542→          <h2 className="text-2xl font-bold mb-2">Welcome to Command Center</h2>
+   543→          <p className="text-muted-foreground mb-6">
+   544→            Sign in to access your dashboard, manage agents, and track your progress.
+   545→          </p>
+   546→          <Button
+   547→            onClick={() => setShowAuthModal(true)}
+   548→            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/25"
+   549→          >
+   550→            Sign In to Continue
+   551→          </Button>
+   552→        </motion.div>
+   553→      </div>
+   554→    )
+   555→  }
+   556→
+   557→  // ─── Render ────────────────────────────────────────────────────────
+   558→
+   559→  return (
+   560→    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+   561→      <motion.div
+   562→        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6"
+   563→        variants={containerVariants}
+   564→        initial="hidden"
+   565→        animate="visible"
+   566→      >
+   567→        {/* ─── Welcome Banner ────────────────────────────────────────── */}
+   568→        <motion.div variants={itemVariants}>
+   569→          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 p-6 sm:p-8 shadow-xl shadow-emerald-500/20">
+   570→            {/* Decorative circles */}
+   571→            <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
+   572→            <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-teal-400/20 blur-xl" />
+   573→            <div className="absolute top-1/2 right-1/4 w-20 h-20 rounded-full bg-emerald-300/10 blur-lg" />
+   574→
+   575→            <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4">
+   576→              <Avatar className="h-16 w-16 border-3 border-white/30 shadow-lg">
+   577→                <AvatarImage src={avatarUrl || undefined} alt={displayName} />
+   578→                <AvatarFallback className="bg-white/20 text-white text-xl font-bold">
+   579→                  {initials}
+   580→                </AvatarFallback>
+   581→              </Avatar>
+   582→              <div className="flex-1 min-w-0">
+   583→                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">
+   584→                  {greetings}, {firstName}!
+   585→                </h1>
+   586→                <p className="text-emerald-100/90 text-sm sm:text-base">
+   587→                  {myAgents.length === 0
+   588→                    ? 'Ready to build your first AI agent? Let\'s get started.'
+   589→                    : `You have ${myAgents.length} agent${myAgents.length !== 1 ? 's' : ''} in your workspace. Keep building!`
+   590→                  }
+   591→                </p>
+   592→              </div>
+   593→              <div className="flex gap-3">
+   594→                <Button
+   595→                  onClick={() => router.push('/create')}
+   596→                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm"
+   597→                  variant="outline"
+   598→                >
+   599→                  <PlusCircle className="h-4 w-4 mr-2" />
+   600→                  New Agent
+   601→                </Button>
+   602→                <Button
+   603→                  onClick={() => router.push('/browse')}
+   604→                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm"
+   605→                  variant="outline"
+   606→                >
+   607→                  <Search className="h-4 w-4 mr-2" />
+   608→                  Browse
+   609→                </Button>
+   610→              </div>
+   611→            </div>
+   612→          </div>
+   613→        </motion.div>
+   614→
+   615→        {/* ─── Workflow Pipeline ──────────────────────────────────────── */}
+   616→        <motion.div variants={itemVariants}>
+   617→          <Card className="border-0 shadow-md bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+   618→            <CardHeader className="pb-3">
+   619→              <CardTitle className="text-base font-semibold flex items-center gap-2">
+   620→                <GitBranch className="h-4 w-4 text-emerald-500" />
+   621→                Workflow Pipeline
+   622→              </CardTitle>
+   623→              <CardDescription className="text-xs">
+   624→                Track your agents through each stage of the lifecycle
+   625→              </CardDescription>
+   626→            </CardHeader>
+   627→            <CardContent>
+   628→              <div className="flex items-center justify-between gap-1 sm:gap-2 overflow-x-auto pb-2">
+   629→                {PIPELINE_STAGES.map((stage, idx) => {
+   630→                  const Icon = stage.icon
+   631→                  const isActive = stage.key === activePipelineStage
+   632→                  const count = pipelineCounts[stage.key] || 0
+   633→                  const isLast = idx === PIPELINE_STAGES.length - 1
+   634→
+   635→                  return (
+   636→                    <div key={stage.key} className="flex items-center flex-1 min-w-0">
+   637→                      <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+   638→                        <motion.div
+   639→                          whileHover={{ scale: 1.1 }}
+   640→                          className={`
+   641→                            relative flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 transition-all duration-300
+   642→                            ${isActive
+   643→                              ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/30'
+   644→                              : count > 0
+   645→                                ? 'bg-emerald-50 border-emerald-300 text-emerald-600 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-300'
+   646→                                : 'bg-gray-50 border-gray-200 text-gray-400 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-500'
+   647→                            }
+   648→                          `}
+   649→                        >
+   650→                          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+   651→                          {count > 0 && (
+   652→                            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-500 text-white text-[10px] font-bold ring-2 ring-white dark:ring-gray-900">
+   653→                              {count}
+   654→                            </span>
+   655→                          )}
+   656→                        </motion.div>
+   657→                        <span className={`text-[10px] sm:text-xs font-medium text-center truncate w-full ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+   658→                          {stage.label}
+   659→                        </span>
+   660→                      </div>
+   661→                      {!isLast && (
+   662→                        <div className="flex-shrink-0 mx-0.5 sm:mx-1 mt-[-18px]">
+   663→                          <ChevronRight className={`h-3 w-3 sm:h-4 sm:w-4 ${isActive ? 'text-emerald-400' : 'text-gray-300 dark:text-gray-600'}`} />
+   664→                        </div>
+   665→                      )}
+   666→                    </div>
+   667→                  )
+   668→                })}
+   669→              </div>
+   670→            </CardContent>
+   671→          </Card>
+   672→        </motion.div>
+   673→
+   674→        {/* ─── Stats Row ─────────────────────────────────────────────── */}
+   675→        <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   676→          {/* Total Agents */}
+   677→          <Card className="border-0 shadow-md bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm hover:shadow-lg transition-shadow">
+   678→            <CardContent className="p-4 sm:p-6">
+   679→              <div className="flex items-center justify-between mb-2">
+   680→                <div className="flex items-center gap-2">
+   681→                  <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+   682→                    <Bot className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+   683→                  </div>
+   684→                  <span className="text-xs font-medium text-muted-foreground">Total Agents</span>
+   685→                </div>
+   686→                <MiniSparkline data={sparkData.agents} color="#10b981" />
+   687→              </div>
+   688→              <div className="flex items-end gap-2">
+   689→                <span className="text-2xl sm:text-3xl font-bold">{stats.totalAgents}</span>
+   690→                {stats.totalAgents > 0 && (
+   691→                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center mb-1">
+   692→                    <TrendingUp className="h-3 w-3 mr-0.5" />
+   693→                    Active
+   694→                  </span>
+   695→                )}
+   696→              </div>
+   697→            </CardContent>
+   698→          </Card>
+   699→
+   700→          {/* Active Deployments */}
+   701→          <Card className="border-0 shadow-md bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm hover:shadow-lg transition-shadow">
+   702→            <CardContent className="p-4 sm:p-6">
+   703→              <div className="flex items-center justify-between mb-2">
+   704→                <div className="flex items-center gap-2">
+   705→                  <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-900/30">
+   706→                    <Rocket className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+   707→                  </div>
+   708→                  <span className="text-xs font-medium text-muted-foreground">Deployments</span>
+   709→                </div>
+   710→                <MiniSparkline data={sparkData.deployments} color="#14b8a6" />
+   711→              </div>
+   712→              <div className="flex items-end gap-2">
+   713→                <span className="text-2xl sm:text-3xl font-bold">{stats.deployedAgents}</span>
+   714→                {stats.deployedAgents > 0 && (
+   715→                  <span className="text-xs font-medium text-teal-600 dark:text-teal-400 flex items-center mb-1">
+   716→                    <TrendingUp className="h-3 w-3 mr-0.5" />
+   717→                    Live
+   718→                  </span>
+   719→                )}
+   720→              </div>
+   721→            </CardContent>
+   722→          </Card>
+   723→
+   724→          {/* Total API Calls */}
+   725→          <Card className="border-0 shadow-md bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm hover:shadow-lg transition-shadow">
+   726→            <CardContent className="p-4 sm:p-6">
+   727→              <div className="flex items-center justify-between mb-2">
+   728→                <div className="flex items-center gap-2">
+   729→                  <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+   730→                    <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+   731→                  </div>
+   732→                  <span className="text-xs font-medium text-muted-foreground">API Calls</span>
+   733→                </div>
+   734→                <MiniSparkline data={sparkData.apiCalls} color="#f59e0b" />
+   735→              </div>
+   736→              <div className="flex items-end gap-2">
+   737→                <span className="text-2xl sm:text-3xl font-bold">
+   738→                  {stats.totalApiCalls >= 1000 ? `${(stats.totalApiCalls / 1000).toFixed(1)}k` : stats.totalApiCalls}
+   739→                </span>
+   740→                {stats.totalApiCalls > 0 && (
+   741→                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400 flex items-center mb-1">
+   742→                    <Activity className="h-3 w-3 mr-0.5" />
+   743→                    Total
+   744→                  </span>
+   745→                )}
+   746→              </div>
+   747→            </CardContent>
+   748→          </Card>
+   749→
+   750→          {/* Avg Health Score */}
+   751→          <Card className="border-0 shadow-md bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm hover:shadow-lg transition-shadow">
+   752→            <CardContent className="p-4 sm:p-6">
+   753→              <div className="flex items-center justify-between mb-2">
+   754→                <div className="flex items-center gap-2">
+   755→                  <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-900/30">
+   756→                    <HeartPulse className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+   757→                  </div>
+   758→                  <span className="text-xs font-medium text-muted-foreground">Health Score</span>
+   759→                </div>
+   760→                <MiniSparkline data={sparkData.health} color="#f43f5e" />
+   761→              </div>
+   762→              <div className="flex items-end gap-2">
+   763→                <span className="text-2xl sm:text-3xl font-bold">{stats.avgHealth}%</span>
+   764→                {stats.avgHealth >= 80 && (
+   765→                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center mb-1">
+   766→                    <TrendingUp className="h-3 w-3 mr-0.5" />
+   767→                    Good
+   768→                  </span>
+   769→                )}
+   770→                {stats.avgHealth > 0 && stats.avgHealth < 60 && (
+   771→                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400 flex items-center mb-1">
+   772→                    <TrendingDown className="h-3 w-3 mr-0.5" />
+   773→                    Needs attention
+   774→                  </span>
+   775→                )}
+   776→              </div>
+   777→            </CardContent>
+   778→          </Card>
+   779→        </motion.div>
+   780→
+   781→        {/* ─── Main Tabbed Content ───────────────────────────────────── */}
+   782→        <motion.div variants={itemVariants}>
+   783→          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+   784→            <TabsList className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-1 h-auto flex-wrap">
+   785→              <TabsTrigger value="agents" className="gap-1.5 text-xs sm:text-sm data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+   786→                <Bot className="h-3.5 w-3.5" />
+   787→                My Agents
+   788→              </TabsTrigger>
+   789→              <TabsTrigger value="activity" className="gap-1.5 text-xs sm:text-sm data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+   790→                <Activity className="h-3.5 w-3.5" />
+   791→                Activity
+   792→              </TabsTrigger>
+   793→              <TabsTrigger value="bookmarks" className="gap-1.5 text-xs sm:text-sm data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+   794→                <Bookmark className="h-3.5 w-3.5" />
+   795→                Models
+   796→              </TabsTrigger>
+   797→              <TabsTrigger value="analytics" className="gap-1.5 text-xs sm:text-sm data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+   798→                <BarChart3 className="h-3.5 w-3.5" />
+   799→                Analytics
+   800→              </TabsTrigger>
+   801→            </TabsList>
+   802→
+   803→            {/* ─── My Agents Tab ──────────────────────────────────────── */}
+   804→            <TabsContent value="agents" className="space-y-4">
+   805→              {/* Status Filter */}
+   806→              <div className="flex flex-wrap gap-2">
+   807→                {[
+   808→                  { key: 'all', label: 'All' },
+   809→                  { key: 'draft', label: 'Draft' },
+   810→                  { key: 'active', label: 'Active' },
+   811→                  { key: 'testing', label: 'Testing' },
+   812→                  { key: 'deployed', label: 'Deployed' },
+   813→                  { key: 'archived', label: 'Archived' },
+   814→                ].map(filter => (
+   815→                  <Button
+   816→                    key={filter.key}
+   817→                    variant={statusFilter === filter.key ? 'default' : 'outline'}
+   818→                    size="sm"
+   819→                    onClick={() => setStatusFilter(filter.key)}
+   820→                    className={`h-8 text-xs gap-1.5 ${
+   821→                      statusFilter === filter.key
+   822→                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+   823→                        : 'hover:border-emerald-300 dark:hover:border-emerald-700'
+   824→                    }`}
+   825→                  >
+   826→                    {filter.label}
+   827→                    <Badge variant="secondary" className="h-4 px-1 text-[10px] ml-0.5">
+   828→                      {statusCounts[filter.key] || 0}
+   829→                    </Badge>
+   830→                  </Button>
+   831→                ))}
+   832→              </div>
+   833→
+   834→              {/* Agents Grid */}
+   835→              {agentsLoading ? (
+   836→                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+   837→                  {Array.from({ length: 6 }).map((_, i) => (
+   838→                    <Card key={i} className="border-0 shadow-md">
+   839→                      <CardContent className="p-5 space-y-3">
+   840→                        <Skeleton className="h-5 w-3/4" />
+   841→                        <Skeleton className="h-4 w-1/2" />
+   842→                        <Skeleton className="h-4 w-full" />
+   843→                        <Skeleton className="h-2 w-full" />
+   844→                        <div className="flex gap-2">
+   845→                          <Skeleton className="h-6 w-16" />
+   846→                          <Skeleton className="h-6 w-20" />
+   847→                        </div>
+   848→                      </CardContent>
+   849→                    </Card>
+   850→                  ))}
+   851→                </div>
+   852→              ) : filteredAgents.length === 0 ? (
+   853→                <motion.div
+   854→                  initial={{ opacity: 0, y: 10 }}
+   855→                  animate={{ opacity: 1, y: 0 }}
+   856→                  className="text-center py-16"
+   857→                >
+   858→                  <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
+   859→                    <Bot className="h-10 w-10 text-emerald-500" />
+   860→                  </div>
+   861→                  <h3 className="text-lg font-semibold mb-1">
+   862→                    {statusFilter !== 'all' ? `No ${statusLabel[statusFilter] || statusFilter} agents` : 'No agents yet'}
+   863→                  </h3>
+   864→                  <p className="text-muted-foreground text-sm mb-4 max-w-sm mx-auto">
+   865→                    {statusFilter !== 'all'
+   866→                      ? 'Try a different filter or create a new agent.'
+   867→                      : 'Create your first AI agent and start building something amazing.'
+   868→                    }
+   869→                  </p>
+   870→                  <Button
+   871→                    onClick={() => router.push('/create')}
+   872→                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/25"
+   873→                  >
+   874→                    <PlusCircle className="h-4 w-4 mr-2" />
+   875→                    Create Your First Agent
+   876→                  </Button>
+   877→                </motion.div>
+   878→              ) : (
+   879→                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+   880→                  <AnimatePresence mode="popLayout">
+   881→                    {filteredAgents.map((agent, i) => (
+   882→                      <motion.div
+   883→                        key={agent.id}
+   884→                        layout
+   885→                        initial={{ opacity: 0, scale: 0.95 }}
+   886→                        animate={{ opacity: 1, scale: 1 }}
+   887→                        exit={{ opacity: 0, scale: 0.95 }}
+   888→                        transition={{ delay: i * 0.03, duration: 0.3 }}
+   889→                      >
+   890→                        <motion.div variants={cardHover} whileHover="hover" initial="rest">
+   891→                          <Card className="border-0 shadow-md bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm hover:shadow-lg transition-shadow group h-full flex flex-col">
+   892→                            <CardContent className="p-5 flex flex-col flex-1">
+   893→                              {/* Header */}
+   894→                              <div className="flex items-start justify-between gap-2 mb-2">
+   895→                                <div className="flex-1 min-w-0">
+   896→                                  <h3 className="font-semibold text-sm truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+   897→                                    {agent.name}
+   898→                                  </h3>
+   899→                                  {agent.category?.name && (
+   900→                                    <p className="text-xs text-muted-foreground">{agent.category.name}</p>
+   901→                                  )}
+   902→                                </div>
+   903→                                <DropdownMenu>
+   904→                                  <DropdownMenuTrigger asChild>
+   905→                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+   906→                                      <MoreVertical className="h-3.5 w-3.5" />
+   907→                                    </Button>
+   908→                                  </DropdownMenuTrigger>
+   909→                                  <DropdownMenuContent align="end" className="w-40">
+   910→                                    <DropdownMenuItem onClick={() => router.push(`/agents/${agent.id}`)}>
+   911→                                      <Eye className="h-3.5 w-3.5 mr-2" /> View
+   912→                                    </DropdownMenuItem>
+   913→                                    <DropdownMenuItem onClick={() => router.push(`/agents/${agent.id}`)}>
+   914→                                      <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+   915→                                    </DropdownMenuItem>
+   916→                                    {agent.status !== 'deployed' && (
+   917→                                      <DropdownMenuItem onClick={() => router.push(`/agents/${agent.id}`)}>
+   918→                                        <Rocket className="h-3.5 w-3.5 mr-2" /> Deploy
+   919→                                      </DropdownMenuItem>
+   920→                                    )}
+   921→                                    {agent.status === 'draft' && (
+   922→                                      <DropdownMenuItem onClick={() => router.push(`/agents/${agent.id}`)}>
+   923→                                        <Beaker className="h-3.5 w-3.5 mr-2" /> Test
+   924→                                      </DropdownMenuItem>
+   925→                                    )}
+   926→                                    <DropdownMenuItem
+   927→                                      className="text-rose-600 dark:text-rose-400 focus:text-rose-600"
+   928→                                      onClick={() => setDeleteTarget(agent)}
+   929→                                    >
+   930→                                      <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+   931→                                    </DropdownMenuItem>
+   932→                                  </DropdownMenuContent>
+   933→                                </DropdownMenu>
+   934→                              </div>
+   935→
+   936→                              {/* Description */}
+   937→                              <p className="text-xs text-muted-foreground line-clamp-2 mb-3 flex-1">
+   938→                                {agent.description || 'No description provided'}
+   939→                              </p>
+   940→
+   941→                              {/* Health Score */}
+   942→                              <div className="mb-3">
+   943→                                <HealthScoreBar score={agent.healthScore || 0} />
+   944→                              </div>
+   945→
+   946→                              {/* Badges Row */}
+   947→                              <div className="flex flex-wrap gap-1.5 mb-3">
+   948→                                <Badge variant="secondary" className={`text-[10px] h-5 ${statusBadge[agent.status] || statusBadge.draft}`}>
+   949→                                  {statusLabel[agent.status] || agent.status}
+   950→                                </Badge>
+   951→                                {agent.framework && (
+   952→                                  <Badge variant="secondary" className={`text-[10px] h-5 ${frameworkBadge[agent.framework] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>
+   953→                                    {agent.framework}
+   954→                                  </Badge>
+   955→                                )}
+   956→                                {agent.privacy === 'PUBLIC' && (
+   957→                                  <Badge variant="secondary" className="text-[10px] h-5 bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+   958→                                    <Globe className="h-2.5 w-2.5 mr-0.5" /> Public
+   959→                                  </Badge>
+   960→                                )}
+   961→                              </div>
+   962→
+   963→                              {/* Footer */}
+   964→                              <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-2 border-t border-gray-100 dark:border-gray-800">
+   965→                                <div className="flex items-center gap-3">
+   966→                                  {agent.totalRequests > 0 && (
+   967→                                    <span className="flex items-center gap-0.5">
+   968→                                      <Zap className="h-3 w-3" /> {agent.totalRequests}
+   969→                                    </span>
+   970→                                  )}
+   971→                                  {agent._count?.starredBy !== undefined && agent._count.starredBy > 0 && (
+   972→                                    <span className="flex items-center gap-0.5">
+   973→                                      <Star className="h-3 w-3" /> {agent._count.starredBy}
+   974→                                    </span>
+   975→                                  )}
+   976→                                </div>
+   977→                                <span className="flex items-center gap-0.5">
+   978→                                  <Clock className="h-3 w-3" /> {formatRelativeTime(agent.updatedAt || agent.createdAt)}
+   979→                                </span>
+   980→                              </div>
+   981→                            </CardContent>
+   982→                          </Card>
+   983→                        </motion.div>
+   984→                      </motion.div>
+   985→                    ))}
+   986→                  </AnimatePresence>
+   987→                </div>
+   988→              )}
+   989→            </TabsContent>
+   990→
+   991→            {/* ─── Activity Feed Tab ──────────────────────────────────── */}
+   992→            <TabsContent value="activity">
+   993→              <Card className="border-0 shadow-md bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
+   994→                <CardHeader className="pb-3">
+   995→                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+   996→                    <Activity className="h-4 w-4 text-emerald-500" />
+   997→                    Activity Timeline
+   998→                  </CardTitle>
+   999→                  <CardDescription className="text-xs">
+  1000→                    Recent actions and events in your workspace
+  1001→                  </CardDescription>
+  1002→                </CardHeader>
+  1003→                <CardContent>
+  1004→                  {activityLog.length === 0 ? (
+  1005→                    <div className="text-center py-12">
+  1006→                      <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+  1007→                        <Activity className="h-8 w-8 text-gray-400" />
+  1008→                      </div>
+  1009→                      <h3 className="font-semibold mb-1">No activity yet</h3>
+  1010→                      <p className="text-sm text-muted-foreground">
+  1011→                        Your actions will appear here as you create and manage agents.
+  1012→                      </p>
+  1013→                    </div>
+  1014→                  ) : (
+  1015→                    <ScrollArea className="max-h-[500px]">
+  1016→                      <div className="space-y-1">
+  1017→                        {activityLog.map((item, idx) => (
+  1018→                          <motion.div
+  1019→                            key={item.id}
+  1020→                            initial={{ opacity: 0, x: -10 }}
+  1021→                            animate={{ opacity: 1, x: 0 }}
+  1022→                            transition={{ delay: idx * 0.03 }}
+  1023→                            className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
+  1024→                          >
+  1025→                            {/* Timeline dot + line */}
+  1026→                            <div className="flex flex-col items-center pt-0.5">
+  1027→                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/20 transition-colors">
+  1028→                                <ActivityIcon type={item.type} />
+  1029→                              </div>
+  1030→                              {idx < activityLog.length - 1 && (
+  1031→                                <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mt-1" />
+  1032→                              )}
+  1033→                            </div>
+  1034→                            {/* Content */}
+  1035→                            <div className="flex-1 min-w-0">
+  1036→                              <p className="text-sm">{item.message}</p>
+  1037→                              <div className="flex items-center gap-2 mt-0.5">
+  1038→                                <span className="text-xs text-muted-foreground">
+  1039→                                  {formatRelativeTime(item.timestamp)}
+  1040→                                </span>
+  1041→                                {item.agentId && (
+  1042→                                  <Button
+  1043→                                    variant="link"
+  1044→                                    size="sm"
+  1045→                                    className="h-auto p-0 text-xs text-emerald-600 dark:text-emerald-400"
+  1046→                                    onClick={() => router.push(`/agents/${item.agentId}`)}
+  1047→                                  >
+  1048→                                    View agent <ArrowUpRight className="h-3 w-3 ml-0.5" />
+  1049→                                  </Button>
+  1050→                                )}
+  1051→                              </div>
+  1052→                            </div>
+  1053→                          </motion.div>
+  1054→                        ))}
+  1055→                      </div>
+  1056→                    </ScrollArea>
+  1057→                  )}
+  1058→                </CardContent>
+  1059→              </Card>
+  1060→            </TabsContent>
+  1061→
+  1062→            {/* ─── Bookmarked Models Tab ──────────────────────────────── */}
+  1063→            <TabsContent value="bookmarks">
+  1064→              <Card className="border-0 shadow-md bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
+  1065→                <CardHeader className="pb-3">
+  1066→                  <div className="flex items-center justify-between">
+  1067→                    <div>
+  1068→                      <CardTitle className="text-base font-semibold flex items-center gap-2">
+  1069→                        <Bookmark className="h-4 w-4 text-emerald-500" />
+  1070→                        Bookmarked Models
+  1071→                      </CardTitle>
+  1072→                      <CardDescription className="text-xs">
+  1073→                        LLM models you&apos;ve saved for quick reference
+  1074→                      </CardDescription>
+  1075→                    </div>
+  1076→                    <Button
+  1077→                      variant="outline"
+  1078→                      size="sm"
+  1079→                      onClick={() => router.push('/llm-finder')}
+  1080→                      className="text-xs gap-1.5 hover:border-emerald-300"
+  1081→                    >
+  1082→                      <Search className="h-3.5 w-3.5" />
+  1083→                      Find Models
+  1084→                    </Button>
+  1085→                  </div>
+  1086→                </CardHeader>
+  1087→                <CardContent>
+  1088→                  {modelsLoading ? (
+  1089→                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+  1090→                      {Array.from({ length: 6 }).map((_, i) => (
+  1091→                        <div key={i} className="p-4 rounded-lg border space-y-2">
+  1092→                          <Skeleton className="h-4 w-3/4" />
+  1093→                          <Skeleton className="h-3 w-1/2" />
+  1094→                          <Skeleton className="h-3 w-1/3" />
+  1095→                        </div>
+  1096→                      ))}
+  1097→                    </div>
+  1098→                  ) : bookmarkedModels.length === 0 ? (
+  1099→                    <div className="text-center py-12">
+  1100→                      <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
+  1101→                        <Bookmark className="h-8 w-8 text-emerald-500" />
+  1102→                      </div>
+  1103→                      <h3 className="font-semibold mb-1">No bookmarked models</h3>
+  1104→                      <p className="text-sm text-muted-foreground mb-4">
+  1105→                        Explore LLM models and bookmark your favorites.
+  1106→                      </p>
+  1107→                      <Button
+  1108→                        onClick={() => router.push('/llm-finder')}
+  1109→                        className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
+  1110→                      >
+  1111→                        <Search className="h-4 w-4 mr-2" />
+  1112→                        Explore Models
+  1113→                      </Button>
+  1114→                    </div>
+  1115→                  ) : (
+  1116→                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+  1117→                      {bookmarkedModels.map((bm, idx) => (
+  1118→                        <motion.div
+  1119→                          key={bm.id}
+  1120→                          initial={{ opacity: 0, y: 10 }}
+  1121→                          animate={{ opacity: 1, y: 0 }}
+  1122→                          transition={{ delay: idx * 0.04 }}
+  1123→                          className="p-4 rounded-xl border border-gray-200/50 dark:border-gray-700/50 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md transition-all group"
+  1124→                        >
+  1125→                          <div className="flex items-start justify-between gap-2 mb-2">
+  1126→                            <div className="flex-1 min-w-0">
+  1127→                              <h4 className="font-medium text-sm truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+  1128→                                {bm.model.name}
+  1129→                              </h4>
+  1130→                              <p className="text-xs text-muted-foreground">{bm.model.organization}</p>
+  1131→                            </div>
+  1132→                            {bm.model.bestRank <= 100 && (
+  1133→                              <Badge className="text-[10px] h-5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 shrink-0">
+  1134→                                #{bm.model.bestRank}
+  1135→                              </Badge>
+  1136→                            )}
+  1137→                          </div>
+  1138→                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+  1139→                            {bm.model.bestRating > 0 && (
+  1140→                              <span className="flex items-center gap-0.5">
+  1141→                                <Star className="h-3 w-3 text-amber-500" /> {bm.model.bestRating.toFixed(0)}
+  1142→                              </span>
+  1143→                            )}
+  1144→                            {bm.model.outputPricePerMillion != null && (
+  1145→                              <span>${bm.model.outputPricePerMillion.toFixed(2)}/M</span>
+  1146→                            )}
+  1147→                            {bm.model.contextLength != null && (
+  1148→                              <span className="flex items-center gap-0.5">
+  1149→                                <Database className="h-3 w-3" /> {(bm.model.contextLength / 1000).toFixed(0)}k
+  1150→                              </span>
+  1151→                            )}
+  1152→                          </div>
+  1153→                          {bm.note && (
+  1154→                            <p className="text-xs text-muted-foreground mt-2 italic line-clamp-1">
+  1155→                              &ldquo;{bm.note}&rdquo;
+  1156→                            </p>
+  1157→                          )}
+  1158→                        </motion.div>
+  1159→                      ))}
+  1160→                    </div>
+  1161→                  )}
+  1162→                </CardContent>
+  1163→              </Card>
+  1164→            </TabsContent>
+  1165→
+  1166→            {/* ─── Analytics Tab ──────────────────────────────────────── */}
+  1167→            <TabsContent value="analytics" className="space-y-4">
+  1168→              {/* Summary Metrics */}
+  1169→              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+  1170→                {[
+  1171→                  { label: 'Avg Latency', value: myAgents.length > 0 ? `${Math.round(myAgents.reduce((s, a) => s + (a.avgLatencyMs || 0), 0) / myAgents.length)}ms` : '0ms', icon: Clock, color: 'emerald' },
+  1172→                  { label: 'Error Rate', value: myAgents.length > 0 ? `${(myAgents.reduce((s, a) => s + (a.errorRate || 0), 0) / myAgents.length * 100).toFixed(1)}%` : '0%', icon: Shield, color: 'teal' },
+  1173→                  { label: 'Frameworks', value: `${new Set(myAgents.map(a => a.framework).filter(Boolean)).size}`, icon: Cpu, color: 'amber' },
+  1174→                  { label: 'Public Agents', value: `${myAgents.filter(a => a.privacy === 'PUBLIC').length}`, icon: Globe, color: 'rose' },
+  1175→                ].map((metric, idx) => (
+  1176→                  <motion.div
+  1177→                    key={metric.label}
+  1178→                    initial={{ opacity: 0, y: 10 }}
+  1179→                    animate={{ opacity: 1, y: 0 }}
+  1180→                    transition={{ delay: idx * 0.05 }}
+  1181→                  >
+  1182→                    <Card className="border-0 shadow-sm bg-white/80 dark:bg-gray-900/80">
+  1183→                      <CardContent className="p-3 sm:p-4">
+  1184→                        <div className="flex items-center gap-2 mb-1">
+  1185→                          <metric.icon className="h-3.5 w-3.5 text-muted-foreground" />
+  1186→                          <span className="text-[10px] sm:text-xs text-muted-foreground">{metric.label}</span>
+  1187→                        </div>
+  1188→                        <span className="text-lg sm:text-xl font-bold">{metric.value}</span>
+  1189→                      </CardContent>
+  1190→                    </Card>
+  1191→                  </motion.div>
+  1192→                ))}
+  1193→              </div>
+  1194→
+  1195→              {/* Charts Row */}
+  1196→              <LazyRecharts
+  1197→                usageData={usageChartData.map(d => ({ date: d.day, requests: d.requests }))}
+  1198→                statusData={statusChartData.map(d => ({ status: d.name, count: d.count }))}
+  1199→                frameworkData={frameworkChartData.map(d => ({ name: d.name, value: d.count, color: d.color }))}
+  1200→              />
+  1201→            </TabsContent>
+  1202→          </Tabs>
+  1203→        </motion.div>
+  1204→      </motion.div>
+  1205→
+  1206→      {/* ─── Delete Confirmation Dialog ──────────────────────────────── */}
+  1207→      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+  1208→        <AlertDialogContent>
+  1209→          <AlertDialogHeader>
+  1210→            <AlertDialogTitle>Delete Agent</AlertDialogTitle>
+  1211→            <AlertDialogDescription>
+  1212→              Are you sure you want to delete <strong>&ldquo;{deleteTarget?.name}&rdquo;</strong>?
+  1213→              This action cannot be undone.
+  1214→            </AlertDialogDescription>
+  1215→          </AlertDialogHeader>
+  1216→          <AlertDialogFooter>
+  1217→            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+  1218→            <AlertDialogAction
+  1219→              onClick={handleDeleteAgent}
+  1220→              disabled={deleting}
+  1221→              className="bg-rose-600 hover:bg-rose-700 text-white"
+  1222→            >
+  1223→              {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+  1224→              Delete
+  1225→            </AlertDialogAction>
+  1226→          </AlertDialogFooter>
+  1227→        </AlertDialogContent>
+  1228→      </AlertDialog>
+  1229→    </div>
+  1230→  )
+  1231→}
+  1232→

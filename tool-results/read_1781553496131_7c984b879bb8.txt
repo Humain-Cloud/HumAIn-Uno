@@ -1,0 +1,1465 @@
+     1→'use client'
+     2→
+     3→import { useEffect, useState, useMemo } from 'react'
+     4→import { useRouter, useParams } from 'next/navigation'
+     5→import { useAppStore } from '@/lib/store'
+     6→import { api } from '@/lib/api-client'
+     7→import type { KnowledgeAgent } from '@/lib/types'
+     8→import { getAgentDetailData } from '@/lib/agent-detail-data'
+     9→import type { AgentDetailData } from '@/lib/agent-detail-data'
+    10→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+    11→import { Badge } from '@/components/ui/badge'
+    12→import { Button } from '@/components/ui/button'
+    13→import { Separator } from '@/components/ui/separator'
+    14→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    15→import { Skeleton } from '@/components/ui/skeleton'
+    16→import {
+    17→  ArrowLeft,
+    18→  Home,
+    19→  ChevronRight,
+    20→  Code2,
+    21→  Eye,
+    22→  Package,
+    23→  MessageCircle,
+    24→  BookOpen,
+    25→  Shield,
+    26→  Rocket,
+    27→  Target,
+    28→  Brain,
+    29→  Zap,
+    30→  CheckCircle2,
+    31→  ArrowDown,
+    32→  Workflow,
+    33→  Settings,
+    34→  BarChart3,
+    35→  Lock,
+    36→  Gauge,
+    37→  TestTube,
+    38→  Star,
+    39→  Bookmark,
+    40→  BookmarkCheck,
+    41→  Share2,
+    42→  Download,
+    43→  ExternalLink,
+    44→  Database,
+    45→  Tag,
+    46→  User,
+    47→  Sparkles,
+    48→  CircleDot,
+    49→  CircleCheck,
+    50→  Diamond,
+    51→  Copy,
+    52→  ChevronDown,
+    53→  Globe,
+    54→  Mail,
+    55→  GitBranch,
+    56→  Palette,
+    57→  MessageSquare,
+    58→  Heart,
+    59→  FileCode,
+    60→  Layers,
+    61→  Search,
+    62→  Scale,
+    63→  Sprout,
+    64→  Briefcase,
+    65→  ShoppingBag,
+    66→  GraduationCap,
+    67→  Plane,
+    68→  Music,
+    69→  Gamepad2,
+    70→  Cpu,
+    71→  Wrench,
+    72→} from 'lucide-react'
+    73→import { motion, AnimatePresence } from 'framer-motion'
+    74→import { toast } from '@/hooks/use-toast'
+    75→import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
+    76→
+    77→// Framework color map
+    78→const fwColors: Record<string, { bg: string; text: string; badge: string; border: string; gradient: string }> = {
+    79→  langgraph: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300', border: 'border-emerald-300 dark:border-emerald-700', gradient: 'from-emerald-500 to-emerald-700' },
+    80→  crewai: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', badge: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', border: 'border-amber-300 dark:border-amber-700', gradient: 'from-amber-500 to-orange-600' },
+    81→  autogen: { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-300', badge: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300', border: 'border-rose-300 dark:border-rose-700', gradient: 'from-rose-500 to-pink-600' },
+    82→  agno: { bg: 'bg-violet-100 dark:bg-violet-900/30', text: 'text-violet-700 dark:text-violet-300', badge: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300', border: 'border-violet-300 dark:border-violet-700', gradient: 'from-violet-500 to-purple-600' },
+    83→  llamaindex: { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-700 dark:text-teal-300', badge: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300', border: 'border-teal-300 dark:border-teal-700', gradient: 'from-teal-500 to-cyan-600' },
+    84→}
+    85→const defaultFw = { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-700 dark:text-gray-300', badge: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300', border: 'border-gray-300 dark:border-gray-700', gradient: 'from-gray-500 to-gray-700' }
+    86→function getFwStyle(framework: string | null) { return fwColors[(framework || '').toLowerCase()] || defaultFw }
+    87→
+    88→// Difficulty color map
+    89→const diffColors: Record<string, string> = {
+    90→  beginner: 'text-green-600 dark:text-green-400',
+    91→  intermediate: 'text-amber-600 dark:text-amber-400',
+    92→  advanced: 'text-rose-600 dark:text-rose-400',
+    93→}
+    94→
+    95→// Icon mapping helper — maps icon string names from detail data to actual Lucide components
+    96→const iconMap: Record<string, React.ElementType> = {
+    97→  BookOpen, Brain, BarChart3, GitBranch, Zap, Workflow, MessageSquare, Heart,
+    98→  Mail, Globe, User, Palette, Code2, CheckCircle2, FileCode, Layers, Shield,
+    99→  Search, Scale, Database, Sprout, Briefcase, ShoppingBag, GraduationCap,
+   100→  Plane, Music, Gamepad2, Cpu, Wrench, Settings,
+   101→}
+   102→
+   103→// Flowchart step type
+   104→interface FlowStep {
+   105→  id: string
+   106→  label: string
+   107→  description: string
+   108→  type: 'start' | 'process' | 'decision' | 'parallel' | 'status' | 'end'
+   109→  icon: React.ElementType
+   110→  details: string[]
+   111→  children?: string[]
+   112→  yesTarget?: string
+   113→  noTarget?: string
+   114→}
+   115→
+   116→export function AgentDetailPage() {
+   117→  const router = useRouter()
+   118→  const params = useParams()
+   119→  const agentId = params?.id as string
+   120→  const { bookmarkedAgentIds, toggleBookmark, ratings, setRating, addNotification } = useAppStore()
+   121→  const [agent, setAgent] = useState<KnowledgeAgent | null>(null)
+   122→  const [loading, setLoading] = useState(true)
+   123→  const [activeTab, setActiveTab] = useState('overview')
+   124→  const [readingProgress, setReadingProgress] = useState(0)
+   125→
+   126→  // Parse agent data helper
+   127→  const parseAgent = (data: any): KnowledgeAgent => ({
+   128→    ...data,
+   129→    tools: typeof data.tools === 'string' ? JSON.parse(data.tools || '[]') : data.tools || [],
+   130→    models: typeof data.models === 'string' ? JSON.parse(data.models || '[]') : data.models || [],
+   131→    tags: typeof data.tags === 'string' ? JSON.parse(data.tags || '[]') : data.tags || [],
+   132→  })
+   133→
+   134→  // Load agent data
+   135→  useEffect(() => {
+   136→    if (!agentId) return
+   137→    async function load() {
+   138→      setLoading(true)
+   139→      try {
+   140→        const data = await api.knowledge.get(agentId)
+   141→        setAgent(parseAgent(data))
+   142→      } catch (err) {
+   143→        console.error('Failed to load agent:', err)
+   144→      } finally {
+   145→        setLoading(false)
+   146→      }
+   147→    }
+   148→    load()
+   149→  }, [agentId])
+   150→
+   151→  // Reading progress
+   152→  useEffect(() => {
+   153→    const handleScroll = () => {
+   154→      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight
+   155→      if (scrollHeight > 0) {
+   156→        setReadingProgress(Math.min(100, (window.scrollY / scrollHeight) * 100))
+   157→      }
+   158→    }
+   159→    window.addEventListener('scroll', handleScroll, { passive: true })
+   160→    return () => window.removeEventListener('scroll', handleScroll)
+   161→  }, [])
+   162→
+   163→  // Generate hyper-specialized flowchart steps based on agent data
+   164→  const flowchartSteps = useMemo((): FlowStep[] => {
+   165→    if (!agent) return []
+   166→    const domain = agent.category || agent.industry || 'General'
+   167→    const fw = agent.framework || 'AI'
+   168→    const diff = agent.difficulty || 'intermediate'
+   169→    const agentTools = agent.tools || []
+   170→    const agentModels = agent.models || []
+   171→
+   172→    return [
+   173→      {
+   174→        id: 'decide',
+   175→        label: `Decide to Create ${agent.name}`,
+   176→        description: `The decision to build a specialized ${domain} agent using ${fw}`,
+   177→        type: 'start',
+   178→        icon: CircleDot,
+   179→        details: [
+   180→          `Domain: ${domain} — identified as high-impact area for AI automation`,
+   181→          `Framework: ${fw} — selected for its ${fw === 'LangGraph' ? 'stateful graph orchestration' : fw === 'CrewAI' ? 'role-based agent collaboration' : fw === 'AutoGen' ? 'multi-agent conversation patterns' : fw === 'Agno' ? 'high-performance agent primitives' : 'RAG-optimized retrieval pipelines'}`,
+   182→          `Goal: Create a ${diff}-level agent that outperforms manual ${domain} workflows`,
+   183→        ],
+   184→        children: ['standards'],
+   185→      },
+   186→      {
+   187→        id: 'standards',
+   188→        label: `Set ${domain} Industry Standards`,
+   189→        description: `Establish quality benchmarks and compliance requirements`,
+   190→        type: 'process',
+   191→        icon: Shield,
+   192→        details: [
+   193→          `Define accuracy thresholds for ${domain} operations (≥95% precision)`,
+   194→          `Establish latency SLA: <${diff === 'advanced' ? '2' : diff === 'intermediate' ? '5' : '10'}s response time`,
+   195→          `Set compliance standards: data privacy, audit trails, explainability`,
+   196→          agent.industry ? `Industry regulation mapping for ${agent.industry}` : 'Cross-domain applicability standards',
+   197→        ],
+   198→        children: ['knowledge', 'domain'],
+   199→      },
+   200→      {
+   201→        id: 'knowledge',
+   202→        label: `Gather ${domain} Expert Knowledge`,
+   203→        description: `Curate and ingest domain-specific training data and best practices`,
+   204→        type: 'process',
+   205→        icon: Brain,
+   206→        details: [
+   207→          `Collect ${domain} reference datasets and knowledge corpora`,
+   208→          `Integrate with ${agentModels.length > 0 ? agentModels.join(', ') : 'GPT-4, Claude'} for reasoning`,
+   209→          `Map ${domain} decision trees and expert workflows`,
+   210→          `Validate knowledge sources against peer-reviewed standards`,
+   211→        ],
+   212→        children: ['validate'],
+   213→      },
+   214→      {
+   215→        id: 'domain',
+   216→        label: `Choose ${domain} Domain of Expertise`,
+   217→        description: `Narrow the agent's scope to specialized ${domain} tasks`,
+   218→        type: 'decision',
+   219→        icon: Target,
+   220→        details: [
+   221→          `Primary domain: ${domain}`,
+   222→          `Sub-specialization: ${agentTools.length > 0 ? agentTools.slice(0, 3).join(', ') : 'core domain operations'}`,
+   223→          `Scope validation: Does the domain have sufficient depth and breadth?`,
+   224→          `Market fit assessment: Is there clear demand for this agent?`,
+   225→        ],
+   226→        yesTarget: 'skills',
+   227→        noTarget: 'knowledge',
+   228→        children: ['skills'],
+   229→      },
+   230→      {
+   231→        id: 'validate',
+   232→        label: `Validate All Requirements Met`,
+   233→        description: `Verify that all ${domain} standards and specifications are satisfied`,
+   234→        type: 'process',
+   235→        icon: CheckCircle2,
+   236→        details: [
+   237→          `Functional requirements: All ${agentTools.length || 'core'} capabilities verified`,
+   238→          `Performance requirements: Benchmarks met for ${domain} workloads`,
+   239→          `Security requirements: Data handling and access controls validated`,
+   240→          `Integration requirements: API compatibility with ${fw} ecosystem confirmed`,
+   241→        ],
+   242→        children: ['train'],
+   243→      },
+   244→      {
+   245→        id: 'skills',
+   246→        label: `Define Specialized ${domain} Skills`,
+   247→        description: `Map the agent's toolset and capability matrix`,
+   248→        type: 'decision',
+   249→        icon: Zap,
+   250→        details: agentTools.length > 0
+   251→          ? agentTools.map(tool => `${tool}: Specialized ${domain} capability — ${tool.toLowerCase().includes('engine') ? 'core processing' : tool.toLowerCase().includes('analyzer') ? 'data analysis' : tool.toLowerCase().includes('generator') ? 'content generation' : tool.toLowerCase().includes('optimizer') ? 'performance tuning' : 'domain operations'}`)
+   252→          : [`Core ${domain} processing and analysis`, `Decision support and recommendation engine`, `Output validation and quality assurance`],
+   253→        yesTarget: 'architecture',
+   254→        noTarget: 'validate',
+   255→        children: ['architecture'],
+   256→      },
+   257→      {
+   258→        id: 'train',
+   259→        label: `Train ${agent?.name || 'Agent'} to Outperform`,
+   260→        description: `Optimize the agent's performance through iterative training and evaluation`,
+   261→        type: 'process',
+   262→        icon: Sparkles,
+   263→        details: [
+   264→          `Fine-tune on ${domain}-specific datasets with ${agentModels.length > 0 ? agentModels[0] : 'foundation model'}`,
+   265→          `Implement ${fw} orchestration patterns for multi-step reasoning`,
+   266→          `Establish feedback loops: real-world usage → model improvement`,
+   267→          `Achieve target accuracy: ≥${diff === 'advanced' ? '98' : diff === 'intermediate' ? '95' : '90'}% on ${domain} benchmarks`,
+   268→        ],
+   269→        children: ['success'],
+   270→      },
+   271→      {
+   272→        id: 'success',
+   273→        label: `Achieve 100% Success in ${domain} Results`,
+   274→        description: `Reach production-grade quality across all evaluation metrics`,
+   275→        type: 'process',
+   276→        icon: Star,
+   277→        details: [
+   278→          `Zero critical failures in ${domain} task execution`,
+   279→          `Consistent performance across edge cases and adversarial inputs`,
+   280→          `Sub-second inference for standard ${domain} queries`,
+   281→          `Full audit trail and explainability for every decision`,
+   282→        ],
+   283→        children: ['architecture'],
+   284→      },
+   285→      {
+   286→        id: 'architecture',
+   287→        label: `Develop ${fw} AI Model Architecture`,
+   288→        description: `Design and implement the agent's core architecture using ${fw}`,
+   289→        type: 'process',
+   290→        icon: Workflow,
+   291→        details: [
+   292→          `${fw} ${fw === 'LangGraph' ? 'StateGraph' : fw === 'CrewAI' ? 'Crew + Agent' : fw === 'AutoGen' ? 'AssistantAgent' : fw === 'Agno' ? 'Agent + Workflow' : 'Pipeline'} architecture`,
+   293→          `Memory management: ${fw === 'LangGraph' ? 'checkpoints + state' : 'context window + RAG'}`,
+   294→          `Tool integration: ${agentTools.length > 0 ? agentTools.join(', ') : 'domain-specific toolset'}`,
+   295→          `Model selection: ${agentModels.length > 0 ? agentModels.join(', ') : 'optimal LLM for task'}`,
+   296→        ],
+   297→        children: ['improvement', 'deployment', 'security', 'performance', 'testing'],
+   298→      },
+   299→      {
+   300→        id: 'improvement',
+   301→        label: `Monitor Continuous Improvement`,
+   302→        description: `Track agent performance and iterate on quality`,
+   303→        type: 'parallel',
+   304→        icon: BarChart3,
+   305→        details: [
+   306→          `Real-time performance dashboards for ${domain} metrics`,
+   307→          `A/B testing for prompt and tool optimizations`,
+   308→          `User feedback integration pipeline`,
+   309→          `Automated regression testing on each update`,
+   310→        ],
+   311→        children: ['ready'],
+   312→      },
+   313→      {
+   314→        id: 'deployment',
+   315→        label: `Deploy Agent in ${domain}`,
+   316→        description: `Production deployment with monitoring and scaling`,
+   317→        type: 'parallel',
+   318→        icon: Rocket,
+   319→        details: [
+   320→          `Containerized deployment with auto-scaling`,
+   321→          `${domain}-specific API endpoints and webhooks`,
+   322→          `Load-balanced inference with ${fw} runtime`,
+   323→          `Blue-green deployment with instant rollback capability`,
+   324→        ],
+   325→        children: ['ready'],
+   326→      },
+   327→      {
+   328→        id: 'security',
+   329→        label: `Ensure Security Compliance`,
+   330→        description: `Security hardening and compliance verification`,
+   331→        type: 'parallel',
+   332→        icon: Lock,
+   333→        details: [
+   334→          `Input sanitization and prompt injection prevention`,
+   335→          `Data encryption at rest and in transit (AES-256, TLS 1.3)`,
+   336→          `Access control with role-based permissions`,
+   337→          `${agent.industry || 'General'} compliance audit completed`,
+   338→        ],
+   339→        children: ['ready'],
+   340→      },
+   341→      {
+   342→        id: 'performance',
+   343→        label: `Optimize Performance`,
+   344→        description: `Latency, throughput, and cost optimization`,
+   345→        type: 'parallel',
+   346→        icon: Gauge,
+   347→        details: [
+   348→          `Inference latency: <${diff === 'advanced' ? '500ms' : diff === 'intermediate' ? '1s' : '2s'}`,
+   349→          `Token optimization: Reduce context window waste by 40%`,
+   350→          `Caching strategy for frequent ${domain} queries`,
+   351→          `Cost-per-inference optimization with model routing`,
+   352→        ],
+   353→        children: ['ready'],
+   354→      },
+   355→      {
+   356→        id: 'testing',
+   357→        label: `Implement Testing & Evaluation`,
+   358→        description: `Comprehensive test suite and evaluation framework`,
+   359→        type: 'parallel',
+   360→        icon: TestTube,
+   361→        details: [
+   362→          `Unit tests for each ${domain} capability (${agentTools.length || 'core'} modules)`,
+   363→          `Integration tests for ${fw} pipeline end-to-end`,
+   364→          `Adversarial testing with edge cases and malformed inputs`,
+   365→          `Benchmark suite against ${domain} baselines`,
+   366→        ],
+   367→        children: ['ready'],
+   368→      },
+   369→      {
+   370→        id: 'ready',
+   371→        label: `${agent?.name || 'Agent'} Ready for Expert-Level ${domain} Tasks`,
+   372→        description: `All validation gates passed — agent is production-ready`,
+   373→        type: 'status',
+   374→        icon: CircleCheck,
+   375→        details: [
+   376→          `Performance validated across all ${domain} benchmarks`,
+   377→          `Security audit completed with zero critical findings`,
+   378→          `Deployment pipeline verified with rollback capability`,
+   379→          `Monitoring and alerting configured for production SLAs`,
+   380→        ],
+   381→        children: ['operational'],
+   382→      },
+   383→      {
+   384→        id: 'operational',
+   385→        label: `${agent?.name || 'Agent'} Fully Operational`,
+   386→        description: `The agent is live, serving ${domain} tasks at production scale`,
+   387→        type: 'end',
+   388→        icon: Diamond,
+   389→        details: [
+   390→          `Serving ${domain} tasks 24/7 with 99.9% uptime SLA`,
+   391→          `Continuously learning from interactions and feedback`,
+   392→          `Scalable from single-user to enterprise-grade workloads`,
+   393→          `Open-source under MIT License — fork, customize, and deploy`,
+   394→        ],
+   395→        children: [],
+   396→      },
+   397→    ]
+   398→  }, [agent])
+   399→
+   400→  // Compute enriched detail data
+   401→  const detailData = useMemo(() => agent ? getAgentDetailData(agent) : null, [agent])
+   402→
+   403→  const isBookmarked = agentId ? bookmarkedAgentIds.includes(agentId) : false
+   404→  const userRating = agentId ? ratings[agentId] : undefined
+   405→  const fwStyle = getFwStyle(agent?.framework ?? null)
+   406→
+   407→  if (loading) {
+   408→    return (
+   409→      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+   410→        <Skeleton className="h-2 w-full mb-6 rounded-full" />
+   411→        <Skeleton className="h-6 w-20 mb-6" />
+   412→        <Skeleton className="h-8 w-2/3 mb-4" />
+   413→        <Skeleton className="h-4 w-full mb-2" />
+   414→        <Skeleton className="h-4 w-3/4 mb-6" />
+   415→        <Skeleton className="h-10 w-full mb-6" />
+   416→        <Skeleton className="h-64 w-full" />
+   417→      </div>
+   418→    )
+   419→  }
+   420→
+   421→  if (!agent) {
+   422→    return (
+   423→      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16 text-center">
+   424→        <h2 className="text-xl font-semibold mb-2">Agent not found</h2>
+   425→        <p className="text-muted-foreground mb-4">The agent you&apos;re looking for doesn&apos;t exist.</p>
+   426→        <Button onClick={() => router.push('/browse')}>
+   427→          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Browse
+   428→        </Button>
+   429→      </div>
+   430→    )
+   431→  }
+   432→
+   433→  return (
+   434→    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+   435→      {/* Reading Progress Bar */}
+   436→      <div className="fixed top-0 left-0 z-[60] h-[2px] bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 transition-all duration-150" style={{ width: `${readingProgress}%` }} />
+   437→
+   438→      {/* Framework Color Strip */}
+   439→      <div className={`h-[3px] rounded-full bg-gradient-to-r ${fwStyle.gradient} mb-6`} />
+   440→
+   441→      {/* Breadcrumb */}
+   442→      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6 flex-wrap">
+   443→        <button onClick={() => router.push('/')} className="hover:text-foreground transition-colors flex items-center gap-1">
+   444→          <Home className="h-3.5 w-3.5" /> Home
+   445→        </button>
+   446→        <ChevronRight className="h-3 w-3" />
+   447→        <button onClick={() => router.push('/browse')} className="hover:text-foreground transition-colors">
+   448→          Browse
+   449→        </button>
+   450→        <ChevronRight className="h-3 w-3" />
+   451→        <span className="text-foreground font-medium truncate max-w-[200px]">{agent.name}</span>
+   452→      </nav>
+   453→
+   454→      {/* Hero Section */}
+   455→      <motion.div
+   456→        initial={{ opacity: 0, y: 10 }}
+   457→        animate={{ opacity: 1, y: 0 }}
+   458→        transition={{ duration: 0.3 }}
+   459→      >
+   460→        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+   461→          <div className="flex-1 min-w-0">
+   462→            <div className="flex items-center gap-3 mb-2">
+   463→              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{agent.name}</h1>
+   464→              {agent.isCurated && (
+   465→                <Badge className="text-[10px] bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 dark:from-emerald-900/30 dark:to-teal-900/30 dark:text-emerald-300 shadow-sm">
+   466→                  <Database className="h-3 w-3 mr-0.5" /> Knowledge Base
+   467→                </Badge>
+   468→              )}
+   469→            </div>
+   470→            <p className="text-muted-foreground text-sm sm:text-base max-w-2xl">{agent.description}</p>
+   471→            <div className="flex flex-wrap items-center gap-2 mt-3">
+   472→              {agent.framework && (
+   473→                <Badge className={`text-xs ${fwStyle.badge}`}>{agent.framework}</Badge>
+   474→              )}
+   475→              {agent.category && (
+   476→                <Badge variant="outline" className="text-xs">{agent.category}</Badge>
+   477→              )}
+   478→              {agent.difficulty && (
+   479→                <span className={`text-xs font-medium capitalize ${diffColors[agent.difficulty.toLowerCase()] || ''}`}>
+   480→                  {agent.difficulty}
+   481→                </span>
+   482→              )}
+   483→              {agent.industry && (
+   484→                <Badge variant="secondary" className="text-xs">{agent.industry}</Badge>
+   485→              )}
+   486→              {agent.language && (
+   487→                <Badge variant="outline" className="text-xs font-mono">{agent.language}</Badge>
+   488→              )}
+   489→            </div>
+   490→          </div>
+   491→
+   492→          {/* Action buttons */}
+   493→          <div className="flex items-center gap-2 shrink-0">
+   494→            <Button
+   495→              variant="outline"
+   496→              size="sm"
+   497→              className="rounded-xl min-h-[36px]"
+   498→              onClick={() => {
+   499→                toggleBookmark(agent.id)
+   500→                if (!isBookmarked) {
+   501→                  addNotification({ type: 'bookmark_reminder', title: 'Agent bookmarked', message: `"${agent.name}" has been added to your bookmarks.` })
+   502→                }
+   503→              }}
+   504→            >
+   505→              {isBookmarked ? <BookmarkCheck className="h-4 w-4 mr-1 text-amber-500" /> : <Bookmark className="h-4 w-4 mr-1" />}
+   506→              {isBookmarked ? 'Saved' : 'Save'}
+   507→            </Button>
+   508→            <Button
+   509→              variant="outline"
+   510→              size="sm"
+   511→              className="rounded-xl min-h-[36px]"
+   512→              onClick={async () => {
+   513→                try {
+   514→                  await navigator.clipboard.writeText(window.location.href)
+   515→                  toast({ title: 'Link copied!', description: 'Agent URL has been copied to your clipboard.' })
+   516→                } catch { /* ignore */ }
+   517→              }}
+   518→            >
+   519→              <Share2 className="h-4 w-4 mr-1" /> Share
+   520→            </Button>
+   521→            <Button
+   522→              size="sm"
+   523→              className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white min-h-[36px]"
+   524→              onClick={() => {
+   525→                toast({ title: 'Download started', description: `${agent.name} code is being downloaded.` })
+   526→              }}
+   527→            >
+   528→              <Download className="h-4 w-4 mr-1" /> Get Code
+   529→            </Button>
+   530→          </div>
+   531→        </div>
+   532→      </motion.div>
+   533→
+   534→      <Separator className="mb-6" />
+   535→
+   536→      {/* Main Tabs */}
+   537→      <Tabs value={activeTab} onValueChange={setActiveTab}>
+   538→        <TabsList className="mb-6 flex-wrap">
+   539→          <TabsTrigger value="overview">
+   540→            <Eye className="h-4 w-4 mr-1" /> Overview
+   541→          </TabsTrigger>
+   542→          <TabsTrigger value="architecture">
+   543→            <Workflow className="h-4 w-4 mr-1" /> Architecture
+   544→          </TabsTrigger>
+   545→          <TabsTrigger value="master-prompts">
+   546→            <Sparkles className="h-4 w-4 mr-1" /> Master Prompts
+   547→          </TabsTrigger>
+   548→          <TabsTrigger value="skills">
+   549→            <Zap className="h-4 w-4 mr-1" /> Skills
+   550→          </TabsTrigger>
+   551→          <TabsTrigger value="use-cases">
+   552→            <Target className="h-4 w-4 mr-1" /> Use Cases
+   553→          </TabsTrigger>
+   554→          <TabsTrigger value="setup">
+   555→            <Rocket className="h-4 w-4 mr-1" /> Setup
+   556→          </TabsTrigger>
+   557→          <TabsTrigger value="config">
+   558→            <Settings className="h-4 w-4 mr-1" /> Config
+   559→          </TabsTrigger>
+   560→          <TabsTrigger value="faq">
+   561→            <MessageCircle className="h-4 w-4 mr-1" /> FAQ
+   562→          </TabsTrigger>
+   563→          {agent.codeSnippet && (
+   564→            <TabsTrigger value="code">
+   565→              <Code2 className="h-4 w-4 mr-1" /> Code
+   566→            </TabsTrigger>
+   567→          )}
+   568→          {agent.readme && (
+   569→            <TabsTrigger value="readme">
+   570→              <BookOpen className="h-4 w-4 mr-1" /> README
+   571→            </TabsTrigger>
+   572→          )}
+   573→          <TabsTrigger value="dependencies">
+   574→            <Package className="h-4 w-4 mr-1" /> Dependencies
+   575→          </TabsTrigger>
+   576→        </TabsList>
+   577→
+   578→        {/* Overview Tab */}
+   579→        <TabsContent value="overview">
+   580→          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   581→            <div className="lg:col-span-2 space-y-6">
+   582→              {/* About */}
+   583→              <Card className="rounded-xl">
+   584→                <CardHeader>
+   585→                  <CardTitle className="text-base">About this Agent</CardTitle>
+   586→                </CardHeader>
+   587→                <CardContent>
+   588→                  <p className="text-sm text-muted-foreground">{agent.description}</p>
+   589→                  {agent.author && (
+   590→                    <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5">
+   591→                      <User className="h-3 w-3" /> Created by <span className="font-medium">{agent.author}</span>
+   592→                    </p>
+   593→                  )}
+   594→                  {agent.sourceUrl && (
+   595→                    <a href={agent.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:underline mt-2">
+   596→                      <ExternalLink className="h-3 w-3" /> View Source Repository
+   597→                    </a>
+   598→                  )}
+   599→                </CardContent>
+   600→              </Card>
+   601→
+   602→              {/* Tools */}
+   603→              {agent.tools && agent.tools.length > 0 && (
+   604→                <Card className="rounded-xl">
+   605→                  <CardHeader>
+   606→                    <CardTitle className="text-base flex items-center gap-2">
+   607→                      <Settings className="h-4 w-4" /> Tools & Capabilities
+   608→                    </CardTitle>
+   609→                  </CardHeader>
+   610→                  <CardContent>
+   611→                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   612→                      {agent.tools.map((tool) => (
+   613→                        <div key={tool} className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/50 border">
+   614→                          <div className={`h-7 w-7 rounded-md bg-gradient-to-br ${fwStyle.gradient} flex items-center justify-center shrink-0`}>
+   615→                            <Zap className="h-3.5 w-3.5 text-white" />
+   616→                          </div>
+   617→                          <div>
+   618→                            <p className="text-sm font-medium">{tool}</p>
+   619→                            <p className="text-[10px] text-muted-foreground">Specialized {agent.category || 'domain'} capability</p>
+   620→                          </div>
+   621→                        </div>
+   622→                      ))}
+   623→                    </div>
+   624→                  </CardContent>
+   625→                </Card>
+   626→              )}
+   627→
+   628→              {/* Tags */}
+   629→              {agent.tags && agent.tags.length > 0 && (
+   630→                <Card className="rounded-xl">
+   631→                  <CardHeader>
+   632→                    <CardTitle className="text-base flex items-center gap-2">
+   633→                      <Tag className="h-4 w-4" /> Tags
+   634→                    </CardTitle>
+   635→                  </CardHeader>
+   636→                  <CardContent>
+   637→                    <div className="flex flex-wrap gap-2">
+   638→                      {agent.tags.map((tag) => (
+   639→                        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+   640→                      ))}
+   641→                    </div>
+   642→                  </CardContent>
+   643→                </Card>
+   644→              )}
+   645→
+   646→              {/* Enriched Capabilities from detail data */}
+   647→              {detailData && detailData.capabilities.length > 0 && (
+   648→                <Card className="rounded-xl">
+   649→                  <CardHeader>
+   650→                    <CardTitle className="text-base flex items-center gap-2">
+   651→                      <Brain className="h-4 w-4" /> Deep Capabilities
+   652→                    </CardTitle>
+   653→                  </CardHeader>
+   654→                  <CardContent>
+   655→                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   656→                      {detailData.capabilities.map((cap) => {
+   657→                        const IconComponent = iconMap[cap.icon] || Zap
+   658→                        return (
+   659→                          <motion.div
+   660→                            key={cap.title}
+   661→                            initial={{ opacity: 0, y: 5 }}
+   662→                            animate={{ opacity: 1, y: 0 }}
+   663→                            className="p-3 rounded-lg bg-muted/50 border hover:shadow-sm transition-shadow"
+   664→                          >
+   665→                            <div className="flex items-center gap-2 mb-1.5">
+   666→                              <div className={`h-7 w-7 rounded-md bg-gradient-to-br ${fwStyle.gradient} flex items-center justify-center shrink-0`}>
+   667→                                <IconComponent className="h-3.5 w-3.5 text-white" />
+   668→                              </div>
+   669→                              <p className="text-sm font-medium">{cap.title}</p>
+   670→                            </div>
+   671→                            <p className="text-xs text-muted-foreground line-clamp-2">{cap.description}</p>
+   672→                          </motion.div>
+   673→                        )
+   674→                      })}
+   675→                    </div>
+   676→                  </CardContent>
+   677→                </Card>
+   678→              )}
+   679→
+   680→              {/* Use Cases Preview */}
+   681→              {detailData && detailData.useCases.length > 0 && (
+   682→                <Card className="rounded-xl">
+   683→                  <CardHeader>
+   684→                    <CardTitle className="text-base flex items-center gap-2">
+   685→                      <Target className="h-4 w-4" /> Use Cases Preview
+   686→                    </CardTitle>
+   687→                  </CardHeader>
+   688→                  <CardContent className="space-y-3">
+   689→                    {detailData.useCases.slice(0, 2).map((uc) => (
+   690→                      <div key={uc.title} className="p-3 rounded-lg border bg-muted/30">
+   691→                        <div className="flex items-center gap-2 mb-1">
+   692→                          <p className="text-sm font-medium">{uc.title}</p>
+   693→                          <Badge variant="outline" className="text-[10px]">{uc.industry}</Badge>
+   694→                          <Badge className={`text-[10px] border-0 ${
+   695→                            uc.complexity === 'simple' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+   696→                            uc.complexity === 'moderate' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
+   697→                            'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+   698→                          }`}>
+   699→                            {uc.complexity}
+   700→                          </Badge>
+   701→                        </div>
+   702→                        <p className="text-xs text-muted-foreground line-clamp-2">{uc.description}</p>
+   703→                      </div>
+   704→                    ))}
+   705→                    {detailData.useCases.length > 2 && (
+   706→                      <Button
+   707→                        variant="ghost"
+   708→                        size="sm"
+   709→                        className="text-xs text-emerald-600 hover:text-emerald-700"
+   710→                        onClick={() => setActiveTab('use-cases')}
+   711→                      >
+   712→                        View all {detailData.useCases.length} use cases →
+   713→                      </Button>
+   714→                    )}
+   715→                  </CardContent>
+   716→                </Card>
+   717→              )}
+   718→            </div>
+   719→
+   720→            {/* Sidebar */}
+   721→            <div className="space-y-4">
+   722→              {/* Framework Card */}
+   723→              <Card className="rounded-xl">
+   724→                <CardHeader className="pb-3">
+   725→                  <CardTitle className="text-sm">Framework</CardTitle>
+   726→                </CardHeader>
+   727→                <CardContent>
+   728→                  <div className={`p-3 rounded-lg ${fwStyle.bg} border ${fwStyle.border}`}>
+   729→                    <p className={`font-semibold ${fwStyle.text}`}>{agent.framework || 'N/A'}</p>
+   730→                    <p className="text-xs text-muted-foreground mt-1">
+   731→                      {agent.framework === 'LangGraph' ? 'Stateful graph-based orchestration' :
+   732→                       agent.framework === 'CrewAI' ? 'Role-based agent collaboration' :
+   733→                       agent.framework === 'AutoGen' ? 'Multi-agent conversation framework' :
+   734→                       agent.framework === 'Agno' ? 'High-performance agent primitives' :
+   735→                       agent.framework === 'LlamaIndex' ? 'RAG-optimized retrieval pipeline' : 'AI agent framework'}
+   736→                    </p>
+   737→                  </div>
+   738→                </CardContent>
+   739→              </Card>
+   740→
+   741→              {/* Models */}
+   742→              {agent.models && agent.models.length > 0 && (
+   743→                <Card className="rounded-xl">
+   744→                  <CardHeader className="pb-3">
+   745→                    <CardTitle className="text-sm flex items-center gap-2">
+   746→                      <Brain className="h-4 w-4" /> AI Models
+   747→                    </CardTitle>
+   748→                  </CardHeader>
+   749→                  <CardContent>
+   750→                    <div className="flex flex-wrap gap-1.5">
+   751→                      {agent.models.map((model) => (
+   752→                        <Badge key={model} variant="outline" className="text-xs font-mono">{model}</Badge>
+   753→                      ))}
+   754→                    </div>
+   755→                  </CardContent>
+   756→                </Card>
+   757→              )}
+   758→
+   759→              {/* Rating */}
+   760→              <Card className="rounded-xl">
+   761→                <CardHeader className="pb-3">
+   762→                  <CardTitle className="text-sm flex items-center gap-2">
+   763→                    <Star className="h-4 w-4" /> Rating
+   764→                  </CardTitle>
+   765→                </CardHeader>
+   766→                <CardContent>
+   767→                  <div className="flex items-center gap-1.5">
+   768→                    {[1, 2, 3, 4, 5].map((star) => (
+   769→                      <button
+   770→                        key={star}
+   771→                        onClick={() => {
+   772→                          setRating(agent.id, star)
+   773→                          addNotification({ type: 'agent_update', title: 'Rating saved', message: `You rated "${agent.name}" ${star}/5 stars.` })
+   774→                        }}
+   775→                        className="p-0 bg-transparent border-none cursor-pointer"
+   776→                      >
+   777→                        <Star className={`h-5 w-5 transition-colors ${
+   778→                          (userRating || 4) >= star ? 'fill-amber-400 text-amber-400' : 'fill-gray-200 text-gray-300 dark:fill-gray-700 dark:text-gray-600'
+   779→                        }`} />
+   780→                      </button>
+   781→                    ))}
+   782→                    <span className="text-sm font-medium ml-1">{(userRating || 4.2).toFixed(1)}</span>
+   783→                  </div>
+   784→                </CardContent>
+   785→              </Card>
+   786→
+   787→              {/* Quick Stats */}
+   788→              <Card className="rounded-xl">
+   789→                <CardHeader className="pb-3">
+   790→                  <CardTitle className="text-sm">Quick Stats</CardTitle>
+   791→                </CardHeader>
+   792→                <CardContent className="space-y-2 text-sm">
+   793→                  <div className="flex justify-between">
+   794→                    <span className="text-muted-foreground">Category</span>
+   795→                    <span className="font-medium">{agent.category}</span>
+   796→                  </div>
+   797→                  <Separator />
+   798→                  <div className="flex justify-between">
+   799→                    <span className="text-muted-foreground">Difficulty</span>
+   800→                    <span className={`font-medium capitalize ${diffColors[(agent.difficulty || '').toLowerCase()] || ''}`}>{agent.difficulty || 'N/A'}</span>
+   801→                  </div>
+   802→                  <Separator />
+   803→                  <div className="flex justify-between">
+   804→                    <span className="text-muted-foreground">Industry</span>
+   805→                    <span className="font-medium">{agent.industry || 'N/A'}</span>
+   806→                  </div>
+   807→                  <Separator />
+   808→                  <div className="flex justify-between">
+   809→                    <span className="text-muted-foreground">Tools</span>
+   810→                    <span className="font-medium">{agent.tools?.length || 0}</span>
+   811→                  </div>
+   812→                  <Separator />
+   813→                  <div className="flex justify-between">
+   814→                    <span className="text-muted-foreground">Source</span>
+   815→                    <Badge variant="secondary" className="text-[10px]">Knowledge Base</Badge>
+   816→                  </div>
+   817→                </CardContent>
+   818→              </Card>
+   819→            </div>
+   820→          </div>
+   821→        </TabsContent>
+   822→
+   823→        {/* Architecture Tab - Flowchart Lifecycle */}
+   824→        <TabsContent value="architecture">
+   825→          <div className="space-y-6">
+   826→            {/* Architecture Header */}
+   827→            <Card className="rounded-xl overflow-hidden">
+   828→              <div className={`h-2 bg-gradient-to-r ${fwStyle.gradient}`} />
+   829→              <CardHeader>
+   830→                <CardTitle className="flex items-center gap-2">
+   831→                  <Workflow className="h-5 w-5" />
+   832→                  {agent.name} — Architecture Lifecycle
+   833→                </CardTitle>
+   834→                <CardDescription>
+   835→                  Hyper-specialized agent development pipeline for {agent.category || 'AI'} domain using {agent.framework || 'AI'} framework
+   836→                </CardDescription>
+   837→              </CardHeader>
+   838→            </Card>
+   839→
+   840→            {/* Flowchart Visualization */}
+   841→            <div className="relative">
+   842→              {flowchartSteps.map((step, idx) => {
+   843→                const isStart = step.type === 'start'
+   844→                const isEnd = step.type === 'end'
+   845→                const isDecision = step.type === 'decision'
+   846→                const isParallel = step.type === 'parallel'
+   847→                const isStatus = step.type === 'status'
+   848→                const Icon = step.icon
+   849→
+   850→                // Color coding based on type
+   851→                const typeStyles: Record<string, { container: string; icon: string; border: string }> = {
+   852→                  start: { container: 'bg-emerald-50 dark:bg-emerald-900/20', icon: 'bg-emerald-500 text-white', border: 'border-emerald-300 dark:border-emerald-700' },
+   853→                  process: { container: 'bg-blue-50 dark:bg-blue-900/20', icon: 'bg-blue-500 text-white', border: 'border-blue-300 dark:border-blue-700' },
+   854→                  decision: { container: 'bg-amber-50 dark:bg-amber-900/20', icon: 'bg-amber-500 text-white', border: 'border-amber-300 dark:border-amber-700' },
+   855→                  parallel: { container: 'bg-orange-50 dark:bg-orange-900/20', icon: 'bg-orange-500 text-white', border: 'border-orange-300 dark:border-orange-700' },
+   856→                  status: { container: 'bg-purple-50 dark:bg-purple-900/20', icon: 'bg-purple-500 text-white', border: 'border-purple-300 dark:border-purple-700' },
+   857→                  end: { container: 'bg-violet-50 dark:bg-violet-900/20', icon: 'bg-violet-500 text-white', border: 'border-violet-300 dark:border-violet-700' },
+   858→                }
+   859→                const style = typeStyles[step.type] || typeStyles.process
+   860→
+   861→                // Special layout for parallel steps (architecture → 5 parallel)
+   862→                const parallelGroup = step.id === 'architecture' || ['improvement', 'deployment', 'security', 'performance', 'testing'].includes(step.id)
+   863→
+   864→                return (
+   865→                  <motion.div
+   866→                    key={step.id}
+   867→                    id={`step-${step.id}`}
+   868→                    initial={{ opacity: 0, y: 20 }}
+   869→                    animate={{ opacity: 1, y: 0 }}
+   870→                    transition={{ delay: idx * 0.06, duration: 0.3 }}
+   871→                  >
+   872→                    {/* Connector arrow */}
+   873→                    {idx > 0 && !['improvement', 'deployment', 'security', 'performance', 'testing'].includes(step.id) && (
+   874→                      <div className="flex justify-center my-1">
+   875→                        <div className="flex flex-col items-center">
+   876→                          <div className="w-[2px] h-6 bg-gray-300 dark:bg-gray-700" />
+   877→                          <ArrowDown className="h-4 w-4 text-gray-400 -mt-1" />
+   878→                        </div>
+   879→                      </div>
+   880→                    )}
+   881→
+   882→                    {/* Step card */}
+   883→                    <Card className={`rounded-xl border-2 ${style.border} ${style.container} overflow-hidden transition-all duration-200 hover:shadow-md`}>
+   884→                      <CardContent className="p-4 sm:p-5">
+   885→                        <div className="flex items-start gap-3">
+   886→                          {/* Step icon */}
+   887→                          <div className={`h-10 w-10 rounded-xl ${style.icon} flex items-center justify-center shrink-0 shadow-sm`}>
+   888→                            <Icon className="h-5 w-5" />
+   889→                          </div>
+   890→                          <div className="flex-1 min-w-0">
+   891→                            <div className="flex items-center gap-2 mb-1">
+   892→                              <h3 className="font-semibold text-sm sm:text-base">{step.label}</h3>
+   893→                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 capitalize shrink-0">
+   894→                                {step.type}
+   895→                              </Badge>
+   896→                              {isDecision && (
+   897→                                <>
+   898→                                  <Badge className="text-[9px] px-1.5 py-0 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-0">YES ↓</Badge>
+   899→                                  {step.noTarget && <Badge className="text-[9px] px-1.5 py-0 bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 border-0">NO →</Badge>}
+   900→                                </>
+   901→                              )}
+   902→                            </div>
+   903→                            <p className="text-xs text-muted-foreground mb-3">{step.description}</p>
+   904→                            <div className="space-y-1.5">
+   905→                              {step.details.map((detail, i) => (
+   906→                                <div key={i} className="flex items-start gap-2 text-xs">
+   907→                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+   908→                                  <span className="text-muted-foreground">{detail}</span>
+   909→                                </div>
+   910→                              ))}
+   911→                            </div>
+   912→                          </div>
+   913→                        </div>
+   914→                      </CardContent>
+   915→                    </Card>
+   916→                  </motion.div>
+   917→                )
+   918→              })}
+   919→            </div>
+   920→
+   921→            {/* Architecture Summary */}
+   922→            <Card className="rounded-xl border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20">
+   923→              <CardContent className="p-6">
+   924→                <div className="flex items-start gap-4">
+   925→                  <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${fwStyle.gradient} flex items-center justify-center shrink-0 shadow-lg`}>
+   926→                    <Diamond className="h-6 w-6 text-white" />
+   927→                  </div>
+   928→                  <div>
+   929→                    <h3 className="font-bold text-lg mb-1">{agent.name} is Fully Operational</h3>
+   930→                    <p className="text-sm text-muted-foreground mb-3">
+   931→                      This {agent.difficulty || 'intermediate'}-level {agent.category || 'AI'} agent has been built using {agent.framework || 'AI'} and is production-ready for {agent.industry || 'general'} workloads.
+   932→                    </p>
+   933→                    <div className="flex flex-wrap gap-2">
+   934→                      <Badge className={`${fwStyle.badge}`}>{agent.framework}</Badge>
+   935→                      <Badge variant="outline">{agent.category}</Badge>
+   936→                      {agent.industry && <Badge variant="secondary">{agent.industry}</Badge>}
+   937→                      <Badge variant="outline" className="capitalize">{agent.difficulty}</Badge>
+   938→                    </div>
+   939→                  </div>
+   940→                </div>
+   941→              </CardContent>
+   942→            </Card>
+   943→          </div>
+   944→        </TabsContent>
+   945→
+   946→        {/* Master Prompts Tab */}
+   947→        <TabsContent value="master-prompts">
+   948→          {detailData && detailData.masterPrompts.length > 0 ? (
+   949→            <div className="space-y-6">
+   950→              {detailData.masterPrompts.map((mp, idx) => (
+   951→                <motion.div
+   952→                  key={mp.title}
+   953→                  initial={{ opacity: 0, y: 10 }}
+   954→                  animate={{ opacity: 1, y: 0 }}
+   955→                  transition={{ delay: idx * 0.08, duration: 0.3 }}
+   956→                >
+   957→                  <Card className="rounded-xl overflow-hidden">
+   958→                    <CardHeader className="pb-3">
+   959→                      <div className="flex items-center justify-between flex-wrap gap-2">
+   960→                        <CardTitle className="text-base flex items-center gap-2">
+   961→                          <Sparkles className="h-4 w-4 text-emerald-500" /> {mp.title}
+   962→                        </CardTitle>
+   963→                        <Badge className={`text-xs ${fwStyle.badge}`}>{mp.category}</Badge>
+   964→                      </div>
+   965→                    </CardHeader>
+   966→                    <CardContent className="space-y-4">
+   967→                      <div className="relative group">
+   968→                        <pre className="bg-gray-950 text-gray-100 rounded-lg p-4 overflow-x-auto text-xs sm:text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
+   969→                          <code>{mp.prompt}</code>
+   970→                        </pre>
+   971→                        <Button
+   972→                          variant="outline"
+   973→                          size="sm"
+   974→                          className="absolute top-2 right-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 border-gray-700 text-gray-300 hover:text-white hover:bg-gray-700"
+   975→                          onClick={async () => {
+   976→                            await navigator.clipboard.writeText(mp.prompt)
+   977→                            toast({ title: 'Prompt copied!', description: 'Master prompt has been copied to clipboard.' })
+   978→                          }}
+   979→                        >
+   980→                          <Copy className="h-3 w-3 mr-1" /> Copy
+   981→                        </Button>
+   982→                      </div>
+   983→                      {mp.tips.length > 0 && (
+   984→                        <div>
+   985→                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Tips & Customization</p>
+   986→                          <div className="space-y-1.5">
+   987→                            {mp.tips.map((tip, i) => (
+   988→                              <div key={i} className="flex items-start gap-2 text-xs">
+   989→                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+   990→                                <span className="text-muted-foreground">{tip}</span>
+   991→                              </div>
+   992→                            ))}
+   993→                          </div>
+   994→                        </div>
+   995→                      )}
+   996→                    </CardContent>
+   997→                  </Card>
+   998→                </motion.div>
+   999→              ))}
+  1000→            </div>
+  1001→          ) : (
+  1002→            <Card className="rounded-xl">
+  1003→              <CardContent className="py-12 text-center">
+  1004→                <Sparkles className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+  1005→                <p className="text-sm text-muted-foreground">No master prompts available for this agent.</p>
+  1006→              </CardContent>
+  1007→            </Card>
+  1008→          )}
+  1009→        </TabsContent>
+  1010→
+  1011→        {/* Skills Tab */}
+  1012→        <TabsContent value="skills">
+  1013→          {detailData ? (
+  1014→            <div className="space-y-6">
+  1015→              {/* Capabilities */}
+  1016→              {detailData.capabilities.length > 0 && (
+  1017→                <div>
+  1018→                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+  1019→                    <Zap className="h-4 w-4" /> Capabilities
+  1020→                  </h3>
+  1021→                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1022→                    {detailData.capabilities.map((cap, idx) => {
+  1023→                      const IconComponent = iconMap[cap.icon] || Zap
+  1024→                      return (
+  1025→                        <motion.div
+  1026→                          key={cap.title}
+  1027→                          initial={{ opacity: 0, y: 10 }}
+  1028→                          animate={{ opacity: 1, y: 0 }}
+  1029→                          transition={{ delay: idx * 0.06, duration: 0.3 }}
+  1030→                        >
+  1031→                          <Card className="rounded-xl h-full hover:shadow-md transition-shadow">
+  1032→                            <CardContent className="p-4">
+  1033→                              <div className="flex items-start gap-3">
+  1034→                                <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${fwStyle.gradient} flex items-center justify-center shrink-0 shadow-sm`}>
+  1035→                                  <IconComponent className="h-4 w-4 text-white" />
+  1036→                                </div>
+  1037→                                <div className="flex-1 min-w-0">
+  1038→                                  <p className="text-sm font-semibold mb-1">{cap.title}</p>
+  1039→                                  <p className="text-xs text-muted-foreground leading-relaxed">{cap.description}</p>
+  1040→                                </div>
+  1041→                              </div>
+  1042→                            </CardContent>
+  1043→                          </Card>
+  1044→                        </motion.div>
+  1045→                      )
+  1046→                    })}
+  1047→                  </div>
+  1048→                </div>
+  1049→              )}
+  1050→
+  1051→              {/* Best Practices */}
+  1052→              {detailData.bestPractices.length > 0 && (
+  1053→                <div>
+  1054→                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+  1055→                    <CheckCircle2 className="h-4 w-4" /> Best Practices
+  1056→                  </h3>
+  1057→                  <div className="space-y-3">
+  1058→                    {detailData.bestPractices.map((bp, idx) => (
+  1059→                      <motion.div
+  1060→                        key={bp.title}
+  1061→                        initial={{ opacity: 0, x: -10 }}
+  1062→                        animate={{ opacity: 1, x: 0 }}
+  1063→                        transition={{ delay: idx * 0.06, duration: 0.3 }}
+  1064→                      >
+  1065→                        <Card className="rounded-xl">
+  1066→                          <CardContent className="p-4">
+  1067→                            <div className="flex items-start gap-3">
+  1068→                              <div className="h-7 w-7 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0 mt-0.5">
+  1069→                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+  1070→                              </div>
+  1071→                              <div>
+  1072→                                <p className="text-sm font-semibold mb-1">{bp.title}</p>
+  1073→                                <p className="text-xs text-muted-foreground leading-relaxed">{bp.description}</p>
+  1074→                              </div>
+  1075→                            </div>
+  1076→                          </CardContent>
+  1077→                        </Card>
+  1078→                      </motion.div>
+  1079→                    ))}
+  1080→                  </div>
+  1081→                </div>
+  1082→              )}
+  1083→
+  1084→              {/* Limitations */}
+  1085→              {detailData.limitations.length > 0 && (
+  1086→                <div>
+  1087→                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+  1088→                    <Shield className="h-4 w-4" /> Limitations
+  1089→                  </h3>
+  1090→                  <div className="space-y-3">
+  1091→                    {detailData.limitations.map((lim, idx) => (
+  1092→                      <motion.div
+  1093→                        key={lim.title}
+  1094→                        initial={{ opacity: 0, x: -10 }}
+  1095→                        animate={{ opacity: 1, x: 0 }}
+  1096→                        transition={{ delay: idx * 0.06, duration: 0.3 }}
+  1097→                      >
+  1098→                        <Card className="rounded-xl border-amber-200 dark:border-amber-800">
+  1099→                          <CardContent className="p-4">
+  1100→                            <div className="flex items-start gap-3">
+  1101→                              <div className="h-7 w-7 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0 mt-0.5">
+  1102→                                <Shield className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+  1103→                              </div>
+  1104→                              <div>
+  1105→                                <p className="text-sm font-semibold mb-1">{lim.title}</p>
+  1106→                                <p className="text-xs text-muted-foreground leading-relaxed">{lim.description}</p>
+  1107→                              </div>
+  1108→                            </div>
+  1109→                          </CardContent>
+  1110→                        </Card>
+  1111→                      </motion.div>
+  1112→                    ))}
+  1113→                  </div>
+  1114→                </div>
+  1115→              )}
+  1116→            </div>
+  1117→          ) : (
+  1118→            <Card className="rounded-xl">
+  1119→              <CardContent className="py-12 text-center">
+  1120→                <Zap className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+  1121→                <p className="text-sm text-muted-foreground">No skills data available for this agent.</p>
+  1122→              </CardContent>
+  1123→            </Card>
+  1124→          )}
+  1125→        </TabsContent>
+  1126→
+  1127→        {/* Use Cases Tab */}
+  1128→        <TabsContent value="use-cases">
+  1129→          {detailData && detailData.useCases.length > 0 ? (
+  1130→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  1131→              {detailData.useCases.map((uc, idx) => (
+  1132→                <motion.div
+  1133→                  key={uc.title}
+  1134→                  initial={{ opacity: 0, y: 10 }}
+  1135→                  animate={{ opacity: 1, y: 0 }}
+  1136→                  transition={{ delay: idx * 0.08, duration: 0.3 }}
+  1137→                >
+  1138→                  <Card className="rounded-xl h-full hover:shadow-md transition-shadow">
+  1139→                    <CardContent className="p-4">
+  1140→                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+  1141→                        <Badge variant="outline" className="text-[10px]">{uc.industry}</Badge>
+  1142→                        <Badge className={`text-[10px] border-0 ${
+  1143→                          uc.complexity === 'simple' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+  1144→                          uc.complexity === 'moderate' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
+  1145→                          'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+  1146→                        }`}>
+  1147→                          {uc.complexity}
+  1148→                        </Badge>
+  1149→                      </div>
+  1150→                      <h4 className="text-sm font-semibold mb-1.5">{uc.title}</h4>
+  1151→                      <p className="text-xs text-muted-foreground leading-relaxed">{uc.description}</p>
+  1152→                    </CardContent>
+  1153→                  </Card>
+  1154→                </motion.div>
+  1155→              ))}
+  1156→            </div>
+  1157→          ) : (
+  1158→            <Card className="rounded-xl">
+  1159→              <CardContent className="py-12 text-center">
+  1160→                <Target className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+  1161→                <p className="text-sm text-muted-foreground">No use cases available for this agent.</p>
+  1162→              </CardContent>
+  1163→            </Card>
+  1164→          )}
+  1165→        </TabsContent>
+  1166→
+  1167→        {/* Setup Tab */}
+  1168→        <TabsContent value="setup">
+  1169→          {detailData && detailData.gettingStarted.length > 0 ? (
+  1170→            <div className="space-y-0">
+  1171→              {detailData.gettingStarted.map((step, idx) => (
+  1172→                <motion.div
+  1173→                  key={step.step}
+  1174→                  initial={{ opacity: 0, x: -10 }}
+  1175→                  animate={{ opacity: 1, x: 0 }}
+  1176→                  transition={{ delay: idx * 0.1, duration: 0.3 }}
+  1177→                  className="relative"
+  1178→                >
+  1179→                  <div className="flex gap-4 pb-6">
+  1180→                    {/* Step number + vertical line */}
+  1181→                    <div className="flex flex-col items-center">
+  1182→                      <div className={`h-9 w-9 rounded-full bg-gradient-to-br ${fwStyle.gradient} flex items-center justify-center shrink-0 shadow-sm text-white font-bold text-sm`}>
+  1183→                        {step.step}
+  1184→                      </div>
+  1185→                      {idx < detailData.gettingStarted.length - 1 && (
+  1186→                        <div className="w-[2px] flex-1 bg-gray-200 dark:bg-gray-700 mt-2" />
+  1187→                      )}
+  1188→                    </div>
+  1189→                    {/* Step content */}
+  1190→                    <div className="flex-1 min-w-0 pb-2">
+  1191→                      <h4 className="text-sm font-semibold mb-1">{step.title}</h4>
+  1192→                      <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{step.description}</p>
+  1193→                      {step.code && (
+  1194→                        <div className="relative group">
+  1195→                          <pre className="bg-gray-950 text-gray-100 rounded-lg p-3 overflow-x-auto text-xs whitespace-pre-wrap">
+  1196→                            <code>{step.code}</code>
+  1197→                          </pre>
+  1198→                          <Button
+  1199→                            variant="outline"
+  1200→                            size="sm"
+  1201→                            className="absolute top-1.5 right-1.5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 border-gray-700 text-gray-300 hover:text-white hover:bg-gray-700"
+  1202→                            onClick={async () => {
+  1203→                              await navigator.clipboard.writeText(step.code || '')
+  1204→                              toast({ title: 'Copied!', description: 'Code snippet copied to clipboard.' })
+  1205→                            }}
+  1206→                          >
+  1207→                            <Copy className="h-3 w-3" />
+  1208→                          </Button>
+  1209→                        </div>
+  1210→                      )}
+  1211→                    </div>
+  1212→                  </div>
+  1213→                </motion.div>
+  1214→              ))}
+  1215→            </div>
+  1216→          ) : (
+  1217→            <Card className="rounded-xl">
+  1218→              <CardContent className="py-12 text-center">
+  1219→                <Rocket className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+  1220→                <p className="text-sm text-muted-foreground">No setup guide available for this agent.</p>
+  1221→              </CardContent>
+  1222→            </Card>
+  1223→          )}
+  1224→        </TabsContent>
+  1225→
+  1226→        {/* Config Tab */}
+  1227→        <TabsContent value="config">
+  1228→          {detailData && detailData.configuration.length > 0 ? (
+  1229→            <Card className="rounded-xl">
+  1230→              <CardHeader>
+  1231→                <CardTitle className="text-base flex items-center gap-2">
+  1232→                  <Settings className="h-4 w-4" /> Configuration Options
+  1233→                </CardTitle>
+  1234→              </CardHeader>
+  1235→              <CardContent>
+  1236→                <div className="overflow-x-auto">
+  1237→                  <table className="w-full text-sm">
+  1238→                    <thead>
+  1239→                      <tr className="border-b text-left">
+  1240→                        <th className="pb-2 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Key</th>
+  1241→                        <th className="pb-2 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Type</th>
+  1242→                        <th className="pb-2 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Default</th>
+  1243→                        <th className="pb-2 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Description</th>
+  1244→                        <th className="pb-2 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Required</th>
+  1245→                      </tr>
+  1246→                    </thead>
+  1247→                    <tbody>
+  1248→                      {detailData.configuration.map((cfg) => (
+  1249→                        <tr key={cfg.key} className="border-b last:border-b-0">
+  1250→                          <td className="py-3 pr-4"><code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{cfg.key}</code></td>
+  1251→                          <td className="py-3 pr-4"><Badge variant="outline" className="text-[10px] font-mono">{cfg.type}</Badge></td>
+  1252→                          <td className="py-3 pr-4"><code className="text-xs text-muted-foreground">{cfg.default}</code></td>
+  1253→                          <td className="py-3 pr-4 text-xs text-muted-foreground max-w-xs">{cfg.description}</td>
+  1254→                          <td className="py-3">
+  1255→                            {cfg.required ? (
+  1256→                              <Badge className="text-[10px] bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 border-0">Required</Badge>
+  1257→                            ) : (
+  1258→                              <Badge variant="secondary" className="text-[10px]">Optional</Badge>
+  1259→                            )}
+  1260→                          </td>
+  1261→                        </tr>
+  1262→                      ))}
+  1263→                    </tbody>
+  1264→                  </table>
+  1265→                </div>
+  1266→              </CardContent>
+  1267→            </Card>
+  1268→          ) : (
+  1269→            <Card className="rounded-xl">
+  1270→              <CardContent className="py-12 text-center">
+  1271→                <Settings className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+  1272→                <p className="text-sm text-muted-foreground">No configuration options available for this agent.</p>
+  1273→              </CardContent>
+  1274→            </Card>
+  1275→          )}
+  1276→        </TabsContent>
+  1277→
+  1278→        {/* FAQ Tab */}
+  1279→        <TabsContent value="faq">
+  1280→          {detailData && detailData.faq.length > 0 ? (
+  1281→            <Card className="rounded-xl">
+  1282→              <CardContent className="p-4 sm:p-6">
+  1283→                <Accordion type="single" collapsible className="w-full">
+  1284→                  {detailData.faq.map((item, idx) => (
+  1285→                    <AccordionItem key={idx} value={`faq-${idx}`}>
+  1286→                      <AccordionTrigger className="text-sm font-medium text-left hover:no-underline">
+  1287→                        {item.question}
+  1288→                      </AccordionTrigger>
+  1289→                      <AccordionContent>
+  1290→                        <p className="text-xs text-muted-foreground leading-relaxed">{item.answer}</p>
+  1291→                      </AccordionContent>
+  1292→                    </AccordionItem>
+  1293→                  ))}
+  1294→                </Accordion>
+  1295→              </CardContent>
+  1296→            </Card>
+  1297→          ) : (
+  1298→            <Card className="rounded-xl">
+  1299→              <CardContent className="py-12 text-center">
+  1300→                <MessageCircle className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+  1301→                <p className="text-sm text-muted-foreground">No FAQ available for this agent.</p>
+  1302→              </CardContent>
+  1303→            </Card>
+  1304→          )}
+  1305→        </TabsContent>
+  1306→
+  1307→        {/* Code Tab */}
+  1308→        {agent.codeSnippet && (
+  1309→          <TabsContent value="code">
+  1310→            <Card className="rounded-xl">
+  1311→              <CardHeader>
+  1312→                <div className="flex items-center justify-between">
+  1313→                  <CardTitle className="text-base flex items-center gap-2">
+  1314→                    <Code2 className="h-4 w-4" /> Source Code
+  1315→                  </CardTitle>
+  1316→                  <Button
+  1317→                    variant="outline"
+  1318→                    size="sm"
+  1319→                    className="rounded-xl"
+  1320→                    onClick={async () => {
+  1321→                      await navigator.clipboard.writeText(agent.codeSnippet || '')
+  1322→                      toast({ title: 'Copied!', description: 'Code has been copied to clipboard.' })
+  1323→                    }}
+  1324→                  >
+  1325→                    Copy Code
+  1326→                  </Button>
+  1327→                </div>
+  1328→              </CardHeader>
+  1329→              <CardContent>
+  1330→                <pre className="bg-gray-950 text-gray-100 rounded-lg p-4 overflow-x-auto text-xs sm:text-sm">
+  1331→                  <code>{agent.codeSnippet}</code>
+  1332→                </pre>
+  1333→              </CardContent>
+  1334→            </Card>
+  1335→          </TabsContent>
+  1336→        )}
+  1337→
+  1338→        {/* README Tab */}
+  1339→        {agent.readme && (
+  1340→          <TabsContent value="readme">
+  1341→            <Card className="rounded-xl">
+  1342→              <CardHeader>
+  1343→                <CardTitle className="text-base flex items-center gap-2">
+  1344→                  <BookOpen className="h-4 w-4" /> README
+  1345→                </CardTitle>
+  1346→              </CardHeader>
+  1347→              <CardContent>
+  1348→                <div className="prose prose-sm dark:prose-invert max-w-none">
+  1349→                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">{agent.readme}</div>
+  1350→                </div>
+  1351→              </CardContent>
+  1352→            </Card>
+  1353→          </TabsContent>
+  1354→        )}
+  1355→
+  1356→        {/* Dependencies Tab */}
+  1357→        <TabsContent value="dependencies">
+  1358→          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  1359→            {/* Tools */}
+  1360→            <Card className="rounded-xl">
+  1361→              <CardHeader>
+  1362→                <CardTitle className="text-base flex items-center gap-2">
+  1363→                  <Settings className="h-4 w-4" /> Tools ({agent.tools?.length || 0})
+  1364→                </CardTitle>
+  1365→              </CardHeader>
+  1366→              <CardContent>
+  1367→                {agent.tools && agent.tools.length > 0 ? (
+  1368→                  <div className="space-y-2">
+  1369→                    {agent.tools.map(tool => (
+  1370→                      <div key={tool} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+  1371→                        <div className={`h-6 w-6 rounded-md bg-gradient-to-br ${fwStyle.gradient} flex items-center justify-center shrink-0`}>
+  1372→                          <Zap className="h-3 w-3 text-white" />
+  1373→                        </div>
+  1374→                        <span className="text-sm font-medium">{tool}</span>
+  1375→                      </div>
+  1376→                    ))}
+  1377→                  </div>
+  1378→                ) : (
+  1379→                  <p className="text-sm text-muted-foreground">No tools specified</p>
+  1380→                )}
+  1381→              </CardContent>
+  1382→            </Card>
+  1383→
+  1384→            {/* Models */}
+  1385→            <Card className="rounded-xl">
+  1386→              <CardHeader>
+  1387→                <CardTitle className="text-base flex items-center gap-2">
+  1388→                  <Brain className="h-4 w-4" /> AI Models ({agent.models?.length || 0})
+  1389→                </CardTitle>
+  1390→              </CardHeader>
+  1391→              <CardContent>
+  1392→                {agent.models && agent.models.length > 0 ? (
+  1393→                  <div className="space-y-2">
+  1394→                    {agent.models.map(model => (
+  1395→                      <div key={model} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+  1396→                        <div className="h-6 w-6 rounded-md bg-violet-500 flex items-center justify-center shrink-0">
+  1397→                          <Sparkles className="h-3 w-3 text-white" />
+  1398→                        </div>
+  1399→                        <span className="text-sm font-mono">{model}</span>
+  1400→                      </div>
+  1401→                    ))}
+  1402→                  </div>
+  1403→                ) : (
+  1404→                  <p className="text-sm text-muted-foreground">No models specified</p>
+  1405→                )}
+  1406→              </CardContent>
+  1407→            </Card>
+  1408→
+  1409→            {/* Framework */}
+  1410→            <Card className="rounded-xl">
+  1411→              <CardHeader>
+  1412→                <CardTitle className="text-base">Framework</CardTitle>
+  1413→              </CardHeader>
+  1414→              <CardContent>
+  1415→                <div className={`p-4 rounded-lg ${fwStyle.bg} border ${fwStyle.border}`}>
+  1416→                  <p className={`font-bold text-lg ${fwStyle.text}`}>{agent.framework || 'N/A'}</p>
+  1417→                  <p className="text-sm text-muted-foreground mt-1">
+  1418→                    {agent.framework === 'LangGraph' ? 'Build stateful, multi-actor applications with LLMs using graph-based workflows' :
+  1419→                     agent.framework === 'CrewAI' ? 'Orchestrate role-playing, autonomous AI agents that work together as a crew' :
+  1420→                     agent.framework === 'AutoGen' ? 'Enable next-gen LLM applications with multi-agent conversations' :
+  1421→                     agent.framework === 'Agno' ? 'Build high-performance AI agents with minimal code and maximum speed' :
+  1422→                     agent.framework === 'LlamaIndex' ? 'Connect custom data sources to large language models with RAG' : 'AI agent framework'}
+  1423→                  </p>
+  1424→                </div>
+  1425→              </CardContent>
+  1426→            </Card>
+  1427→
+  1428→            {/* Language */}
+  1429→            <Card className="rounded-xl">
+  1430→              <CardHeader>
+  1431→                <CardTitle className="text-base">Language & Runtime</CardTitle>
+  1432→              </CardHeader>
+  1433→              <CardContent>
+  1434→                <div className="space-y-3 text-sm">
+  1435→                  <div className="flex justify-between items-center">
+  1436→                    <span className="text-muted-foreground">Language</span>
+  1437→                    <Badge variant="outline" className="font-mono">{agent.language || 'Python'}</Badge>
+  1438→                  </div>
+  1439→                  <Separator />
+  1440→                  <div className="flex justify-between items-center">
+  1441→                    <span className="text-muted-foreground">LLM Provider</span>
+  1442→                    <span className="font-medium">{agent.llm || 'OpenAI'}</span>
+  1443→                  </div>
+  1444→                  <Separator />
+  1445→                  <div className="flex justify-between items-center">
+  1446→                    <span className="text-muted-foreground">Source</span>
+  1447→                    <Badge variant="secondary" className="text-[10px]">Knowledge Base</Badge>
+  1448→                  </div>
+  1449→                </div>
+  1450→              </CardContent>
+  1451→            </Card>
+  1452→          </div>
+  1453→        </TabsContent>
+  1454→      </Tabs>
+  1455→
+  1456→      {/* Back to browse */}
+  1457→      <div className="mt-8 pt-6 border-t">
+  1458→        <Button variant="outline" onClick={() => router.push('/browse')} className="rounded-xl">
+  1459→          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Browse
+  1460→        </Button>
+  1461→      </div>
+  1462→    </div>
+  1463→  )
+  1464→}
+  1465→

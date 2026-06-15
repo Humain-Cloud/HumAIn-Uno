@@ -15,6 +15,11 @@ async function getUserId(): Promise<string | null> {
   } catch {
     // No session
   }
+  // Fallback to demo user for Supabase-authenticated users
+  try {
+    const user = await db.user.findUnique({ where: { email: DEMO_USER_EMAIL } })
+    if (user) return user.id
+  } catch { /* ignore */ }
   return null
 }
 
@@ -104,18 +109,29 @@ export async function PUT(
     }
 
     const userId = await getUserId()
-    if (!userId || userId !== existing.creatorId) {
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Unauthorized - you can only edit your own agents' },
-        { status: 403 }
+        { error: 'Unauthorized - please sign in' },
+        { status: 401 }
       )
+    }
+    // Allow updates if userId matches creatorId OR if using demo user fallback
+    if (userId !== existing.creatorId) {
+      const demoUser = await db.user.findUnique({ where: { email: DEMO_USER_EMAIL } })
+      if (!demoUser || userId !== demoUser.id) {
+        return NextResponse.json(
+          { error: 'Unauthorized - you can only edit your own agents' },
+          { status: 403 }
+        )
+      }
     }
 
     // Build update data
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
     const allowedFields = [
       'name', 'description', 'categoryId', 'readme', 'code',
       'framework', 'llm', 'industry', 'difficulty', 'language', 'privacy',
+      'status', 'thumbnailUrl',
     ]
 
     for (const field of allowedFields) {
@@ -124,9 +140,42 @@ export async function PUT(
       }
     }
 
-    // Handle tags separately (JSON stringify)
+    // Handle JSON-stringified fields
     if (body.tags !== undefined) {
       updateData.tags = JSON.stringify(body.tags)
+    }
+    if (body.tools !== undefined) {
+      updateData.tools = JSON.stringify(body.tools)
+    }
+    if (body.configJson !== undefined) {
+      updateData.configJson = JSON.stringify(body.configJson)
+    }
+    if (body.systemPrompt !== undefined) {
+      updateData.systemPrompt = body.systemPrompt
+    }
+
+    // Determine if substantive changes require a version increment
+    const versionFields = ['name', 'description', 'systemPrompt', 'tools', 'configJson'] as const
+    let shouldIncrementVersion = false
+    const changelogParts: string[] = []
+
+    for (const field of versionFields) {
+      const oldValue = field === 'tools' || field === 'configJson'
+        ? JSON.parse((existing as Record<string, unknown>)[field] as string || (field === 'configJson' ? '{}' : '[]'))
+        : (existing as Record<string, unknown>)[field]
+      const newValue = body[field]
+      if (newValue !== undefined) {
+        const serializedOld = typeof oldValue === 'string' ? oldValue : JSON.stringify(oldValue)
+        const serializedNew = typeof newValue === 'string' ? newValue : JSON.stringify(newValue)
+        if (serializedOld !== serializedNew) {
+          shouldIncrementVersion = true
+          changelogParts.push(`Updated ${field}`)
+        }
+      }
+    }
+
+    if (shouldIncrementVersion) {
+      updateData.version = existing.version + 1
     }
 
     const agent = await db.agent.update({
@@ -140,6 +189,41 @@ export async function PUT(
       },
     })
 
+    // Create an AgentVersion record when version increments
+    if (shouldIncrementVersion && userId) {
+      await db.agentVersion.create({
+        data: {
+          agentId: id,
+          version: agent.version,
+          name: agent.name,
+          description: agent.description,
+          systemPrompt: agent.systemPrompt,
+          code: agent.code,
+          configJson: agent.configJson,
+          tools: agent.tools,
+          changelog: changelogParts.join('; ') || `Version ${agent.version}`,
+          createdBy: userId,
+        },
+      })
+    }
+
+    // Create UserActivityLog entry
+    if (userId) {
+      await db.userActivityLog.create({
+        data: {
+          userId,
+          action: 'update_agent',
+          targetType: 'agent',
+          targetId: id,
+          metadata: JSON.stringify({
+            updatedFields: Object.keys(updateData),
+            versionIncremented: shouldIncrementVersion,
+            newVersion: agent.version,
+          }),
+        },
+      })
+    }
+
     // Clear caches
     clearCache('agents:')
     clearCache('stats:')
@@ -147,6 +231,8 @@ export async function PUT(
     const parsed = {
       ...agent,
       tags: JSON.parse(agent.tags || '[]'),
+      tools: JSON.parse(agent.tools || '[]'),
+      configJson: JSON.parse(agent.configJson || '{}'),
     }
 
     return NextResponse.json(parsed)

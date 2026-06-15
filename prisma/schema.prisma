@@ -87,7 +87,7 @@ model Agent {
   creatorId   String
   creator     User     @relation("UserAgents", fields: [creatorId], references: [id])
   privacy     String   @default("PRIVATE") // "PRIVATE" | "PUBLIC" | "UNLISTED"
-  source      String?  // "knowledge_base" | "fork" | "scratch"
+  source      String?  // "knowledge_base" | "fork" | "scratch" | "template" | "ai"
   parentId    String?  // for forks
   parent      Agent?   @relation("ForkedFrom", fields: [parentId], references: [id])
   children    Agent[]  @relation("ForkedFrom")
@@ -100,10 +100,29 @@ model Agent {
   industry    String?  // healthcare, finance, etc.
   difficulty  String?  // beginner, intermediate, advanced
   language    String?  // python, typescript, etc.
-  starredBy   Star[]
-  comments    Comment[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  // ─── Lifecycle & Workspace Fields ──────────────────────────────
+  status        String  @default("draft")  // "draft" | "active" | "testing" | "deployed" | "archived"
+  healthScore   Int     @default(0)        // 0-100 health score
+  systemPrompt  String? // system prompt / instruction
+  tools         String  @default("[]")     // JSON array of tool names
+  configJson    String  @default("{}")     // JSON object for agent-specific config
+  version       Int     @default(1)        // version counter
+  thumbnailUrl  String? // optional thumbnail/icon URL
+  deployUrl     String? // deployment endpoint URL if deployed
+  lastTestedAt  DateTime?
+  lastDeployedAt DateTime?
+  totalRequests Int     @default(0)        // total API calls/requests
+  avgLatencyMs  Int     @default(0)        // average response latency
+  errorRate     Float   @default(0)        // error rate 0-1
+
+  starredBy      Star[]
+  comments       Comment[]
+  versions       AgentVersion[]
+  deployments    AgentDeployment[]
+  analytics      AgentAnalytics[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([name])
   @@index([categoryId])
@@ -111,6 +130,8 @@ model Agent {
   @@index([framework])
   @@index([industry])
   @@index([privacy])
+  @@index([status])
+  @@index([healthScore])
 }
 
 model KnowledgeAgent {
@@ -254,4 +275,80 @@ model ModelSyncLog {
 
   @@index([source])
   @@index([startedAt])
+}
+
+// ─── Agent Workspace Models ────────────────────────────────────────
+
+model AgentVersion {
+  id          String   @id @default(cuid())
+  agentId     String
+  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  version     Int
+  name        String
+  description String
+  systemPrompt String?
+  code        String?
+  configJson  String   @default("{}")
+  tools       String   @default("[]")
+  changelog   String?  // what changed in this version
+  createdBy   String   // user ID
+  createdAt   DateTime @default(now())
+
+  @@unique([agentId, version])
+  @@index([agentId])
+  @@index([createdAt])
+}
+
+model AgentDeployment {
+  id           String   @id @default(cuid())
+  agentId      String
+  agent        Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  environment  String   @default("production") // "production" | "staging" | "development"
+  status       String   @default("pending") // "pending" | "running" | "stopped" | "failed"
+  deployUrl    String?
+  version      Int      @default(1)
+  configJson   String   @default("{}")
+  logs         String   @default("[]") // JSON array of log entries
+  deployedBy   String   // user ID
+  deployedAt   DateTime @default(now())
+  stoppedAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([agentId])
+  @@index([status])
+  @@index([environment])
+}
+
+model AgentAnalytics {
+  id          String   @id @default(cuid())
+  agentId     String
+  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  date        DateTime // the date this record is for
+  requests    Int      @default(0)
+  errors      Int      @default(0)
+  avgLatencyMs Int     @default(0)
+  tokensUsed  Int      @default(0)
+  costUsd     Float    @default(0)
+  uniqueUsers Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([agentId, date])
+  @@index([agentId])
+  @@index([date])
+}
+
+model UserActivityLog {
+  id          String   @id @default(cuid())
+  userId      String
+  action      String   // "create_agent" | "update_agent" | "deploy_agent" | "test_agent" | "delete_agent" | "bookmark" | "star" | etc.
+  targetType  String   // "agent" | "model" | "knowledge" | etc.
+  targetId    String?  // ID of the target entity
+  metadata    String   @default("{}") // JSON with extra info
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
 }

@@ -1,0 +1,772 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useEffect, useState, useMemo, useCallback } from 'react'
+     4→     4→import { useRouter } from 'next/navigation'
+     5→     5→import { useAuth } from '@/components/auth/auth-provider'
+     6→     6→import { useAppStore } from '@/lib/store'
+     7→     7→import { api } from '@/lib/api-client'
+     8→     8→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+     9→     9→import { Button } from '@/components/ui/button'
+    10→    10→import { Badge } from '@/components/ui/badge'
+    11→    11→import { Skeleton } from '@/components/ui/skeleton'
+    12→    12→import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    13→    13→import {
+    14→    14→  Avatar,
+    15→    15→  AvatarFallback,
+    16→    16→  AvatarImage,
+    17→    17→} from '@/components/ui/avatar'
+    18→    18→import {
+    19→    19→  DropdownMenu,
+    20→    20→  DropdownMenuContent,
+    21→    21→  DropdownMenuItem,
+    22→    22→  DropdownMenuTrigger,
+    23→    23→} from '@/components/ui/dropdown-menu'
+    24→    24→import {
+    25→    25→  Bot,
+    26→    26→  Globe,
+    27→    27→  Heart,
+    28→    28→  Star,
+    29→    29→  Eye,
+    30→    30→  Clock,
+    31→    31→  PlusCircle,
+    32→    32→  Compass,
+    33→    33→  Library,
+    34→    34→  Cpu,
+    35→    35→  Loader2,
+    36→    36→  Trash2,
+    37→    37→  ExternalLink,
+    38→    38→  ArrowUpRight,
+    39→    39→  LayoutDashboard,
+    40→    40→  FolderOpen,
+    41→    41→  Settings,
+    42→    42→  RefreshCw,
+    43→    43→  TrendingUp,
+    44→    44→  Users,
+    45→    45→  BookOpen,
+    46→    46→  Sparkles,
+    47→    47→  MoreVertical,
+    48→    48→  Bookmark,
+    49→    49→} from 'lucide-react'
+    50→    50→import { motion, AnimatePresence } from 'framer-motion'
+    51→    51→
+    52→    52→interface AgentItem {
+    53→    53→  id: string
+    54→    54→  name: string
+    55→    55→  description: string
+    56→    56→  privacy: string
+    57→    57→  framework: string | null
+    58→    58→  llm: string | null
+    59→    59→  industry: string | null
+    60→    60→  difficulty: string | null
+    61→    61→  tags: string[]
+    62→    62→  stars: number
+    63→    63→  createdAt: string
+    64→    64→  category?: { name: string }
+    65→    65→  creator?: { name: string }
+    66→    66→  _count?: { starredBy: number; comments: number }
+    67→    67→}
+    68→    68→
+    69→    69→interface ActivityItem {
+    70→    70→  id: string
+    71→    71→  type: 'created' | 'starred' | 'commented' | 'updated'
+    72→    72→  message: string
+    73→    73→  timestamp: string
+    74→    74→  agentName?: string
+    75→    75→  agentId?: string
+    76→    76→}
+    77→    77→
+    78→    78→interface BookmarkedModel {
+    79→    79→  id: string
+    80→    80→  model: {
+    81→    81→    id: string
+    82→    82→    name: string
+    83→    83→    organization: string
+    84→    84→    bestRating: number
+    85→    85→    bestRank: number
+    86→    86→    outputPricePerMillion: number | null
+    87→    87→  }
+    88→    88→  note?: string
+    89→    89→  createdAt: string
+    90→    90→}
+    91→    91→
+    92→    92→const frameworkBadge: Record<string, string> = {
+    93→    93→  langgraph: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+    94→    94→  crewai: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+    95→    95→  autogen: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
+    96→    96→  agno: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
+    97→    97→  llamaindex: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
+    98→    98→}
+    99→    99→
+   100→   100→const difficultyBadge: Record<string, string> = {
+   101→   101→  beginner: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+   102→   102→  intermediate: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+   103→   103→  advanced: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
+   104→   104→}
+   105→   105→
+   106→   106→export function DashboardPage() {
+   107→   107→  const router = useRouter()
+   108→   108→  const { user, profile, loading: authLoading, refreshProfile } = useAuth()
+   109→   109→  const { setShowAuthModal } = useAppStore()
+   110→   110→  const isAuthenticated = !!user
+   111→   111→
+   112→   112→  const [activeTab, setActiveTab] = useState('overview')
+   113→   113→  const [myAgents, setMyAgents] = useState<AgentItem[]>([])
+   114→   114→  const [agentsLoading, setAgentsLoading] = useState(true)
+   115→   115→  const [bookmarkedModels, setBookmarkedModels] = useState<BookmarkedModel[]>([])
+   116→   116→  const [modelsLoading, setModelsLoading] = useState(false)
+   117→   117→  const [privacyFilter, setPrivacyFilter] = useState<'all' | 'PUBLIC' | 'PRIVATE' | 'UNLISTED'>('all')
+   118→   118→  const [profileRefreshing, setProfileRefreshing] = useState(false)
+   119→   119→
+   120→   120→  // Derived user info
+   121→   121→  const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'
+   122→   122→  const firstName = displayName.split(' ')[0]
+   123→   123→  const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url
+   124→   124→  const initials = displayName.slice(0, 2).toUpperCase()
+   125→   125→
+   126→   126→  // Redirect unauthenticated users
+   127→   127→  useEffect(() => {
+   128→   128→    if (!authLoading && !user) {
+   129→   129→      setShowAuthModal(true)
+   130→   130→    }
+   131→   131→  }, [authLoading, user, setShowAuthModal])
+   132→   132→
+   133→   133→  // Load user agents
+   134→   134→  useEffect(() => {
+   135→   135→    if (!isAuthenticated || !user) return
+   136→   136→    async function load() {
+   137→   137→      setAgentsLoading(true)
+   138→   138→      try {
+   139→   139→        const data: any = await api.agents.list({ creatorId: user.id, pageSize: 50 })
+   140→   140→        setMyAgents(data?.data || data || [])
+   141→   141→      } catch (err) {
+   142→   142→        console.error('Failed to load agents:', err)
+   143→   143→      } finally {
+   144→   144→        setAgentsLoading(false)
+   145→   145→      }
+   146→   146→    }
+   147→   147→    load()
+   148→   148→  }, [isAuthenticated, user])
+   149→   149→
+   150→   150→  // Load bookmarked models
+   151→   151→  useEffect(() => {
+   152→   152→    if (!isAuthenticated || !user) return
+   153→   153→    setModelsLoading(true)
+   154→   154→    fetch(`/api/llm-models/bookmark?userId=${user.id}`)
+   155→   155→      .then(res => res.json())
+   156→   156→      .then(data => {
+   157→   157→        setBookmarkedModels(data?.bookmarks || [])
+   158→   158→      })
+   159→   159→      .catch(console.error)
+   160→   160→      .finally(() => setModelsLoading(false))
+   161→   161→  }, [isAuthenticated, user])
+   162→   162→
+   163→   163→  // Stats
+   164→   164→  const totalStars = useMemo(() =>
+   165→   165→    myAgents.reduce((sum, a) => sum + (a.stars || a._count?.starredBy || 0), 0),
+   166→   166→    [myAgents]
+   167→   167→  )
+   168→   168→
+   169→   169→  // Generate activity from agents
+   170→   170→  const recentActivity: ActivityItem[] = useMemo(() =>
+   171→   171→    myAgents.slice(0, 5).map((agent, i) => ({
+   172→   172→      id: `activity-${i}`,
+   173→   173→      type: 'created' as const,
+   174→   174→      message: `Created "${agent.name}"`,
+   175→   175→      timestamp: agent.createdAt,
+   176→   176→      agentName: agent.name,
+   177→   177→      agentId: agent.id,
+   178→   178→    })),
+   179→   179→    [myAgents]
+   180→   180→  )
+   181→   181→
+   182→   182→  const filteredAgents = useMemo(() => {
+   183→   183→    if (privacyFilter === 'all') return myAgents
+   184→   184→    return myAgents.filter(a => a.privacy === privacyFilter)
+   185→   185→  }, [myAgents, privacyFilter])
+   186→   186→
+   187→   187→  const handleDeleteAgent = async (id: string) => {
+   188→   188→    if (!confirm('Are you sure you want to delete this agent?')) return
+   189→   189→    try {
+   190→   190→      await api.agents.delete(id)
+   191→   191→      setMyAgents(prev => prev.filter(a => a.id !== id))
+   192→   192→    } catch (err) {
+   193→   193→      console.error('Failed to delete agent:', err)
+   194→   194→    }
+   195→   195→  }
+   196→   196→
+   197→   197→  const handleRefreshProfile = async () => {
+   198→   198→    setProfileRefreshing(true)
+   199→   199→    try {
+   200→   200→      await refreshProfile()
+   201→   201→    } finally {
+   202→   202→      setProfileRefreshing(false)
+   203→   203→    }
+   204→   204→  }
+   205→   205→
+   206→   206→  // Format relative time
+   207→   207→  const formatRelativeTime = (dateStr: string) => {
+   208→   208→    const date = new Date(dateStr)
+   209→   209→    const now = new Date()
+   210→   210→    const diffMs = now.getTime() - date.getTime()
+   211→   211→    const diffMins = Math.floor(diffMs / 60000)
+   212→   212→    if (diffMins < 1) return 'Just now'
+   213→   213→    if (diffMins < 60) return `${diffMins}m ago`
+   214→   214→    const diffHours = Math.floor(diffMins / 60)
+   215→   215→    if (diffHours < 24) return `${diffHours}h ago`
+   216→   216→    const diffDays = Math.floor(diffHours / 24)
+   217→   217→    if (diffDays < 30) return `${diffDays}d ago`
+   218→   218→    return date.toLocaleDateString()
+   219→   219→  }
+   220→   220→
+   221→   221→  // Auth loading
+   222→   222→  if (authLoading) {
+   223→   223→    return (
+   224→   224→      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+   225→   225→        <div className="flex flex-col items-center gap-4">
+   226→   226→          <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+   227→   227→          <p className="text-sm text-muted-foreground">Loading your dashboard...</p>
+   228→   228→        </div>
+   229→   229→      </div>
+   230→   230→    )
+   231→   231→  }
+   232→   232→
+   233→   233→  // Not authenticated
+   234→   234→  if (!isAuthenticated) {
+   235→   235→    return (
+   236→   236→      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+   237→   237→        <div className="flex flex-col items-center gap-4 text-center">
+   238→   238→          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+   239→   239→            <LayoutDashboard className="h-8 w-8 text-white" />
+   240→   240→          </div>
+   241→   241→          <h2 className="text-2xl font-bold">Sign in to View Dashboard</h2>
+   242→   242→          <p className="text-muted-foreground max-w-md">
+   243→   243→            Your personalized dashboard shows your agents, bookmarks, and activity.
+   244→   244→          </p>
+   245→   245→          <Button
+   246→   246→            className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
+   247→   247→            onClick={() => setShowAuthModal(true)}
+   248→   248→          >
+   249→   249→            Sign In
+   250→   250→          </Button>
+   251→   251→        </div>
+   252→   252→      </div>
+   253→   253→    )
+   254→   254→  }
+   255→   255→
+   256→   256→  return (
+   257→   257→    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+   258→   258→      {/* Welcome Header */}
+   259→   259→      <motion.div
+   260→   260→        initial={{ opacity: 0, y: 20 }}
+   261→   261→        animate={{ opacity: 1, y: 0 }}
+   262→   262→        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 p-6 sm:p-8 mb-6 text-white"
+   263→   263→      >
+   264→   264→        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
+   265→   265→        <div className="relative z-10 flex items-center gap-4">
+   266→   266→          <Avatar className="h-14 w-14 border-2 border-white/30 shadow-lg">
+   267→   267→            {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
+   268→   268→            <AvatarFallback className="bg-white/20 text-white text-lg font-bold">
+   269→   269→              {initials}
+   270→   270→            </AvatarFallback>
+   271→   271→          </Avatar>
+   272→   272→          <div className="flex-1">
+   273→   273→            <div className="flex items-center gap-2 mb-0.5">
+   274→   274→              <Badge className="bg-white/20 text-white border-white/30 text-xs">
+   275→   275→                <Sparkles className="h-3 w-3 mr-1" /> Welcome back!
+   276→   276→              </Badge>
+   277→   277→            </div>
+   278→   278→            <h1 className="text-2xl sm:text-3xl font-extrabold">Hello, {firstName}!</h1>
+   279→   279→            <p className="text-white/70 text-sm mt-1">
+   280→   280→              {myAgents.length > 0
+   281→   281→                ? `You have ${myAgents.length} agent${myAgents.length !== 1 ? 's' : ''} — keep building!`
+   282→   282→                : 'Ready to create your first AI agent?'}
+   283→   283→            </p>
+   284→   284→          </div>
+   285→   285→          <Button
+   286→   286→            className="bg-white text-emerald-700 hover:bg-white/90 font-semibold shadow-lg hidden sm:flex rounded-xl"
+   287→   287→            onClick={() => router.push('/create')}
+   288→   288→          >
+   289→   289→            <PlusCircle className="h-4 w-4 mr-2" /> Create Agent
+   290→   290→          </Button>
+   291→   291→        </div>
+   292→   292→        <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-xl" />
+   293→   293→        <div className="absolute -right-4 -bottom-8 h-24 w-24 rounded-full bg-white/5 blur-xl" />
+   294→   294→      </motion.div>
+   295→   295→
+   296→   296→      {/* Stats Cards */}
+   297→   297→      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+   298→   298→        {[
+   299→   299→          { label: 'My Agents', value: myAgents.length, icon: Bot, gradient: 'from-emerald-500 to-teal-600', iconBg: 'bg-emerald-100 dark:bg-emerald-900/30', iconColor: 'text-emerald-600' },
+   300→   300→          { label: 'Total Stars', value: totalStars, icon: Star, gradient: 'from-amber-500 to-orange-600', iconBg: 'bg-amber-100 dark:bg-amber-900/30', iconColor: 'text-amber-600' },
+   301→   301→          { label: 'Public Agents', value: myAgents.filter(a => a.privacy === 'PUBLIC').length, icon: Globe, gradient: 'from-cyan-500 to-blue-600', iconBg: 'bg-cyan-100 dark:bg-cyan-900/30', iconColor: 'text-cyan-600' },
+   302→   302→          { label: 'Bookmarked Models', value: bookmarkedModels.length, icon: Bookmark, gradient: 'from-rose-500 to-pink-600', iconBg: 'bg-rose-100 dark:bg-rose-900/30', iconColor: 'text-rose-600' },
+   303→   303→        ].map((stat, i) => (
+   304→   304→          <motion.div
+   305→   305→            key={stat.label}
+   306→   306→            initial={{ opacity: 0, y: 15 }}
+   307→   307→            animate={{ opacity: 1, y: 0 }}
+   308→   308→            transition={{ delay: i * 0.08 }}
+   309→   309→          >
+   310→   310→            <Card className="overflow-hidden rounded-xl">
+   311→   311→              <div className={`h-1.5 bg-gradient-to-r ${stat.gradient}`} />
+   312→   312→              <CardContent className="p-4">
+   313→   313→                <div className="flex items-center gap-3">
+   314→   314→                  <div className={`h-10 w-10 rounded-lg ${stat.iconBg} flex items-center justify-center`}>
+   315→   315→                    <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
+   316→   316→                  </div>
+   317→   317→                  <div>
+   318→   318→                    <div className="text-2xl font-bold tracking-tight">{stat.value}</div>
+   319→   319→                    <div className="text-xs text-muted-foreground">{stat.label}</div>
+   320→   320→                  </div>
+   321→   321→                </div>
+   322→   322→              </CardContent>
+   323→   323→            </Card>
+   324→   324→          </motion.div>
+   325→   325→        ))}
+   326→   326→      </div>
+   327→   327→
+   328→   328→      {/* Quick Actions */}
+   329→   329→      <div className="mb-6">
+   330→   330→        <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Quick Actions</h3>
+   331→   331→        <div className="flex flex-wrap gap-3">
+   332→   332→          <Button
+   333→   333→            className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md rounded-xl"
+   334→   334→            onClick={() => router.push('/create')}
+   335→   335→          >
+   336→   336→            <PlusCircle className="h-4 w-4 mr-2" /> Create New Agent
+   337→   337→          </Button>
+   338→   338→          <Button variant="outline" className="rounded-xl hover:border-emerald-300 dark:hover:border-emerald-700 transition-all" onClick={() => router.push('/knowledge-base')}>
+   339→   339→            <Library className="h-4 w-4 mr-2" /> Browse Knowledge Base
+   340→   340→          </Button>
+   341→   341→          <Button variant="outline" className="rounded-xl hover:border-emerald-300 dark:hover:border-emerald-700 transition-all" onClick={() => router.push('/models')}>
+   342→   342→            <Cpu className="h-4 w-4 mr-2" /> Explore LLM Models
+   343→   343→          </Button>
+   344→   344→          <Button variant="outline" className="rounded-xl hover:border-emerald-300 dark:hover:border-emerald-700 transition-all" onClick={() => router.push('/browse')}>
+   345→   345→            <Compass className="h-4 w-4 mr-2" /> Browse Agents
+   346→   346→          </Button>
+   347→   347→        </div>
+   348→   348→      </div>
+   349→   349→
+   350→   350→      {/* Tab Navigation */}
+   351→   351→      <Tabs value={activeTab} onValueChange={setActiveTab}>
+   352→   352→        <TabsList className="bg-gray-100 dark:bg-gray-800 mb-6 w-full sm:w-auto">
+   353→   353→          <TabsTrigger value="overview" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:shadow-sm">
+   354→   354→            <LayoutDashboard className="h-4 w-4 mr-1.5" /> Overview
+   355→   355→          </TabsTrigger>
+   356→   356→          <TabsTrigger value="my-agents" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:shadow-sm">
+   357→   357→            <Bot className="h-4 w-4 mr-1.5" /> My Agents
+   358→   358→          </TabsTrigger>
+   359→   359→          <TabsTrigger value="bookmarks" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:shadow-sm">
+   360→   360→            <Bookmark className="h-4 w-4 mr-1.5" /> Bookmarks
+   361→   361→          </TabsTrigger>
+   362→   362→        </TabsList>
+   363→   363→
+   364→   364→        {/* OVERVIEW TAB */}
+   365→   365→        <AnimatePresence mode="wait">
+   366→   366→          {activeTab === 'overview' && (
+   367→   367→            <motion.div
+   368→   368→              key="overview"
+   369→   369→              initial={{ opacity: 0, x: -10 }}
+   370→   370→              animate={{ opacity: 1, x: 0 }}
+   371→   371→              exit={{ opacity: 0, x: 10 }}
+   372→   372→              transition={{ duration: 0.2 }}
+   373→   373→            >
+   374→   374→              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   375→   375→                {/* Recent Activity */}
+   376→   376→                <div className="lg:col-span-2">
+   377→   377→                  <Card className="rounded-2xl">
+   378→   378→                    <CardHeader className="pb-3">
+   379→   379→                      <div className="flex items-center justify-between">
+   380→   380→                        <CardTitle className="text-lg flex items-center gap-2">
+   381→   381→                          <Clock className="h-5 w-5 text-muted-foreground" /> Recent Activity
+   382→   382→                        </CardTitle>
+   383→   383→                        <Button variant="ghost" size="sm" onClick={handleRefreshProfile} disabled={profileRefreshing}>
+   384→   384→                          <RefreshCw className={`h-4 w-4 ${profileRefreshing ? 'animate-spin' : ''}`} />
+   385→   385→                        </Button>
+   386→   386→                      </div>
+   387→   387→                    </CardHeader>
+   388→   388→                    <CardContent className="pt-0">
+   389→   389→                      {recentActivity.length === 0 ? (
+   390→   390→                        <div className="text-center py-8">
+   391→   391→                          <Clock className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+   392→   392→                          <p className="text-sm text-muted-foreground">No recent activity yet</p>
+   393→   393→                          <Button
+   394→   394→                            variant="link"
+   395→   395→                            className="text-emerald-600"
+   396→   396→                            onClick={() => router.push('/create')}
+   397→   397→                          >
+   398→   398→                            Create your first agent
+   399→   399→                          </Button>
+   400→   400→                        </div>
+   401→   401→                      ) : (
+   402→   402→                        <div className="space-y-4">
+   403→   403→                          {recentActivity.map((activity, i) => (
+   404→   404→                            <motion.div
+   405→   405→                              key={activity.id}
+   406→   406→                              initial={{ opacity: 0, x: -10 }}
+   407→   407→                              animate={{ opacity: 1, x: 0 }}
+   408→   408→                              transition={{ delay: i * 0.05 }}
+   409→   409→                              className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+   410→   410→                            >
+   411→   411→                              <div className="h-9 w-9 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+   412→   412→                                <Bot className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+   413→   413→                              </div>
+   414→   414→                              <div className="flex-1 min-w-0">
+   415→   415→                                <p className="text-sm font-medium truncate">{activity.message}</p>
+   416→   416→                                <p className="text-xs text-muted-foreground">{formatRelativeTime(activity.timestamp)}</p>
+   417→   417→                              </div>
+   418→   418→                              {activity.agentId && (
+   419→   419→                                <Button
+   420→   420→                                  variant="ghost"
+   421→   421→                                  size="icon"
+   422→   422→                                  className="h-8 w-8 shrink-0"
+   423→   423→                                  onClick={() => router.push(`/agents/${activity.agentId}`)}
+   424→   424→                                >
+   425→   425→                                  <ExternalLink className="h-3.5 w-3.5" />
+   426→   426→                                </Button>
+   427→   427→                              )}
+   428→   428→                            </motion.div>
+   429→   429→                          ))}
+   430→   430→                        </div>
+   431→   431→                      )}
+   432→   432→                    </CardContent>
+   433→   433→                  </Card>
+   434→   434→                </div>
+   435→   435→
+   436→   436→                {/* Bookmarked Models Sidebar */}
+   437→   437→                <div>
+   438→   438→                  <Card className="rounded-2xl">
+   439→   439→                    <CardHeader className="pb-3">
+   440→   440→                      <div className="flex items-center justify-between">
+   441→   441→                        <CardTitle className="text-lg flex items-center gap-2">
+   442→   442→                          <Bookmark className="h-5 w-5 text-rose-500" /> Saved Models
+   443→   443→                        </CardTitle>
+   444→   444→                        <Button variant="ghost" size="sm" onClick={() => router.push('/models')}>
+   445→   445→                          View All <ArrowUpRight className="h-3 w-3 ml-1" />
+   446→   446→                        </Button>
+   447→   447→                      </div>
+   448→   448→                    </CardHeader>
+   449→   449→                    <CardContent className="pt-0">
+   450→   450→                      {modelsLoading ? (
+   451→   451→                        <div className="space-y-3">
+   452→   452→                          {Array.from({ length: 3 }).map((_, i) => (
+   453→   453→                            <Skeleton key={i} className="h-16 rounded-lg" />
+   454→   454→                          ))}
+   455→   455→                        </div>
+   456→   456→                      ) : bookmarkedModels.length === 0 ? (
+   457→   457→                        <div className="text-center py-6">
+   458→   458→                          <Cpu className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+   459→   459→                          <p className="text-xs text-muted-foreground">No bookmarked models</p>
+   460→   460→                          <Button
+   461→   461→                            variant="link"
+   462→   462→                            size="sm"
+   463→   463→                            className="text-emerald-600"
+   464→   464→                            onClick={() => router.push('/models')}
+   465→   465→                          >
+   466→   466→                            Explore models
+   467→   467→                          </Button>
+   468→   468→                        </div>
+   469→   469→                      ) : (
+   470→   470→                        <div className="space-y-3 max-h-64 overflow-y-auto">
+   471→   471→                          {bookmarkedModels.slice(0, 5).map((bm, i) => (
+   472→   472→                            <div
+   473→   473→                              key={bm.id}
+   474→   474→                              className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+   475→   475→                              onClick={() => router.push('/models')}
+   476→   476→                            >
+   477→   477→                              <div className="flex items-center justify-between mb-1">
+   478→   478→                                <p className="text-sm font-medium truncate">{bm.model.name}</p>
+   479→   479→                                <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">
+   480→   480→                                  #{bm.model.bestRank}
+   481→   481→                                </Badge>
+   482→   482→                              </div>
+   483→   483→                              <p className="text-xs text-muted-foreground">{bm.model.organization}</p>
+   484→   484→                            </div>
+   485→   485→                          ))}
+   486→   486→                        </div>
+   487→   487→                      )}
+   488→   488→                    </CardContent>
+   489→   489→                  </Card>
+   490→   490→                </div>
+   491→   491→              </div>
+   492→   492→
+   493→   493→              {/* My Agents Preview (recent 3) */}
+   494→   494→              {myAgents.length > 0 && (
+   495→   495→                <div className="mt-6">
+   496→   496→                  <div className="flex items-center justify-between mb-4">
+   497→   497→                    <h3 className="text-lg font-semibold">Recent Agents</h3>
+   498→   498→                    <Button variant="ghost" size="sm" onClick={() => setActiveTab('my-agents')}>
+   499→   499→                      View All <ArrowUpRight className="h-3 w-3 ml-1" />
+   500→   500→                    </Button>
+   501→   501→                  </div>
+   502→   502→                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   503→   503→                    {myAgents.slice(0, 3).map((agent, i) => (
+   504→   504→                      <motion.div
+   505→   505→                        key={agent.id}
+   506→   506→                        initial={{ opacity: 0, y: 20 }}
+   507→   507→                        animate={{ opacity: 1, y: 0 }}
+   508→   508→                        transition={{ delay: i * 0.05 }}
+   509→   509→                      >
+   510→   510→                        <Card
+   511→   511→                          className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 rounded-xl"
+   512→   512→                          onClick={() => router.push(`/agents/${agent.id}`)}
+   513→   513→                        >
+   514→   514→                          <CardContent className="p-4">
+   515→   515→                            <div className="flex items-start justify-between mb-2">
+   516→   516→                              <h4 className="font-semibold text-sm line-clamp-1">{agent.name}</h4>
+   517→   517→                              <Badge variant="outline" className="text-[10px] px-1.5 shrink-0 ml-2">
+   518→   518→                                {agent.privacy}
+   519→   519→                              </Badge>
+   520→   520→                            </div>
+   521→   521→                            <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{agent.description}</p>
+   522→   522→                            <div className="flex items-center gap-2 flex-wrap">
+   523→   523→                              {agent.framework && (
+   524→   524→                                <Badge className={`text-[10px] px-2 py-0.5 ${frameworkBadge[agent.framework.toLowerCase()] || 'bg-gray-100 text-gray-700'}`}>
+   525→   525→                                  {agent.framework}
+   526→   526→                                </Badge>
+   527→   527→                              )}
+   528→   528→                              {agent.difficulty && (
+   529→   529→                                <Badge className={`text-[10px] px-2 py-0.5 ${difficultyBadge[agent.difficulty] || ''}`}>
+   530→   530→                                  {agent.difficulty}
+   531→   531→                                </Badge>
+   532→   532→                              )}
+   533→   533→                            </div>
+   534→   534→                            <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+   535→   535→                              <span className="flex items-center gap-1">
+   536→   536→                                <Star className="h-3 w-3" /> {agent.stars || agent._count?.starredBy || 0}
+   537→   537→                              </span>
+   538→   538→                              <span className="flex items-center gap-1">
+   539→   539→                                <Clock className="h-3 w-3" /> {formatRelativeTime(agent.createdAt)}
+   540→   540→                              </span>
+   541→   541→                            </div>
+   542→   542→                          </CardContent>
+   543→   543→                        </Card>
+   544→   544→                      </motion.div>
+   545→   545→                    ))}
+   546→   546→                  </div>
+   547→   547→                </div>
+   548→   548→              )}
+   549→   549→            </motion.div>
+   550→   550→          )}
+   551→   551→        </AnimatePresence>
+   552→   552→
+   553→   553→        {/* MY AGENTS TAB */}
+   554→   554→        <AnimatePresence mode="wait">
+   555→   555→          {activeTab === 'my-agents' && (
+   556→   556→            <motion.div
+   557→   557→              key="my-agents"
+   558→   558→              initial={{ opacity: 0, x: -10 }}
+   559→   559→              animate={{ opacity: 1, x: 0 }}
+   560→   560→              exit={{ opacity: 0, x: 10 }}
+   561→   561→              transition={{ duration: 0.2 }}
+   562→   562→            >
+   563→   563→              {/* Privacy Filter */}
+   564→   564→              <div className="flex items-center gap-2 mb-4 flex-wrap">
+   565→   565→                {[
+   566→   566→                  { key: 'all' as const, label: 'All', count: myAgents.length },
+   567→   567→                  { key: 'PUBLIC' as const, label: 'Public', count: myAgents.filter(a => a.privacy === 'PUBLIC').length },
+   568→   568→                  { key: 'PRIVATE' as const, label: 'Private', count: myAgents.filter(a => a.privacy === 'PRIVATE').length },
+   569→   569→                  { key: 'UNLISTED' as const, label: 'Unlisted', count: myAgents.filter(a => a.privacy === 'UNLISTED').length },
+   570→   570→                ].map(filter => (
+   571→   571→                  <Button
+   572→   572→                    key={filter.key}
+   573→   573→                    variant={privacyFilter === filter.key ? 'default' : 'outline'}
+   574→   574→                    size="sm"
+   575→   575→                    className={`rounded-lg ${privacyFilter === filter.key ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+   576→   576→                    onClick={() => setPrivacyFilter(filter.key)}
+   577→   577→                  >
+   578→   578→                    {filter.label}
+   579→   579→                    <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-[10px]">{filter.count}</Badge>
+   580→   580→                  </Button>
+   581→   581→                ))}
+   582→   582→              </div>
+   583→   583→
+   584→   584→              {agentsLoading ? (
+   585→   585→                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   586→   586→                  {Array.from({ length: 6 }).map((_, i) => (
+   587→   587→                    <Skeleton key={i} className="h-44 rounded-xl" />
+   588→   588→                  ))}
+   589→   589→                </div>
+   590→   590→              ) : filteredAgents.length === 0 ? (
+   591→   591→                <div className="text-center py-16">
+   592→   592→                  <Bot className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+   593→   593→                  <h3 className="text-lg font-semibold">
+   594→   594→                    {myAgents.length === 0 ? 'No agents yet' : 'No agents match this filter'}
+   595→   595→                  </h3>
+   596→   596→                  <p className="text-sm text-muted-foreground mt-1 mb-4">
+   597→   597→                    {myAgents.length === 0 ? 'Create your first AI agent to get started.' : 'Try a different filter.'}
+   598→   598→                  </p>
+   599→   599→                  {myAgents.length === 0 && (
+   600→   600→                    <Button
+   601→   601→                      className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
+   602→   602→                      onClick={() => router.push('/create')}
+   603→   603→                    >
+   604→   604→                      <PlusCircle className="h-4 w-4 mr-2" /> Create Agent
+   605→   605→                    </Button>
+   606→   606→                  )}
+   607→   607→                </div>
+   608→   608→              ) : (
+   609→   609→                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   610→   610→                  {filteredAgents.map((agent, i) => (
+   611→   611→                    <motion.div
+   612→   612→                      key={agent.id}
+   613→   613→                      initial={{ opacity: 0, y: 20 }}
+   614→   614→                      animate={{ opacity: 1, y: 0 }}
+   615→   615→                      transition={{ delay: i * 0.05 }}
+   616→   616→                      className="relative group"
+   617→   617→                    >
+   618→   618→                      <Card
+   619→   619→                        className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 rounded-xl h-full"
+   620→   620→                        onClick={() => router.push(`/agents/${agent.id}`)}
+   621→   621→                      >
+   622→   622→                        <CardContent className="p-4">
+   623→   623→                          <div className="flex items-start justify-between mb-2">
+   624→   624→                            <h4 className="font-semibold text-sm line-clamp-1">{agent.name}</h4>
+   625→   625→                            <Badge variant="outline" className="text-[10px] px-1.5 shrink-0 ml-2">
+   626→   626→                              {agent.privacy}
+   627→   627→                            </Badge>
+   628→   628→                          </div>
+   629→   629→                          <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{agent.description}</p>
+   630→   630→                          <div className="flex items-center gap-2 flex-wrap mb-3">
+   631→   631→                            {agent.framework && (
+   632→   632→                              <Badge className={`text-[10px] px-2 py-0.5 ${frameworkBadge[agent.framework.toLowerCase()] || 'bg-gray-100 text-gray-700'}`}>
+   633→   633→                                {agent.framework}
+   634→   634→                              </Badge>
+   635→   635→                            )}
+   636→   636→                            {agent.difficulty && (
+   637→   637→                              <Badge className={`text-[10px] px-2 py-0.5 ${difficultyBadge[agent.difficulty] || ''}`}>
+   638→   638→                                {agent.difficulty}
+   639→   639→                              </Badge>
+   640→   640→                            )}
+   641→   641→                            {agent.llm && (
+   642→   642→                              <Badge variant="outline" className="text-[10px] px-2 py-0.5">{agent.llm}</Badge>
+   643→   643→                            )}
+   644→   644→                          </div>
+   645→   645→                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+   646→   646→                            <div className="flex items-center gap-3">
+   647→   647→                              <span className="flex items-center gap-1">
+   648→   648→                                <Star className="h-3 w-3" /> {agent.stars || agent._count?.starredBy || 0}
+   649→   649→                              </span>
+   650→   650→                              <span className="flex items-center gap-1">
+   651→   651→                                <Eye className="h-3 w-3" /> {agent._count?.comments || 0}
+   652→   652→                              </span>
+   653→   653→                            </div>
+   654→   654→                            <span>{formatRelativeTime(agent.createdAt)}</span>
+   655→   655→                          </div>
+   656→   656→                        </CardContent>
+   657→   657→                      </Card>
+   658→   658→                      {/* Delete button */}
+   659→   659→                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+   660→   660→                        <DropdownMenu>
+   661→   661→                          <DropdownMenuTrigger asChild>
+   662→   662→                            <Button
+   663→   663→                              variant="secondary"
+   664→   664→                              size="icon"
+   665→   665→                              className="h-7 w-7 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm"
+   666→   666→                              onClick={e => e.stopPropagation()}
+   667→   667→                            >
+   668→   668→                              <MoreVertical className="h-3 w-3" />
+   669→   669→                            </Button>
+   670→   670→                          </DropdownMenuTrigger>
+   671→   671→                          <DropdownMenuContent align="end">
+   672→   672→                            <DropdownMenuItem onClick={e => { e.stopPropagation(); router.push(`/agents/${agent.id}`) }}>
+   673→   673→                              <Eye className="h-4 w-4 mr-2" /> View
+   674→   674→                            </DropdownMenuItem>
+   675→   675→                            <DropdownMenuItem
+   676→   676→                              onClick={e => { e.stopPropagation(); handleDeleteAgent(agent.id) }}
+   677→   677→                              className="text-red-600 dark:text-red-400 focus:text-red-600"
+   678→   678→                            >
+   679→   679→                              <Trash2 className="h-4 w-4 mr-2" /> Delete
+   680→   680→                            </DropdownMenuItem>
+   681→   681→                          </DropdownMenuContent>
+   682→   682→                        </DropdownMenu>
+   683→   683→                      </div>
+   684→   684→                    </motion.div>
+   685→   685→                  ))}
+   686→   686→                </div>
+   687→   687→              )}
+   688→   688→            </motion.div>
+   689→   689→          )}
+   690→   690→        </AnimatePresence>
+   691→   691→
+   692→   692→        {/* BOOKMARKS TAB */}
+   693→   693→        <AnimatePresence mode="wait">
+   694→   694→          {activeTab === 'bookmarks' && (
+   695→   695→            <motion.div
+   696→   696→              key="bookmarks"
+   697→   697→              initial={{ opacity: 0, x: -10 }}
+   698→   698→              animate={{ opacity: 1, x: 0 }}
+   699→   699→              exit={{ opacity: 0, x: 10 }}
+   700→   700→              transition={{ duration: 0.2 }}
+   701→   701→            >
+   702→   702→              {modelsLoading ? (
+   703→   703→                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   704→   704→                  {Array.from({ length: 6 }).map((_, i) => (
+   705→   705→                    <Skeleton key={i} className="h-32 rounded-xl" />
+   706→   706→                  ))}
+   707→   707→                </div>
+   708→   708→              ) : bookmarkedModels.length === 0 ? (
+   709→   709→                <div className="text-center py-16">
+   710→   710→                  <Bookmark className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+   711→   711→                  <h3 className="text-lg font-semibold">No bookmarked models</h3>
+   712→   712→                  <p className="text-sm text-muted-foreground mt-1 mb-4">
+   713→   713→                    Explore LLM models and bookmark your favorites.
+   714→   714→                  </p>
+   715→   715→                  <Button
+   716→   716→                    variant="outline"
+   717→   717→                    className="rounded-xl"
+   718→   718→                    onClick={() => router.push('/models')}
+   719→   719→                  >
+   720→   720→                    <Cpu className="h-4 w-4 mr-2" /> Explore LLM Models
+   721→   721→                  </Button>
+   722→   722→                </div>
+   723→   723→              ) : (
+   724→   724→                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   725→   725→                  {bookmarkedModels.map((bm, i) => (
+   726→   726→                    <motion.div
+   727→   727→                      key={bm.id}
+   728→   728→                      initial={{ opacity: 0, y: 20 }}
+   729→   729→                      animate={{ opacity: 1, y: 0 }}
+   730→   730→                      transition={{ delay: i * 0.05 }}
+   731→   731→                    >
+   732→   732→                      <Card
+   733→   733→                        className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 rounded-xl"
+   734→   734→                        onClick={() => router.push('/models')}
+   735→   735→                      >
+   736→   736→                        <CardContent className="p-4">
+   737→   737→                          <div className="flex items-start justify-between mb-2">
+   738→   738→                            <h4 className="font-semibold text-sm line-clamp-1">{bm.model.name}</h4>
+   739→   739→                            <Badge variant="outline" className="text-[10px] px-1.5 shrink-0 ml-2">
+   740→   740→                              Rank #{bm.model.bestRank}
+   741→   741→                            </Badge>
+   742→   742→                          </div>
+   743→   743→                          <p className="text-xs text-muted-foreground mb-2">{bm.model.organization}</p>
+   744→   744→                          <div className="flex items-center gap-3 text-xs">
+   745→   745→                            <span className="flex items-center gap-1 text-amber-600">
+   746→   746→                              <Star className="h-3 w-3" /> {bm.model.bestRating.toFixed(0)}
+   747→   747→                            </span>
+   748→   748→                            {bm.model.outputPricePerMillion != null && (
+   749→   749→                              <span className="text-muted-foreground">
+   750→   750→                                ${bm.model.outputPricePerMillion.toFixed(2)}/M tokens
+   751→   751→                              </span>
+   752→   752→                            )}
+   753→   753→                          </div>
+   754→   754→                          {bm.note && (
+   755→   755→                            <p className="text-xs text-muted-foreground mt-2 italic line-clamp-2">
+   756→   756→                              &quot;{bm.note}&quot;
+   757→   757→                            </p>
+   758→   758→                          )}
+   759→   759→                        </CardContent>
+   760→   760→                      </Card>
+   761→   761→                    </motion.div>
+   762→   762→                  ))}
+   763→   763→                </div>
+   764→   764→              )}
+   765→   765→            </motion.div>
+   766→   766→          )}
+   767→   767→        </AnimatePresence>
+   768→   768→      </Tabs>
+   769→   769→    </div>
+   770→   770→  )
+   771→   771→}
+   772→   772→
