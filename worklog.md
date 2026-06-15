@@ -64,3 +64,32 @@ Stage Summary:
 - ✅ Preview confirmed working via agent-browser (full page renders)
 - ✅ Git credential store configured for future pushes
 - ⚠️ Known issue: dev server process is killed by sandbox when the shell session that started it ends. The cron job will help restart it.
+
+---
+
+## Session: 2025-06-15 (continued) - Fix Preview Not Loading
+
+### Task ID: 12 - Fix Preview Not Loading
+**Status**: COMPLETED
+
+**Root Cause**: Two issues were preventing the preview from loading:
+1. **Dev server not running**: The `package.json` `dev` script referenced a non-existent standalone production build (`.next/standalone/server.js`). No `.next` directory existed at all.
+2. **Supabase client crash**: The `getSupabaseBrowserClient()` function threw an error when `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` were not set in `.env`, causing the entire page to crash with a 500 error.
+
+**Work Log**:
+- Investigated dev server status: no process on port 3000, no `.next` directory
+- Fixed `package.json` dev script: changed from `node .next/standalone/server.js` to `next dev -p 3000 -H 0.0.0.0`
+- Fixed `src/lib/supabase/client.ts`: added `isSupabaseConfigured()` check, return `null` when env vars missing instead of crashing
+- Fixed `src/components/auth/auth-provider.tsx`: handle `null` Supabase client gracefully, skip auth initialization when not configured, set `loading=false` immediately when Supabase isn't available
+- Fixed `src/middleware.ts`: skip Supabase session refresh when env vars are not configured
+- Started dev server using double-fork technique for persistence: `( ( npx next dev ... & ) & )`
+- Verified preview works through Caddy proxy (port 81) via agent-browser
+- Full homepage renders correctly with all sections: hero, trending agents, featured agents, categories, frameworks, community, CTA, footer
+- Zero console errors on the page
+
+**Stage Summary**:
+- ✅ Preview is now loading and fully functional
+- ✅ App gracefully handles missing Supabase credentials (no crash, auth features simply disabled)
+- ✅ Dev server started with double-fork persistence technique
+- ✅ All page sections rendering correctly: hero, trending, stats, how-it-works, testimonials, featured agents, categories, frameworks, community, CTA, footer
+- ⚠️ Dev server still needs persistent restart mechanism (sandbox kills background processes)

@@ -1,5 +1,5 @@
 import { updateSession } from '@/lib/supabase/middleware'
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 
 /**
  * Next.js middleware that runs on every matched request.
@@ -8,10 +8,17 @@ import { type NextRequest } from 'next/server'
  * stay authenticated across page navigations, and enforces
  * route protection for authenticated-only pages.
  *
- * Routes matched:
- * - Page routes only (excludes static files, API routes, and assets)
+ * If Supabase is not configured, the middleware passes through.
  */
 export async function middleware(request: NextRequest) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // If Supabase is not configured, skip middleware entirely
+  if (!supabaseUrl || !supabaseKey) {
+    return NextResponse.next()
+  }
+
   return await updateSession(request)
 }
 

@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { useRouter } from 'next/navigation'
 import type { User, Session } from '@supabase/supabase-js'
-import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { getSupabaseBrowserClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import type { UserProfile } from '@/lib/supabase/types'
 
 // ─────────────────────────────────────────────────
@@ -36,6 +36,8 @@ const MAX_LOADING_MS = 8_000
 const SESSION_TIMEOUT_MS = 5_000
 const PROFILE_TIMEOUT_MS = 3_000
 
+type SupabaseClientType = NonNullable<ReturnType<typeof getSupabaseBrowserClient>>
+
 interface AuthContextValue {
   user: User | null
   profile: UserProfile | null
@@ -43,27 +45,30 @@ interface AuthContextValue {
   loading: boolean
   signOut: () => Promise<void>
   refreshProfile: () => Promise<UserProfile | null>
-  supabase: ReturnType<typeof getSupabaseBrowserClient>
+  supabase: SupabaseClientType | null
+  isConfigured: boolean
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   profile: null,
   session: null,
-  loading: true,
+  loading: false,
   signOut: async () => {},
   refreshProfile: async () => null,
-  supabase: null as unknown as ReturnType<typeof getSupabaseBrowserClient>,
+  supabase: null,
+  isConfigured: false,
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const supabase = getSupabaseBrowserClient()
+  const configured = isSupabaseConfigured()
 
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(configured) // Only show loading if Supabase is configured
 
   // Build a fallback UserProfile from the auth User object
   const buildProfileFallback = useCallback(
@@ -88,10 +93,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   // Fetch user profile from the `profiles` table.
-
   // Falls back to auth user metadata if the table doesn't exist or times out.
   const fetchProfile = useCallback(
     async (userId: string, u?: User | null): Promise<UserProfile | null> => {
+      if (!supabase) return null
+
       try {
         const profilePromise = supabase
           .from('profiles')
@@ -137,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Public refreshProfile so consumers can manually reload
   const refreshProfile = useCallback(async (): Promise<UserProfile | null> => {
-    if (!user) return null
+    if (!user || !supabase) return null
     const updated = await fetchProfile(user.id, user)
     setProfile(updated)
     return updated
@@ -145,10 +151,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign out handler
   const signOut = useCallback(async () => {
-    try {
-      await supabase.auth.signOut()
-    } catch {
-      // Ignore sign-out errors (e.g. network failure)
+    if (supabase) {
+      try {
+        await supabase.auth.signOut()
+      } catch {
+        // Ignore sign-out errors (e.g. network failure)
+      }
     }
     setUser(null)
     setProfile(null)
@@ -156,8 +164,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/')
   }, [supabase, router])
 
-  // Subscribe to auth state changes on mount
+  // Subscribe to auth state changes on mount — only if Supabase is configured
   useEffect(() => {
+    if (!supabase) return
+
     let cancelled = false
 
     // ── Maximum-loading safeguard ──
@@ -230,7 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, session, loading, signOut, refreshProfile, supabase }}
+      value={{ user, profile, session, loading, signOut, refreshProfile, supabase, isConfigured: configured }}
     >
       {children}
     </AuthContext.Provider>
