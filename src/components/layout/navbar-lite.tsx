@@ -39,6 +39,7 @@ import {
   User as UserIcon,
   LogOut,
   Loader2,
+  Cpu,
 } from 'lucide-react'
 import {
   Sheet,
@@ -55,6 +56,7 @@ const baseNavItems = [
 
 const authNavItems = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, route: '/dashboard' },
+  { key: 'models', label: 'LLM Models', icon: Cpu, route: '/models' },
 ]
 
 const settingsNavItem = [

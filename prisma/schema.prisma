@@ -168,3 +168,90 @@ model Comment {
   @@index([agentId])
   @@index([userId])
 }
+
+// ─── LLM Model Explorer ────────────────────────────────────────────
+
+model LLMModel {
+  id                    String   @id @default(cuid())
+  arenaKey              String   @unique // model key from Arena.ai (e.g., "claude-opus-4-6-thinking")
+  name                  String   // display name
+  organization          String   // Anthropic, OpenAI, Google, etc.
+  provider              String?  // underlying provider from Arena.ai
+  license               String   // Proprietary, MIT, Apache 2.0, etc.
+  modelUrl              String?  // official URL
+  arenaId               String?  // Arena.ai UUID
+
+  // Rankings & ratings
+  bestRank              Int      @default(9999)
+  bestRating            Float    @default(0)
+  totalVotes            Int      @default(0)
+
+  // Pricing
+  inputPricePerMillion  Float?   // USD per million input tokens
+  outputPricePerMillion Float?   // USD per million output tokens
+  contextLength         Int?     // max context window in tokens
+  pricePerImage         Float?   // USD per image generation
+  pricePerSecond        Float?   // USD per second of video
+
+  // Capabilities (JSON strings)
+  inputCapabilities     String   @default("{}")  // {text, image, file, video}
+  outputCapabilities    String   @default("{}")  // {text, web, image, search, video}
+
+  // Arena categories this model appears in (JSON array)
+  arenaCategories       String   @default("[]")  // ["text","code","vision",...]
+
+  // Per-category rankings (JSON: {category: {rank, rating, votes}})
+  categoryRankings      String   @default("{}")
+
+  // Use-case tags derived from capabilities and rankings
+  useCaseTags           String   @default("[]")  // ["coding","reasoning","creative",...]
+
+  // User-selectable in Arena
+  userSelectable        Boolean  @default(false)
+
+  // Metadata
+  releaseType           String?  // "new", "updated", etc.
+  lastSyncedAt          DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  bookmarks             ModelBookmark[]
+
+  @@index([name])
+  @@index([organization])
+  @@index([bestRank])
+  @@index([bestRating])
+  @@index([license])
+}
+
+model ModelBookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  modelId   String
+  model     LLMModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  note      String?  // user's personal note about why they bookmarked
+  createdAt DateTime @default(now())
+
+  @@unique([userId, modelId])
+  @@index([userId])
+  @@index([modelId])
+}
+
+model ModelSyncLog {
+  id          String   @id @default(cuid())
+  source      String   @default("arena.ai") // data source
+  syncType    String   // "full" | "changelog" | "delta"
+  status      String   // "success" | "failed" | "partial"
+  modelsAdded Int      @default(0)
+  modelsUpdated Int    @default(0)
+  modelsRemoved Int    @default(0)
+  errors      String   @default("[]") // JSON array of error messages
+  changelogSnippet String? // relevant changelog text if delta sync
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  duration    Int?     // milliseconds
+
+  @@index([source])
+  @@index([startedAt])
+}
