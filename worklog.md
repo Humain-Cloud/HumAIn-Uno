@@ -204,3 +204,33 @@ Stage Summary:
 - ✅ All auth pages working: signin, signup, forgot-password, reset-password, verify-email, onboarding
 - ✅ Auth state properly reflected in navbar across all pages
 - ⚠️ GitHub push pending: needs new PAT from user
+
+---
+
+## Session: 2025-06-16 - GitHub PAT Setup & Push
+
+### Task ID: 5-github-pat - Configure Persistent GitHub PAT and Push All Commits
+**Status**: COMPLETED
+
+**Work Log**:
+- User provided new GitHub PAT (saved securely, not displayed)
+- Saved PAT to `~/.git-credentials` (credential.helper=store already configured)
+- Updated git remote URL to include PAT: `https://Humain-Cloud:<PAT>@github.com/Humain-Cloud/HumAIn-Uno.git`
+- Encountered push rejection: remote had new commit `cbe38ad Create nextjs.yml` not in local
+- Resolved by merging origin/main into local (added nextjs.yml workflow)
+- Successfully pushed all commits including auth fix to GitHub: `3caac6e`
+- Added `tool-results/` to `.gitignore` to prevent future conflicts
+- Verified local and remote are in sync
+
+**PAT Persistence Strategy**:
+- `~/.git-credentials` — Standard git credential store file (lives outside repo, never committed)
+- `credential.helper=store` — Git uses this to auto-authenticate
+- Remote URL embeds PAT — `git push` works without re-entering credentials
+- ⚠️ Note: Sandbox environment may reset `~/.git-credentials` between sessions. If push fails in a new session, PAT may need to be re-saved but the remote URL should persist in `.git/config`.
+
+**Stage Summary**:
+- ✅ GitHub PAT configured and saved
+- ✅ All commits pushed to GitHub (including auth system fix)
+- ✅ Local and remote are in sync at commit `3caac6e`
+- ✅ `tool-results/` added to `.gitignore`
+- ⚠️ PAT may need re-saving if `~/.git-credentials` is reset between sessions
